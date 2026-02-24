@@ -142,6 +142,6 @@ export async function POST(
         return NextResponse.json(assignment);
     } catch (error) {
         console.log("[IMPORT_SAVE_ERROR]", error);
-        return new NextResponse("Internal Error", { status: 500 });
+        return new NextResponse(error instanceof Error ? error.message : "Internal Error", { status: 500 });
     }
 }
