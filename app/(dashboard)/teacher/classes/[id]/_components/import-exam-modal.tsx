@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileText, X, Loader2, Check, AlertCircle } from "lucide-react";
+import { Upload, FileText, X, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
@@ -10,6 +10,8 @@ interface Question {
     content: string;
     options?: string[];
     correctAnswer?: string;
+    explanation?: string | null;
+    passage?: string | null;
 }
 
 interface ImportExamModalProps {
@@ -25,6 +27,7 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
     const [step, setStep] = useState<"upload" | "preview" | "saving">("upload");
     const [title, setTitle] = useState("");
     const [error, setError] = useState("");
+    const [expandedExplanations, setExpandedExplanations] = useState<Set<number>>(new Set());
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -97,7 +100,20 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
         setQuestions((prev) => prev.filter((_, i) => i !== index));
     };
 
+    const toggleExplanation = (index: number) => {
+        setExpandedExplanations((prev) => {
+            const newSet = new Set(prev);
+            if (newSet.has(index)) {
+                newSet.delete(index);
+            } else {
+                newSet.add(index);
+            }
+            return newSet;
+        });
+    };
 
+    // Count questions with explanations
+    const questionsWithExplanations = questions.filter(q => q.explanation).length;
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -157,7 +173,7 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                                 Kéo thả file hoặc click để chọn
                                             </p>
                                             <p className="text-sm text-slate-400 mt-1">
-                                                Hỗ trợ file .docx (Word)
+                                                Hỗ trợ file .docx (Word) - Đề thi TNPT
                                             </p>
                                         </>
                                     )}
@@ -167,9 +183,9 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                             <div className="bg-slate-50 rounded-xl p-4">
                                 <h3 className="font-medium text-slate-700 mb-2">Hướng dẫn</h3>
                                 <ul className="text-sm text-slate-600 space-y-1">
-                                    <li>• File Word nên có định dạng câu hỏi rõ ràng</li>
-                                    <li>• AI sẽ tự động nhận diện câu trắc nghiệm (A, B, C, D) và tự luận</li>
-                                    <li>• Bạn có thể chỉnh sửa sau khi AI phân tích xong</li>
+                                    <li>• Hỗ trợ định dạng đề thi TNPT (THPT Quốc gia)</li>
+                                    <li>• AI sẽ tự động nhận diện các phần, bài đọc và câu hỏi</li>
+                                    <li>• Lời giải (nếu có) sẽ được trích xuất tự động</li>
                                 </ul>
                             </div>
                         </div>
@@ -190,8 +206,16 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                 />
                             </div>
 
-                            <div className="text-sm text-slate-600">
-                                Đã tìm thấy <span className="font-bold text-indigo-600">{questions.length}</span> câu hỏi
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-slate-600">
+                                    Đã tìm thấy <span className="font-bold text-indigo-600">{questions.length}</span> câu hỏi
+                                </span>
+                                {questionsWithExplanations > 0 && (
+                                    <span className="flex items-center gap-1 text-emerald-600">
+                                        <BookOpen className="w-4 h-4" />
+                                        {questionsWithExplanations} câu có lời giải
+                                    </span>
+                                )}
                             </div>
 
                             <div className="space-y-3 max-h-[400px] overflow-y-auto">
@@ -207,23 +231,54 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                                         {q.type}
                                                     </span>
                                                     <span className="text-xs text-slate-500">Câu {index + 1}</span>
+                                                    {q.correctAnswer && (
+                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+                                                            Đáp án: {q.correctAnswer}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <p className="text-slate-900 whitespace-pre-wrap text-sm">
                                                     {q.content}
                                                 </p>
                                                 {q.options && q.options.length > 0 && (
-                                                    <div className="mt-2 space-y-1">
+                                                    <div className="mt-2 grid grid-cols-2 gap-1">
                                                         {q.options.map((opt, i) => (
                                                             <div
                                                                 key={i}
-                                                                className={`text-sm px-3 py-1.5 rounded ${q.correctAnswer && opt.includes(q.correctAnswer)
-                                                                    ? "bg-green-100 text-green-800"
+                                                                className={`text-sm px-3 py-1.5 rounded ${q.correctAnswer && String.fromCharCode(65 + i) === q.correctAnswer
+                                                                    ? "bg-green-100 text-green-800 font-medium"
                                                                     : "bg-white text-slate-600"
                                                                     }`}
                                                             >
-                                                                {opt}
+                                                                {String.fromCharCode(65 + i)}. {opt}
                                                             </div>
                                                         ))}
+                                                    </div>
+                                                )}
+                                                {/* Explanation toggle */}
+                                                {q.explanation && (
+                                                    <div className="mt-3">
+                                                        <button
+                                                            onClick={() => toggleExplanation(index)}
+                                                            className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition"
+                                                        >
+                                                            {expandedExplanations.has(index) ? (
+                                                                <>
+                                                                    <ChevronUp className="w-3 h-3" />
+                                                                    Ẩn lời giải
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <ChevronDown className="w-3 h-3" />
+                                                                    Xem lời giải
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                        {expandedExplanations.has(index) && (
+                                                            <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900 whitespace-pre-wrap">
+                                                                {q.explanation}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>

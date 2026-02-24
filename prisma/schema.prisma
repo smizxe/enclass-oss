@@ -67,6 +67,7 @@ model Question {
   type          String       // MCQ, GAP_FILL, etc.
   content       String
   correctAnswer String       // Changed from Json to String
+  explanation   String?      // Teacher's explanation for the answer
   points        Int          @default(1)
   
   createdAt     DateTime     @default(now())

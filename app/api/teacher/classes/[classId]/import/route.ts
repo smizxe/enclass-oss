@@ -42,44 +42,56 @@ export async function POST(
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `
-    You are an AI assistant helping a teacher digitize their exams.
-    Extract questions from the following text and return a valid JSON array.
-    
-    The text is from a docx file and might contain random line breaks or formatting artifacts.
-    Identify Multiple Choice Questions (MCQ) and Essay questions (if any).
-    
-    Output format must be a strictly valid JSON array of objects:
-    [
-      {
-        "type": "MCQ", // or "ESSAY"
-        "content": "Question content here...",
-        "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"], // Only for MCQ. remove "A.", "B." prefix.
-        "correctAnswer": "Option 1" // Answer content only.
-      }
-    ]
+You are an AI assistant specialized in digitizing Vietnamese English exams (TNPT format).
+Analyze the following exam text and extract ALL questions into a structured JSON format.
 
-    Rules for extraction:
-    1. **Gap Filling / Cloze Tests**: If there is a passage with numbered blanks (e.g. (1), (2), [1]...) and corresponding questions:
-       - Create a separate MCQ for EACH blank.
-       - For the "content", extract **only the specific sentence** from the passage that contains that blank. Do not include the whole paragraph.
-       - Replace the blank number in the content with "_______" for clarity (e.g. "polluting the (9) environment" -> "polluting the _______ environment").
-    
-    2. **Prefixes**: Remove "Question X:", "Câu X:", "Part X" prefixes from the 'content' field. Just keep the question text.
-    
-    3. **Options**: Ensure options are clean strings.
-    
-    4. **Correct Answer**: Try to detect the correct answer. If not found, leave empty string.
+**CRITICAL INSTRUCTIONS:**
 
-    If there are reading passages, include them in the "content" of the question or as a separate "ESSAY" type if it's a writing prompt.
-    For MCQ, ensure "options" is an array of strings.
-    For Essay, "options" and "correctAnswer" can be omitted or null.
+1. **Question Types:**
+   - MCQ (Multiple Choice): Has 4 options (A, B, C, D)
+   - READING_MCQ: MCQ questions that reference a reading passage
+   - ARRANGEMENT: Sentence/paragraph arrangement questions
 
-    Text content to analyze:
-    """
-    ${text.substring(0, 30000)} 
-    """
-    `;
-        // Limit text to 30k chars to be safe with tokens, though Flash can handle more.
+2. **Reading Passages:**
+   - For questions that reference a reading passage (e.g., "Read the following passage..."), include the FULL passage in the question's "passage" field.
+   - Questions 23-30, 31-40 typically have reading passages.
+
+3. **Explanations (Lời giải):**
+   - IMPORTANT: After each question, there is usually a Vietnamese explanation starting with patterns like:
+     - "Giải thích:", "Kiến thức:", "Tạm dịch:", "Thông tin:", "🡪Chọn đáp án"
+   - Extract this ENTIRE explanation text into the "explanation" field.
+   - If no explanation exists, set explanation to null.
+
+4. **Content Extraction:**
+   - Remove question number prefixes like "Question 1.", "Câu 1." from content.
+   - For gap-fill questions, keep the blank indicator (e.g., "(1) _______").
+   - Keep the original question text intact without translation.
+
+5. **Correct Answer:**
+   - Look for indicators: "🡪Chọn đáp án X", "Chọn đáp án X", "→ Chọn đáp án X"
+   - Store only the answer letter (A, B, C, or D) in correctAnswer field.
+
+**OUTPUT FORMAT (strictly valid JSON array):**
+\`\`\`json
+[
+  {
+    "type": "MCQ",
+    "content": "The question text with _______ for blanks",
+    "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
+    "correctAnswer": "A",
+    "explanation": "Vietnamese explanation text here or null",
+    "passage": "Full reading passage text if applicable, otherwise null"
+  }
+]
+\`\`\`
+
+**EXAM TEXT TO ANALYZE:**
+"""
+${text.substring(0, 60000)}
+"""
+
+Return ONLY the JSON array, no markdown code blocks, no additional text.
+`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
@@ -93,7 +105,7 @@ export async function POST(
             questions = JSON.parse(jsonString);
         } catch (e) {
             console.error("JSON Parse Error:", e);
-            console.log("Raw Output:", jsonString);
+            console.log("Raw Output:", jsonString.substring(0, 500));
             return new NextResponse("Failed to parse AI response", { status: 500 });
         }
 

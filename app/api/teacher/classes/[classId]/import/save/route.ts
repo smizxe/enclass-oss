@@ -8,6 +8,8 @@ interface QuestionInput {
     content: string;
     options?: string[];
     correctAnswer?: string;
+    explanation?: string | null;
+    passage?: string | null;
 }
 
 export async function POST(
@@ -48,7 +50,7 @@ export async function POST(
 
         // Determine assignment type based on questions
         const hasEssay = questions.some((q) => q.type === "ESSAY");
-        const hasMCQ = questions.some((q) => q.type === "MCQ");
+        const hasMCQ = questions.some((q) => q.type === "MCQ" || q.type === "READING_MCQ");
         let assignmentType = "QUIZ";
         if (hasEssay && !hasMCQ) {
             assignmentType = "ESSAY";
@@ -64,14 +66,26 @@ export async function POST(
                 orderIndex: nextOrderIndex,
                 type: assignmentType,
                 questions: {
-                    create: questions.map((q) => ({
-                        type: q.type || "MCQ",
-                        content: q.options && q.options.length > 0
-                            ? JSON.stringify({ text: q.content, options: q.options })
-                            : q.content,
-                        correctAnswer: q.correctAnswer || "",
-                        points: 1,
-                    })),
+                    create: questions.map((q) => {
+                        // Build content JSON including passage if available
+                        const contentData: { text: string; options?: string[]; passage?: string } = {
+                            text: q.content,
+                        };
+                        if (q.options && q.options.length > 0) {
+                            contentData.options = q.options;
+                        }
+                        if (q.passage) {
+                            contentData.passage = q.passage;
+                        }
+
+                        return {
+                            type: q.type || "MCQ",
+                            content: JSON.stringify(contentData),
+                            correctAnswer: q.correctAnswer || "",
+                            explanation: q.explanation || null,
+                            points: 1,
+                        };
+                    }),
                 },
             },
             include: {
