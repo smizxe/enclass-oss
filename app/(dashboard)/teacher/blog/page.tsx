@@ -29,7 +29,7 @@ export default function BlogListPage() {
         try {
             await axios.delete(`/api/teacher/blog/${id}`);
             toast.success("Đã xóa bài viết");
-            mutate(posts.filter(p => p.id !== id), false);
+            mutate(posts.filter((p: BlogPost) => p.id !== id), false);
         } catch {
             toast.error("Lỗi xóa bài viết");
         }
@@ -38,7 +38,7 @@ export default function BlogListPage() {
     const togglePublish = async (id: string, published: boolean) => {
         try {
             await axios.patch(`/api/teacher/blog/${id}`, { published: !published });
-            mutate(posts.map(p => p.id === id ? { ...p, published: !published } : p), false);
+            mutate(posts.map((p: BlogPost) => p.id === id ? { ...p, published: !published } : p), false);
             toast.success(published ? "Đã ẩn bài viết" : "Đã xuất bản bài viết");
         } catch {
             toast.error("Lỗi cập nhật");
@@ -81,7 +81,7 @@ export default function BlogListPage() {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {posts.map((post) => (
+                    {posts.map((post: BlogPost) => (
                         <div
                             key={post.id}
                             className="bg-white rounded-xl border border-slate-200 p-5 flex items-center gap-5 hover:shadow-md transition-shadow"

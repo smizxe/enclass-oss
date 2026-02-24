@@ -122,10 +122,115 @@ Hãy đưa ra nhận xét chi tiết, bao gồm điểm mạnh, điểm yếu v�
 }
 
 /**
+ * Grade a student submission using Google Gemini AI (Streaming Version)
+ * Yields string chunks of the AI's feedback as it generates.
+ */
+export async function* gradeSubmissionStream(
+    questionType: string,
+    questionContent: string,
+    userAnswer: string,
+    rubric: string,
+    maxPoints: number,
+    contextPassage?: string
+) {
+    if (!apiKey) {
+        console.error("GOOGLE_API_KEY is missing");
+        yield "Lỗi: Chưa cấu hình API Key cho AI chấm điểm.";
+        return;
+    }
+
+    if (!userAnswer || userAnswer.trim() === "") {
+        yield "Học viên chưa nộp bài.";
+        return;
+    }
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const isSpeaking = questionType === "SPEAKING";
+        const isWriting = questionType === "WRITING" || questionType === "ESSAY";
+
+        const parts: any[] = [];
+
+        const systemPrompt = `Bạn là một giáo viên tiếng Anh nghiêm khắc nhưng tận tâm. Hãy chấm điểm bài nộp của học viên.
+
+**ĐỀ BÀI:** ${questionContent}
+${contextPassage ? `
+**NGỮ CẢNH / BÀI ĐỌC:**
+"""
+${contextPassage}
+"""
+` : ""}
+**THANG ĐIỂM TỐI ĐA:** ${maxPoints} điểm
+**TIÊU CHÍ CHẤM:** ${rubric || "Chấm dựa trên ngữ pháp, từ vựng, sự mạch lạc và hoàn thành yêu cầu đề bài."}
+
+**ĐỊNH DẠNG TRẢ VỀ:**
+Trả về theo định dạng sau (KHÔNG bọc trong code block):
+
+SCORE: [số điểm từ 0 đến ${maxPoints}]
+FEEDBACK:
+[Nhận xét chi tiết bằng tiếng Việt, có thể dùng markdown như:
+- **Bold** cho tiêu đề
+- *Italic* cho nhấn mạnh
+- Bullet points với dấu -
+- Numbered lists với 1. 2. 3.
+- Xuống dòng tự do để dễ đọc]
+
+Hãy đưa ra nhận xét chi tiết, bao gồm điểm mạnh, điểm yếu và gợi ý cải thiện.`;
+
+        parts.push({ text: systemPrompt });
+
+        if (isWriting) {
+            parts.push({ text: `**BÀI LÀM CỦA HỌC VIÊN:**\n"${userAnswer}"` });
+        } else if (isSpeaking) {
+            try {
+                const response = await fetch(userAnswer);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch audio: ${response.status}`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                const base64Audio = Buffer.from(arrayBuffer).toString("base64");
+
+                let mimeType = "audio/webm";
+                if (userAnswer.includes(".mp3")) mimeType = "audio/mpeg";
+                else if (userAnswer.includes(".ogg")) mimeType = "audio/ogg";
+                else if (userAnswer.includes(".wav")) mimeType = "audio/wav";
+
+                parts.push({
+                    inlineData: {
+                        mimeType: mimeType,
+                        data: base64Audio
+                    }
+                });
+                parts.push({ text: "**BÀI NÓI CỦA HỌC VIÊN:** (File âm thanh đính kèm ở trên)" });
+            } catch (e) {
+                console.error("Error fetching audio for AI streaming:", e);
+                yield "Lỗi khi tải file âm thanh để chấm điểm. Vui lòng thử lại hoặc liên hệ giáo viên.";
+                return;
+            }
+        }
+
+        // Call AI Streaming
+        const resultStream = await model.generateContentStream(parts);
+
+        for await (const chunk of resultStream.stream) {
+            const chunkText = chunk.text();
+            if (chunkText) {
+                yield chunkText;
+            }
+        }
+
+    } catch (error) {
+        console.error("AI Streaming Error:", error);
+        yield "\n[LỖI] Đã xảy ra lỗi khi kết nối với AI. Hệ thống không thể hoàn thành việc chấm điểm.";
+    }
+}
+
+/**
  * Parse the SCORE: and FEEDBACK: format from AI response
  * This format is simpler and allows rich markdown in feedback
  */
-function parseScoreFeedbackFormat(responseText: string, maxPoints: number): { score: number; feedback: string } {
+export function parseScoreFeedbackFormat(responseText: string, maxPoints: number): { score: number; feedback: string } {
     const fallback = {
         score: 0,
         feedback: "AI không thể phân tích kết quả. Giáo viên sẽ chấm thủ công."

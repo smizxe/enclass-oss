@@ -177,7 +177,7 @@ export default function ClassStudentsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {members.map((member) => (
+                            {members.map((member: ClassMember) => (
                                 <tr key={member.id} className="hover:bg-slate-50 transition">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">

@@ -11,13 +11,15 @@ interface AssignmentResultProps {
             isCorrect: boolean;
             correctAnswer: string;
             feedback?: string;
-            score?: number
+            score?: number;
+            isPendingAi?: boolean;
         }>;
     };
     questions: any[];
+    streamingFeedback?: Record<string, { text: string; isStreaming: boolean; score?: number }>;
 }
 
-export function AssignmentResult({ submissionResult, questions }: AssignmentResultProps) {
+export function AssignmentResult({ submissionResult, questions, streamingFeedback = {} }: AssignmentResultProps) {
     const { score, totalScore, results } = submissionResult;
     const percentage = Math.round((score / totalScore) * 100);
 
@@ -67,11 +69,16 @@ export function AssignmentResult({ submissionResult, questions }: AssignmentResu
                         contentText = q.content;
                     }
 
+                    const streamState = streamingFeedback[q.id];
+                    const displayScore = streamState?.score !== undefined ? streamState.score : result.score;
+                    const isPending = result.isPendingAi && !streamState?.text;
+                    const isStreaming = streamState?.isStreaming;
+
                     return (
                         <div key={q.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <div className="bg-slate-50 border-b border-slate-100 p-4 flex items-start justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${result.score ? "bg-indigo-100 border-indigo-200 text-indigo-600" : "bg-slate-100 text-slate-500"
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${displayScore ? "bg-indigo-100 border-indigo-200 text-indigo-600" : "bg-slate-100 text-slate-500"
                                         }`}>
                                         {isSpeaking ? <Mic className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                                     </div>
@@ -83,18 +90,40 @@ export function AssignmentResult({ submissionResult, questions }: AssignmentResu
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <span className="block text-2xl font-bold text-indigo-600">
-                                        {result.score || 0}
-                                        <span className="text-sm text-slate-400 font-normal">/{q.points}</span>
-                                    </span>
-                                    <span className="text-xs text-slate-500">Điểm AI chấm</span>
+                                    {isPending || isStreaming ? (
+                                        <div className="flex flex-col items-end">
+                                            <div className="w-12 h-6 bg-slate-200 animate-pulse rounded"></div>
+                                            <span className="text-xs text-indigo-500 font-medium mt-1 animate-pulse">AI đang chấm...</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span className="block text-2xl font-bold text-indigo-600">
+                                                {displayScore || 0}
+                                                <span className="text-sm text-slate-400 font-normal">/{q.points}</span>
+                                            </span>
+                                            <span className="text-xs text-slate-500">Điểm AI chấm</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
                             <div className="p-6">
-                                <h4 className="text-sm font-bold text-slate-700 mb-3">🤖 Nhận xét từ AI:</h4>
+                                <h4 className="text-sm font-bold text-slate-700 mb-3">
+                                    🤖 Nhận xét từ AI:
+                                    {(isPending || isStreaming) && <span className="ml-2 inline-block w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin align-middle"></span>}
+                                </h4>
                                 <div className="bg-indigo-50/50 rounded-xl p-4 border border-indigo-100 text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none prose-indigo">
-                                    <ReactMarkdown>{result.feedback || "Không có nhận xét."}</ReactMarkdown>
+                                    {isPending ? (
+                                        <div className="space-y-2">
+                                            <div className="w-3/4 h-4 bg-slate-200 animate-pulse rounded"></div>
+                                            <div className="w-1/2 h-4 bg-slate-200 animate-pulse rounded"></div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <ReactMarkdown>{streamState?.text || result.feedback || "Không có nhận xét."}</ReactMarkdown>
+                                            {isStreaming && <span className="inline-block w-2 bg-indigo-500 h-4 ml-1 animate-pulse align-middle"></span>}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

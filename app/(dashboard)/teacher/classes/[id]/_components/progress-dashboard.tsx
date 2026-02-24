@@ -68,7 +68,7 @@ export const ProgressDashboard = ({ classId }: ProgressDashboardProps) => {
     const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
     const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
 
-    const filteredData = data.filter(student =>
+    const filteredData = data.filter((student: StudentProgress) =>
         student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         student.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -113,7 +113,7 @@ export const ProgressDashboard = ({ classId }: ProgressDashboardProps) => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {data.filter(s => s.weeklyActivity).length} / {data.length}
+                            {data.filter((s: StudentProgress) => s.weeklyActivity).length} / {data.length}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Học sinh có hoạt động
@@ -127,7 +127,7 @@ export const ProgressDashboard = ({ classId }: ProgressDashboardProps) => {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {data.reduce((acc, s) => acc + s.completedInWeek, 0)}
+                            {data.reduce((acc: number, s: StudentProgress) => acc + s.completedInWeek, 0)}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Tổng số bài nộp trong tuần

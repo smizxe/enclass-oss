@@ -222,45 +222,27 @@ export async function POST(
         });
 
         // Part 2: Process AI Grading
-        const aiPromises = assignment.questions.filter(q =>
+        // PHASE 1: WE DONT CALL AI HERE ANYMORE
+        // We just record which questions need AI grading so the client can trigger Phase 2 streaming
+        const pendingAiQuestionIds: string[] = [];
+
+        assignment.questions.filter(q =>
             q.type === "SPEAKING" || q.type === "WRITING" || q.type === "ESSAY"
-        ).map(async (q) => {
+        ).forEach((q) => {
             const userAnswer = answers[q.id];
-            if (!userAnswer) return;
+            if (!userAnswer) return; // Skip if student didn't answer
 
-            let parsedContent;
-            try { parsedContent = JSON.parse(q.content); } catch { parsedContent = { text: q.content }; }
+            pendingAiQuestionIds.push(q.id);
 
-            const rubric = parsedContent.aiRubric || "";
-            const sectionTitle = parsedContent.sectionTitle || "";
-            const contextPassage = sectionPassageMap.get(sectionTitle) || "";
-
-            // Only grade if we have an answer
-            if (userAnswer) {
-                const { gradeSubmission } = await import("@/lib/ai-grading");
-                const aiResult = await gradeSubmission(
-                    q.type,
-                    parsedContent.text,
-                    userAnswer,
-                    rubric,
-                    q.points,
-                    contextPassage
-                );
-
-                earnedScore += aiResult.score;
-                // Store feedback - where? 
-                // We will add it to a results map that we save in Submission.feedback (Stringified JSON)
-                if (!results[q.id]) results[q.id] = { isCorrect: false, correctAnswer: null };
-
-                // Add extended info to results
-                // Type assertion hack for flexible object
-                (results[q.id] as any).feedback = aiResult.feedback;
-                (results[q.id] as any).score = aiResult.score;
-                (results[q.id] as any).isCorrect = aiResult.score >= (q.points / 2); // Roughly pass if >= 50%
-            }
+            // Mark as pending in the results object
+            results[q.id] = {
+                isCorrect: false,
+                correctAnswer: null,
+                isPendingAi: true, // Flag for the frontend
+                score: 0,
+                feedback: "Đang chờ chấm điểm..."
+            } as any;
         });
-
-        await Promise.all(aiPromises);
 
         // Get or create assignment progress
         let progress = existingProgress;
@@ -322,7 +304,8 @@ export async function POST(
             status: newStatus,
             score: earnedScore,
             totalScore: totalScore,
-            results: results
+            results: results,
+            pendingAiQuestionIds: pendingAiQuestionIds
         });
     } catch (error) {
         console.error("[SUBMIT_POST]", error);

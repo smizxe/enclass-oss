@@ -401,6 +401,7 @@ export const QuizRunner = ({
     const [activeSectionIndex, setActiveSectionIndex] = useState(0);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [submissionResult, setSubmissionResult] = useState<any>(null);
+    const [streamingFeedback, setStreamingFeedback] = useState<Record<string, { text: string; isStreaming: boolean; score?: number }>>({});
     const [viewingAttempt, setViewingAttempt] = useState<number | null>(null); // null = latest/current
     const [isStartingNewAttempt, setIsStartingNewAttempt] = useState(false);
     const [passageFontSize, setPassageFontSize] = useState(16);
@@ -432,6 +433,71 @@ export const QuizRunner = ({
         return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }, []);
 
+    const startAiStream = useCallback((submissionId: string, assignmentId: string) => {
+        // Initialize streaming state
+        setStreamingFeedback({});
+
+        const eventSource = new EventSource(`/api/student/assignments/${assignmentId}/submit/ai-stream?submissionId=${submissionId}`);
+
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.type === "streaming") {
+                    setStreamingFeedback(prev => ({
+                        ...prev,
+                        [data.questionId]: {
+                            text: (prev[data.questionId]?.text || "") + data.chunk,
+                            isStreaming: true
+                        }
+                    }));
+                } else if (data.type === "complete") {
+                    setStreamingFeedback(prev => ({
+                        ...prev,
+                        [data.questionId]: {
+                            ...prev[data.questionId],
+                            isStreaming: false,
+                            score: data.score
+                        }
+                    }));
+
+                    // Update submission result locally
+                    setSubmissionResult((prev: any) => {
+                        if (!prev) return prev;
+                        const newResults = { ...prev.results };
+                        if (newResults[data.questionId]) {
+                            newResults[data.questionId] = {
+                                ...newResults[data.questionId],
+                                isPendingAi: false,
+                                score: data.score,
+                                feedback: data.feedback,
+                                isCorrect: data.score >= (assignment.questions.find(q => q.id === data.questionId)?.points || 0) / 2
+                            };
+                        }
+                        return { ...prev, results: newResults };
+                    });
+                } else if (data.type === "done") {
+                    // Update final score
+                    setSubmissionResult((prev: any) => ({
+                        ...prev,
+                        score: data.finalScore
+                    }));
+                    eventSource.close();
+                } else if (data.type === "error") {
+                    console.error("AI Stream error:", data.message);
+                    eventSource.close();
+                }
+            } catch (e) {
+                console.error("Failed to parse SSE message", e);
+            }
+        };
+
+        eventSource.onerror = (error) => {
+            console.error("EventSource failed:", error);
+            eventSource.close();
+        };
+    }, [assignment.questions]);
+
     // Auto-submit when timer expires
     const handleAutoSubmit = useCallback(async () => {
         if (autoSubmitRef.current || isSubmitted) return;
@@ -453,6 +519,11 @@ export const QuizRunner = ({
                 setIsSubmitted(true);
                 localStorage.removeItem(timerKey);
                 toast.success(`Bài đã được tự động nộp. Điểm: ${result.score}/${result.totalScore}`);
+
+                // PHASE 2: Start AI Streaming if there are pending questions
+                if (result.pendingAiQuestionIds && result.pendingAiQuestionIds.length > 0) {
+                    startAiStream(result.submissionId, assignment.id);
+                }
             }
         } catch (error) {
             console.error("Auto-submit error:", error);
@@ -721,6 +792,11 @@ export const QuizRunner = ({
                 setIsSubmitted(true);
                 // Clear timer from localStorage
                 if (hasTimeLimit) localStorage.removeItem(timerKey);
+
+                // PHASE 2: Start AI Streaming if there are pending questions
+                if (result.pendingAiQuestionIds && result.pendingAiQuestionIds.length > 0) {
+                    startAiStream(result.submissionId, assignment.id);
+                }
             } else {
                 toast.error("Có lỗi xảy ra khi nộp bài");
             }
@@ -1048,6 +1124,7 @@ export const QuizRunner = ({
                 <AssignmentResult
                     submissionResult={submissionResult}
                     questions={assignment.questions}
+                    streamingFeedback={streamingFeedback}
                 />
 
                 {/* Action Buttons */}
@@ -1157,10 +1234,10 @@ export const QuizRunner = ({
                             {/* Countdown Timer */}
                             {hasTimeLimit && timerStarted && !isSubmitted && (
                                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${timeRemaining <= 300
-                                        ? "bg-red-100 text-red-700 border border-red-200 animate-pulse"
-                                        : timeRemaining <= 600
-                                            ? "bg-amber-100 text-amber-700 border border-amber-200"
-                                            : "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                    ? "bg-red-100 text-red-700 border border-red-200 animate-pulse"
+                                    : timeRemaining <= 600
+                                        ? "bg-amber-100 text-amber-700 border border-amber-200"
+                                        : "bg-emerald-100 text-emerald-700 border border-emerald-200"
                                     }`}>
                                     <Clock className="w-4 h-4" />
                                     {formatTime(timeRemaining)}
@@ -1170,8 +1247,8 @@ export const QuizRunner = ({
                             {/* Deadline Badge */}
                             {deadlineDate && !isSubmitted && (
                                 <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${isDeadlineExpired
-                                        ? "bg-red-50 text-red-600 border-red-200"
-                                        : "bg-slate-50 text-slate-600 border-slate-200"
+                                    ? "bg-red-50 text-red-600 border-red-200"
+                                    : "bg-slate-50 text-slate-600 border-slate-200"
                                     }`}>
                                     📅 {isDeadlineExpired ? "Hết hạn" : `Hạn: ${deadlineDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })} ${deadlineDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`}
                                 </div>
