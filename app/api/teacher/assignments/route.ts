@@ -3,6 +3,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 const assignmentSchema = z.object({
     title: z.string().min(1),
@@ -40,6 +44,9 @@ export async function POST(req: Request) {
                 content
             },
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(classId);
 
         return NextResponse.json(assignment);
     } catch (error) {

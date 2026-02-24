@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 export async function DELETE(
     req: Request,
@@ -32,6 +36,9 @@ export async function DELETE(
                 assignmentId: assignmentId
             }
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(assignment.classId);
 
         return new NextResponse(null, { status: 200 });
     } catch (error) {
@@ -76,6 +83,9 @@ export async function PATCH(
                 points
             }
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(assignment.classId);
 
         return NextResponse.json(question);
     } catch (error) {

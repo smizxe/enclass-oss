@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 export async function PUT(
     req: Request,
@@ -17,10 +21,25 @@ export async function PUT(
 
         const { title, orderIndex } = await req.json();
 
+        const existingGroup = await prisma.assignmentGroup.findUnique({
+            where: { id },
+            include: {
+                class: {
+                    select: { teacherId: true }
+                }
+            }
+        });
+        if (!existingGroup || existingGroup.class.teacherId !== session.user.id) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
+
         const group = await prisma.assignmentGroup.update({
             where: { id },
             data: { title, orderIndex }
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(group.classId);
 
         return NextResponse.json(group);
     } catch (error) {
@@ -49,6 +68,22 @@ export async function DELETE(
         // Default is usually SetNull if optional field? Or Restrict.
         // Let's manually unlink just in case.
 
+        const group = await prisma.assignmentGroup.findUnique({
+            where: { id },
+            include: {
+                class: {
+                    select: { teacherId: true }
+                }
+            }
+        });
+
+        if (!group) {
+            return new NextResponse("Group not found", { status: 404 });
+        }
+        if (group.class.teacherId !== session.user.id) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
+
         await prisma.assignment.updateMany({
             where: { groupId: id },
             data: { groupId: null }
@@ -57,6 +92,9 @@ export async function DELETE(
         await prisma.assignmentGroup.delete({
             where: { id }
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(group.classId);
 
         return NextResponse.json({ message: "Deleted" });
     } catch (error) {

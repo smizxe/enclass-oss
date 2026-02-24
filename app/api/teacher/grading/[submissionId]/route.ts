@@ -3,6 +3,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+    revalidateStudentTags,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 const gradeSchema = z.object({
     score: z.number().min(0).max(10),
@@ -65,6 +69,9 @@ export async function PATCH(
                 score
             }
         });
+
+        revalidateTeacherTags(session.user.id);
+        revalidateStudentTags(submission.userId);
 
         return NextResponse.json(updatedSubmission);
     } catch (error) {

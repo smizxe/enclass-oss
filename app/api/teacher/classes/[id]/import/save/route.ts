@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 interface Question {
     questionNumber?: number;
@@ -32,7 +36,7 @@ export async function POST(
 ) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session) {
+        if (!session || session.user.role !== "TEACHER") {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
@@ -140,6 +144,9 @@ export async function POST(
                 questions: true,
             },
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(id);
 
         return NextResponse.json(assignment);
     } catch (error) {

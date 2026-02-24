@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
 import { z } from "zod";
+import { revalidateTeacherTags } from "@/lib/cache-invalidation";
 
 const classSchema = z.object({
     published: z.boolean().optional(),
@@ -25,6 +25,17 @@ export async function PATCH(
         }
 
         const parsedValues = classSchema.parse(values);
+        const ownedClass = await prisma.class.findFirst({
+            where: {
+                id,
+                teacherId: session.user.id
+            },
+            select: { id: true }
+        });
+
+        if (!ownedClass) {
+            return new NextResponse("Not Found", { status: 404 });
+        }
 
         const classObj = await prisma.class.update({
             where: {
@@ -35,8 +46,7 @@ export async function PATCH(
             },
         });
 
-        revalidateTag(`teacher-dashboard:${session.user.id}`, "max");
-        revalidateTag(`teacher-classes:${session.user.id}`, "max");
+        revalidateTeacherTags(session.user.id);
 
         return NextResponse.json(classObj);
     } catch (error) {
@@ -50,9 +60,14 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getServerSession(authOptions);
         const { id } = await params;
         const { searchParams } = new URL(req.url);
         const view = searchParams.get("view");
+
+        if (!session || session.user.role !== "TEACHER") {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
 
         if (view === "grading") {
             const classObj = await prisma.class.findUnique({
@@ -77,6 +92,10 @@ export async function GET(
                 }
             });
 
+            if (!classObj || classObj.teacherId !== session.user.id) {
+                return new NextResponse("Not Found", { status: 404 });
+            }
+
             return NextResponse.json(classObj);
         }
 
@@ -98,6 +117,10 @@ export async function GET(
                 }
             }
         });
+
+        if (!classObj || classObj.teacherId !== session.user.id) {
+            return new NextResponse("Not Found", { status: 404 });
+        }
 
         return NextResponse.json(classObj);
     } catch (error) {

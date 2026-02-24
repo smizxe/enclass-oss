@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 export async function PATCH(
     req: Request,
@@ -73,6 +77,9 @@ export async function PATCH(
                 });
             })
         );
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(assignment.classId);
 
         return new NextResponse("Section updated successfully", { status: 200 });
     } catch (error) {

@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
 import { z } from "zod";
+import { revalidateTeacherTags } from "@/lib/cache-invalidation";
 
 const courseSchema = z.object({
     title: z.string().min(1, "Title is required"),
@@ -28,8 +28,7 @@ export async function POST(req: Request) {
             },
         });
 
-        revalidateTag(`teacher-dashboard:${session.user.id}`, "max");
-        revalidateTag(`teacher-classes:${session.user.id}`, "max");
+        revalidateTeacherTags(session.user.id);
 
         return NextResponse.json(classObj);
     } catch (error) {

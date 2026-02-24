@@ -2,7 +2,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import {
+    revalidateStudentTags,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 export async function POST(
     req: Request,
@@ -18,7 +21,7 @@ export async function POST(
         const { email } = await req.json();
 
         // Check if class belongs to teacher
-        const classItem = await prisma.class.findUnique({
+        const classItem = await prisma.class.findFirst({
             where: {
                 id: id,
                 teacherId: session.user.id
@@ -38,6 +41,19 @@ export async function POST(
             return new NextResponse("Student not found", { status: 404 });
         }
 
+        const existingMember = await prisma.classMember.findUnique({
+            where: {
+                userId_classId: {
+                    userId: student.id,
+                    classId: id
+                }
+            }
+        });
+
+        if (existingMember) {
+            return new NextResponse("Student already in class", { status: 409 });
+        }
+
         // Add to class
         await prisma.classMember.create({
             data: {
@@ -46,12 +62,8 @@ export async function POST(
             }
         });
 
-        revalidateTag(`teacher-dashboard:${session.user.id}`, "max");
-        revalidateTag(`teacher-classes:${session.user.id}`, "max");
-        revalidateTag(`teacher-students:${session.user.id}`, "max");
-        revalidateTag(`student-dashboard:${student.id}`, "max");
-        revalidateTag(`student-classes:${student.id}`, "max");
-        revalidateTag(`student-progress:${student.id}`, "max");
+        revalidateTeacherTags(session.user.id);
+        revalidateStudentTags(student.id);
 
         return NextResponse.json({ success: true });
     } catch (error) {
@@ -73,7 +85,7 @@ export async function GET(
         const { id } = await params;
 
         // Verify class ownership
-        const classItem = await prisma.class.findUnique({
+        const classItem = await prisma.class.findFirst({
             where: {
                 id: id,
                 teacherId: session.user.id

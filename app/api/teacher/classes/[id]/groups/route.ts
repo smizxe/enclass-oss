@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 export async function GET(
     req: Request,
@@ -13,6 +17,15 @@ export async function GET(
 
         if (!session || session.user.role !== "TEACHER") {
             return new NextResponse("Unauthorized", { status: 401 });
+        }
+
+        const ownedClass = await prisma.class.findFirst({
+            where: { id: classId, teacherId: session.user.id },
+            select: { id: true }
+        });
+
+        if (!ownedClass) {
+            return new NextResponse("Class not found", { status: 404 });
         }
 
         const groups = await prisma.assignmentGroup.findMany({
@@ -50,6 +63,15 @@ export async function POST(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        const ownedClass = await prisma.class.findFirst({
+            where: { id: classId, teacherId: session.user.id },
+            select: { id: true }
+        });
+
+        if (!ownedClass) {
+            return new NextResponse("Class not found", { status: 404 });
+        }
+
         const { title } = await req.json();
 
         const lastGroup = await prisma.assignmentGroup.findFirst({
@@ -66,6 +88,9 @@ export async function POST(
                 orderIndex: newOrderIndex,
             }
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(classId);
 
         return NextResponse.json(group);
     } catch (error) {

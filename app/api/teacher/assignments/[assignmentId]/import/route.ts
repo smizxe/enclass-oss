@@ -2,6 +2,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 // Simple CSV parser helper (MVP)
 // Expected format: type,content,correctAnswer,points
@@ -74,6 +78,9 @@ export async function POST(
                 points: q.points
             }))
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(assignment.classId);
 
         return NextResponse.json({ count: questions.length });
     } catch (error) {

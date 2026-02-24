@@ -15,7 +15,9 @@ export default async function StudentsPage() {
 
     const initialStudents = students.map((student) => ({
         ...student,
-        createdAt: student.createdAt.toISOString()
+        createdAt: student.createdAt instanceof Date
+            ? student.createdAt.toISOString()
+            : new Date(student.createdAt).toISOString()
     }));
 
     return <StudentsPageClient initialStudents={initialStudents} />;

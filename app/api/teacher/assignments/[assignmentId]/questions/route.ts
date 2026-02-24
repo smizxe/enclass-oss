@@ -2,6 +2,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 export async function POST(
     req: Request,
@@ -46,6 +50,9 @@ export async function POST(
                 orderIndex: nextOrderIndex
             }
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(assignment.classId);
 
         return NextResponse.json(question);
     } catch (error) {
@@ -171,6 +178,9 @@ export async function DELETE(
                     where: { id: { in: idsToDelete } }
                 });
             }
+
+            revalidateTeacherTags(session.user.id);
+            await revalidateStudentsForClass(assignment.classId);
 
             return NextResponse.json({ deletedCount: idsToDelete.length });
         }

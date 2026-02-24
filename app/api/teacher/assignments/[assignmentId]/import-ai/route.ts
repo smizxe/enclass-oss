@@ -3,6 +3,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
@@ -308,6 +312,9 @@ export async function POST(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data: questionsToCreate as any
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(assignment.classId);
 
         return NextResponse.json({
             success: true,

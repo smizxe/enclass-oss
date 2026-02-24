@@ -3,6 +3,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 const assignmentSchema = z.object({
     title: z.string().min(1),
@@ -99,6 +103,9 @@ export async function PATCH(
             },
             data: updateData,
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(assignment.classId);
 
         return NextResponse.json(updatedAssignment);
     } catch (error) {
@@ -215,6 +222,9 @@ export async function DELETE(
                 id: assignmentId,
             },
         });
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(assignment.classId);
 
         return NextResponse.json(deletedAssignment);
     } catch (error) {

@@ -2,9 +2,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { hash } from "bcryptjs";
+import { revalidateTeacherTags } from "@/lib/cache-invalidation";
 
 const studentSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -47,8 +47,7 @@ export async function POST(req: Request) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password: _password, ...result } = student;
 
-        revalidateTag(`teacher-students:${session.user.id}`, "max");
-        revalidateTag(`teacher-dashboard:${session.user.id}`, "max");
+        revalidateTeacherTags(session.user.id);
 
         return NextResponse.json(result);
     } catch (error) {
@@ -67,11 +66,23 @@ export async function GET() {
         const students = await prisma.user.findMany({
             where: {
                 role: "STUDENT",
-
+                OR: [
+                    { createdById: session.user.id },
+                    {
+                        classMembers: {
+                            some: {
+                                class: {
+                                    teacherId: session.user.id
+                                }
+                            }
+                        }
+                    }
+                ]
             },
             orderBy: {
                 createdAt: "desc",
             },
+            distinct: ["id"],
             select: {
                 id: true,
                 name: true,

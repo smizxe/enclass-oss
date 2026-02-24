@@ -2,6 +2,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import {
+    revalidateStudentsForClass,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 interface ParsedContent {
     sectionTitle?: string;
@@ -117,6 +121,9 @@ export async function POST(
         if (updates.length > 0) {
             await prisma.$transaction(updates);
         }
+
+        revalidateTeacherTags(session.user.id);
+        await revalidateStudentsForClass(assignment.classId);
 
         return NextResponse.json({ success: true, swappedWith: groups[targetIndex].title });
 

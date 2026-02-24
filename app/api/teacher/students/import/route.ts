@@ -3,6 +3,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
+import {
+    revalidateStudentTags,
+    revalidateTeacherTags
+} from "@/lib/cache-invalidation";
 
 interface ImportRow {
     name: string;
@@ -58,6 +62,7 @@ export async function POST(req: Request) {
             failed: 0,
             errors: [] as string[]
         };
+        const touchedStudentIds: string[] = [];
 
         // Cache for classes (case-insensitive lookup)
         const classCache: Record<string, string> = {};
@@ -98,6 +103,7 @@ export async function POST(req: Request) {
                         createdById: session.user.id
                     }
                 });
+                touchedStudentIds.push(student.id);
 
                 // Handle class assignment
                 if (row.class && row.class.toString().trim()) {
@@ -151,6 +157,11 @@ export async function POST(req: Request) {
                 results.failed++;
                 results.errors.push(`Error: ${row.email}`);
             }
+        }
+
+        revalidateTeacherTags(session.user.id);
+        for (const studentId of touchedStudentIds) {
+            revalidateStudentTags(studentId);
         }
 
         console.log("[STUDENTS_IMPORT] Completed:", results);
