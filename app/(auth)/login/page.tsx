@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -28,7 +28,7 @@ export default function LoginPage() {
         if (result?.error) {
             toast.error("Email hoặc mật khẩu không đúng.");
         } else {
-            toast.success("Đăng nhập thành công! Đang chuyển hướng...");
+            toast.success("Đăng nhập thành công!");
 
             // Use getSession for better reliability
             const session = await getSession();
