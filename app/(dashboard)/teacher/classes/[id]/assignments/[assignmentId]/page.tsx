@@ -621,7 +621,7 @@ export default function AssignmentEditorPage() {
                         <div className="w-full max-w-2xl">
                             <label className="block text-sm font-medium text-slate-700 mb-2">Đề bài viết (Essay Prompt)</label>
                             <Textarea
-                                value={essayPrompt}
+                                value={essayPrompt || ""}
                                 onChange={(e) => setEssayPrompt(e.target.value)}
                                 placeholder="Nhập chủ đề bài viết..."
                                 className="min-h-[150px] mb-4"
@@ -661,7 +661,7 @@ export default function AssignmentEditorPage() {
                             <div>
                                 <label className="block text-sm font-medium mb-1">Nội dung câu hỏi</label>
                                 <Textarea
-                                    value={newQuestion.text}
+                                    value={newQuestion.text || ""}
                                     onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
                                     className="min-h-[100px]"
                                 />
