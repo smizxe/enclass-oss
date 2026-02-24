@@ -133,12 +133,39 @@ export const CompactGapFillSection = ({
             }
         }
 
-        return foundMarkers ? processed : null; // null = can't detect, use fallback
-    }, [passage, hasAIMarkers, questionMap]);
+        // 4. Synthetic Passage Strategy (Auto-stitch) - Final Fallback for "Note Completion"
+        // If we still haven't found key phrases in the passage, it's likely a "Note/Summary" 
+        // where the text exists ONLY in the questions, not in the main passage.
+        // We reconstruct the Note Block by concatenating question texts.
+        if (!foundMarkers && questionMap.size > 0 && mode !== "teacher_preview") {
+            const syntheticParts = [];
+            // Sort by index to maintain order
+            const sortedByNum = Array.from(questionMap.entries()).sort(([a], [b]) => a - b);
 
-    // If no markers found at all, fallback to a "List View" (Passage + Questions List)
-    // This allows us to handle "bad" data gracefully without the parent needing to know.
-    if (!processedPassage) {
+            for (const [num, q] of sortedByNum) {
+                const text = q.parsed.text || "";
+                // Append text + marker + newline
+                syntheticParts.push(`${text} {${num}}`);
+            }
+
+            if (syntheticParts.length > 0) {
+                // Return a special object or string to indicate synthetic mode? 
+                // We can just return the joined string, but we need a flag to know it's synthetic 
+                // (to add the border styling).
+                // Hack: prepend a special flag that we check in render
+                return "[[SYNTHETIC]]" + syntheticParts.join("\n\n");
+            }
+        }
+
+        return foundMarkers ? processed : null; // null = can't detect, use fallback
+    }, [passage, hasAIMarkers, questionMap, mode]);
+
+    // Check if it's synthetic (reconstructed) passage
+    const isSynthetic = !!processedPassage && processedPassage.startsWith("[[SYNTHETIC]]");
+    const finalPassage = isSynthetic ? processedPassage!.replace("[[SYNTHETIC]]", "") : processedPassage;
+
+    // If no markers found at all (and strict mode or synthetic failed), fallback to List View
+    if (!finalPassage) {
         return (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5" style={{ fontSize: `${fontSize}px` }}>
                 {/* Passage */}
@@ -205,14 +232,21 @@ export const CompactGapFillSection = ({
     }
 
     // Split passage by {N} markers and render inline inputs
-    const parts = processedPassage.split(/(\{\d+\})/g);
+    const parts = finalPassage.split(/(\{\d+\})/g);
 
     return (
         <div
             className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5"
             style={{ fontSize: `${fontSize}px` }}
         >
-            <div className="leading-8 prose prose-sm max-w-none prose-headings:mb-2 prose-headings:mt-4 prose-p:mb-1 prose-ul:my-1 prose-li:my-0 [&_strong]:font-bold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+            {/* If Synthetic: Render Original Passage first, THEN the Reconstructed Note/Summary Block. */}
+            {isSynthetic && (
+                <div className="leading-8 prose prose-sm max-w-none mb-8 pb-8 border-b border-slate-200">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{passage}</ReactMarkdown>
+                </div>
+            )}
+
+            <div className={`leading-9 text-slate-800 ${isSynthetic ? 'border border-slate-300 rounded-xl p-6 bg-slate-50/50' : 'prose prose-sm max-w-none prose-headings:mb-2 prose-headings:mt-4 prose-p:mb-1 prose-ul:my-1 prose-li:my-0 [&_strong]:font-bold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2'}`}>
                 {parts.map((part, index) => {
                     // Check if this part is a {N} marker
                     const markerMatch = part.match(/^\{(\d+)\}$/);
