@@ -39,7 +39,7 @@ export async function POST(
         }
 
         // --- GEMINI PROMPT ---
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
 
         const prompt = `
 You are an AI assistant specialized in digitizing Vietnamese English exams (TNPT format).
