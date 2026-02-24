@@ -10,6 +10,7 @@ import { McqQuestion } from "@/components/questions/mcq-question";
 import { GapFillQuestion } from "@/components/questions/gap-fill-question";
 import { SortableQuestion } from "@/components/questions/sortable-question";
 import { EssayQuestion } from "@/components/questions/essay-question";
+import { StickyAudioPlayer } from "@/components/sticky-audio-player";
 
 interface QuizRunnerProps {
     assignment: {
@@ -18,6 +19,7 @@ interface QuizRunnerProps {
         type: string;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         questions: any[];
+        settings?: any;
     };
 }
 
@@ -525,6 +527,10 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                     <NavigationControls />
                 </div>
             </div>
+            {/* Sticky Audio Player */}
+            {assignment.settings?.audioUrl && (
+                <StickyAudioPlayer src={assignment.settings.audioUrl} />
+            )}
         </div>
     );
 };

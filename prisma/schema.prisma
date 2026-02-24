@@ -55,6 +55,8 @@ model Assignment {
   
   questions     Question[]
   progress      AssignmentProgress[]
+  settings      Json?       // For storing metadata like audioUrl, timeLimit, etc.
+  
   
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt

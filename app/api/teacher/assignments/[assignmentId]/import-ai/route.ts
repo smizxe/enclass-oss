@@ -109,9 +109,20 @@ export async function POST(
             return new NextResponse("Could not extract text from file", { status: 400 });
         }
 
+        const importType = formData.get("importType") as string || "MCQ";
+
         // Call Gemini AI
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const prompt = EXTRACTION_PROMPT + extractedText;
+
+        let dynamicPrompt = EXTRACTION_PROMPT;
+        if (importType === "LISTENING") {
+            dynamicPrompt = EXTRACTION_PROMPT.replace(
+                "especially IELTS Listening and Reading tests",
+                "specifically for an IELTS LISTENING test. The output MUST be grouped by Parts (Part 1, Part 2, etc.)"
+            );
+        }
+
+        const prompt = dynamicPrompt + extractedText;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;

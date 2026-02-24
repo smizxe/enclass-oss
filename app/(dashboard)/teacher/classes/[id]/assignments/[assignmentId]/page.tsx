@@ -16,6 +16,7 @@ import {
     Sparkles
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { AudioManager } from "@/components/audio-manager";
 
 interface Question {
     id: string;
@@ -48,6 +49,7 @@ interface Assignment {
     title: string;
     type: string;
     content: string | null; // For Lecture content
+    settings?: any;
 }
 
 export default function AssignmentEditorPage() {
@@ -76,7 +78,9 @@ export default function AssignmentEditorPage() {
     const [essayPrompt, setEssayPrompt] = useState("");
 
     // AI Import state
+    // AI Import state
     const [isAIImportOpen, setIsAIImportOpen] = useState(false);
+    const [importType, setImportType] = useState<"MCQ" | "LISTENING">("MCQ");
     const [aiImportFile, setAIImportFile] = useState<File | null>(null);
     const [isAIImporting, setIsAIImporting] = useState(false);
 
@@ -267,6 +271,18 @@ export default function AssignmentEditorPage() {
         }
     };
 
+    const onUpdateSettings = async (newSettings: any) => {
+        try {
+            await axios.patch(`/api/teacher/assignments/${assignmentId}`, {
+                settings: newSettings
+            });
+            setAssignment(prev => prev ? { ...prev, settings: newSettings } : null);
+            toast.success("Cập nhật cài đặt thành công");
+        } catch {
+            toast.error("Lỗi khi lưu cài đặt");
+        }
+    };
+
     return (
         <div className="p-6 bg-slate-50 min-h-full">
             <div className="mb-8 flex items-center justify-between">
@@ -290,6 +306,13 @@ export default function AssignmentEditorPage() {
                     <p>Chức năng biên tập câu hỏi đang được phát triển...</p>
                     <p className="text-sm mt-2">Assignment ID: {assignmentId}</p>
                 </div>
+
+                {/* Audio Manager */}
+                <AudioManager
+                    assignmentId={assignmentId}
+                    settings={assignment?.settings || null}
+                    onUpdateSettings={onUpdateSettings}
+                />
 
                 {/* Questions List grouped by Section */}
                 <div className="mt-8 space-y-6">
@@ -476,11 +499,24 @@ export default function AssignmentEditorPage() {
                             Thêm câu hỏi
                         </button>
                         <button
-                            onClick={() => setIsAIImportOpen(true)}
+                            onClick={() => {
+                                setImportType("MCQ");
+                                setIsAIImportOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl hover:from-blue-600 hover:to-cyan-600 transition shadow-lg"
+                        >
+                            <Sparkles className="w-5 h-5" />
+                            Import MCQ / Word
+                        </button>
+                        <button
+                            onClick={() => {
+                                setImportType("LISTENING");
+                                setIsAIImportOpen(true);
+                            }}
                             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-indigo-600 transition shadow-lg"
                         >
                             <Sparkles className="w-5 h-5" />
-                            Import bằng AI
+                            Import Listening
                         </button>
                     </>
                 )}
@@ -626,10 +662,12 @@ export default function AssignmentEditorPage() {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
                         <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                             <Sparkles className="w-6 h-6 text-purple-500" />
-                            Import bằng AI
+                            {importType === "LISTENING" ? "Import Listening Exercise" : "Import MCQ Exercise"}
                         </h2>
                         <p className="text-sm text-slate-600 mb-4">
-                            Tải lên file PDF hoặc TXT chứa đề thi (IELTS Listening/Reading, v.v.). AI sẽ tự động trích xuất câu hỏi.
+                            {importType === "LISTENING"
+                                ? "Tải lên file PDF chứa đề thi Listening (Parts, Questions). AI sẽ trích xuất và chia phần."
+                                : "Tải lên file PDF/DOCX chứa câu hỏi trắc nghiệm. AI sẽ tự động trích xuất."}
                         </p>
                         <input
                             type="file"
@@ -663,6 +701,7 @@ export default function AssignmentEditorPage() {
                                     try {
                                         const formData = new FormData();
                                         formData.append("file", aiImportFile);
+                                        formData.append("importType", importType);
                                         const res = await axios.post(
                                             `/api/teacher/assignments/${assignmentId}/import-ai`,
                                             formData,
