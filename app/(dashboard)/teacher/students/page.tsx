@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
     Loader2,
@@ -9,10 +9,12 @@ import {
     Calendar,
     Search,
     MoreHorizontal,
-    PlusCircle
+    PlusCircle,
+    FileSpreadsheet
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import ImportStudentModal from "./_components/import-student-modal";
 
 interface Student {
     id: string;
@@ -30,24 +32,26 @@ export default function StudentsPage() {
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+    const fetchStudents = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await fetch("/api/teacher/students");
+            if (response.ok) {
+                const data = await response.json();
+                setStudents(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch students", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchStudents = async () => {
-            try {
-                const response = await fetch("/api/teacher/students");
-                if (response.ok) {
-                    const data = await response.json();
-                    setStudents(data);
-                }
-            } catch (error) {
-                console.error("Failed to fetch students", error);
-            } finally {
-                setLoading(false);
-            }
-        }
-
         fetchStudents();
-    }, []);
+    }, [fetchStudents]);
 
     const filteredStudents = students.filter(student =>
         student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -73,6 +77,13 @@ export default function StudentsPage() {
                             className="pl-10 pr-4 py-2 w-64 text-sm rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition"
                         />
                     </div>
+                    <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition shadow-lg shadow-emerald-600/25"
+                    >
+                        <FileSpreadsheet className="w-4 h-4" />
+                        Import Excel
+                    </button>
                     <Link href="/teacher/students/create">
                         <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition shadow-lg shadow-indigo-600/25">
                             <PlusCircle className="w-4 h-4" />
@@ -205,6 +216,13 @@ export default function StudentsPage() {
                     </table>
                 )}
             </div>
+
+            {/* Import Modal */}
+            <ImportStudentModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onSuccess={fetchStudents}
+            />
         </div>
     );
 }
