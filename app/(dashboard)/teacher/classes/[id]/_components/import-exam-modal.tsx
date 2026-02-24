@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Upload, FileText, X, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
 
 interface Question {
     questionNumber?: number;
@@ -42,13 +43,14 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
-            if (!selectedFile.name.endsWith(".docx")) {
-                setError("Chỉ hỗ trợ file .docx");
+            const fileName = selectedFile.name.toLowerCase();
+            if (!fileName.endsWith(".docx") && !fileName.endsWith(".pdf")) {
+                setError("Chỉ hỗ trợ file .docx hoặc .pdf");
                 return;
             }
             setFile(selectedFile);
             setError("");
-            setTitle(selectedFile.name.replace(".docx", ""));
+            setTitle(selectedFile.name.replace(/\.(docx|pdf)$/i, ""));
         }
     };
 
@@ -179,7 +181,7 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                             <div
                                 className={`border-2 border-dashed rounded-xl p-8 text-center transition ${file ? "border-indigo-300 bg-indigo-50" : "border-slate-300 hover:border-indigo-400"}`}
                             >
-                                <input type="file" accept=".docx" onChange={handleFileChange} className="hidden" id="file-upload" />
+                                <input type="file" accept=".docx,.pdf" onChange={handleFileChange} className="hidden" id="file-upload" />
                                 <label htmlFor="file-upload" className="cursor-pointer">
                                     {file ? (
                                         <div className="flex items-center justify-center gap-3">
@@ -261,10 +263,11 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                                             <BookOpen className="w-4 h-4" />
                                                             Đoạn văn chung
                                                         </div>
-                                                        <div
-                                                            className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&>p]:mb-2 [&>strong]:font-bold [&>u]:underline"
-                                                            dangerouslySetInnerHTML={{ __html: section.passage || '' }}
-                                                        />
+                                                        <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic">
+                                                            <ReactMarkdown>
+                                                                {section.passage || ''}
+                                                            </ReactMarkdown>
+                                                        </div>
                                                     </div>
                                                 )}
 
@@ -285,10 +288,11 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                                                     )}
                                                                 </div>
                                                                 {q.content && (
-                                                                    <div
-                                                                        className="mt-2 text-sm text-slate-800 [&>strong]:font-bold [&>u]:underline [&>em]:italic"
-                                                                        dangerouslySetInnerHTML={{ __html: q.content }}
-                                                                    />
+                                                                    <div className="mt-2 text-sm text-slate-800 [&_strong]:font-bold [&_em]:italic">
+                                                                        <ReactMarkdown>
+                                                                            {q.content}
+                                                                        </ReactMarkdown>
+                                                                    </div>
                                                                 )}
 
                                                                 {/* Display Items for ORDERING questions */}

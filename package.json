@@ -28,10 +28,12 @@
     "lucide-react": "^0.562.0",
     "next": "^16.1.4",
     "next-auth": "^4.24.6",
+    "pdf-parse": "^2.4.5",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.50.1",
     "react-hot-toast": "^2.6.0",
+    "react-markdown": "^10.1.0",
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.22.4"

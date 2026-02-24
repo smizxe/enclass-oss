@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import toast from "react-hot-toast";
 import { CheckCircle, Send, Loader2, BookOpen } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 import { McqQuestion } from "@/components/questions/mcq-question";
 import { GapFillQuestion } from "@/components/questions/gap-fill-question";
@@ -180,8 +181,10 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                                 <BookOpen className="w-4 h-4" />
                                 <span>Đọc đoạn văn sau:</span>
                             </div>
-                            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-white rounded-xl p-4 border border-slate-100">
-                                {group.passage}
+                            <div className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2">
+                                <ReactMarkdown>
+                                    {group.passage || ''}
+                                </ReactMarkdown>
                             </div>
                             {group.passageTranslation && (
                                 <div className="mt-4 pt-4 border-t border-slate-200">
