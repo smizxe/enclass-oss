@@ -15,6 +15,7 @@ import {
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import ImportStudentModal from "./_components/import-student-modal";
+import StudentDetailsDialog from "./_components/student-details-dialog";
 
 interface Student {
     id: string;
@@ -22,6 +23,8 @@ interface Student {
     email: string | null;
     createdAt: string;
     classMembers: {
+        id: string;
+        classId: string;
         class: {
             title: string;
         }
@@ -33,6 +36,13 @@ export default function StudentsPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+    const handleViewDetails = (student: Student) => {
+        setSelectedStudent(student);
+        setIsDetailsOpen(true);
+    };
 
     const fetchStudents = useCallback(async () => {
         setLoading(true);
@@ -206,7 +216,10 @@ export default function StudentsPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button className="p-2 hover:bg-slate-100 rounded-lg transition">
+                                        <button
+                                            onClick={() => handleViewDetails(student)}
+                                            className="p-2 hover:bg-slate-100 rounded-lg transition"
+                                        >
                                             <MoreHorizontal className="w-4 h-4 text-slate-400" />
                                         </button>
                                     </td>
@@ -222,6 +235,13 @@ export default function StudentsPage() {
                 isOpen={isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
                 onSuccess={fetchStudents}
+            />
+
+            <StudentDetailsDialog
+                student={selectedStudent}
+                open={isDetailsOpen}
+                onOpenChange={setIsDetailsOpen}
+                onUpdate={fetchStudents}
             />
         </div>
     );

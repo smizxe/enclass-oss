@@ -1,11 +1,9 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import {
     BookOpen,
-    Loader2,
     Clock,
     Trophy,
     CheckCircle2,
@@ -20,33 +18,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
-
-interface DashboardData {
-    stats: {
-        totalCompleted: number;
-        averageScore: string | null;
-        totalClasses: number;
-        pendingCount: number;
-    };
-    pendingAssignments: Array<{
-        id: string;
-        title: string;
-        type: string;
-        classId: string;
-        className: string;
-        createdAt: string;
-    }>;
-    recentActivity: Array<{
-        id: string;
-        assignmentId: string;
-        assignmentTitle: string;
-        assignmentType: string;
-        classId: string;
-        className: string;
-        score: number | null;
-        submittedAt: string;
-    }>;
-}
+import { getStudentDashboardData } from "./data";
 
 const assignmentTypeIcons: Record<string, React.ReactNode> = {
     QUIZ: <FileText className="w-4 h-4" />,
@@ -66,34 +38,14 @@ const assignmentTypeLabels: Record<string, string> = {
     MIXED: "Tổng hợp"
 };
 
-export default function StudentDashboard() {
-    const { data: session } = useSession();
-    const [data, setData] = useState<DashboardData | null>(null);
-    const [loading, setLoading] = useState(true);
+export default async function StudentDashboard() {
+    const session = await getServerSession(authOptions);
 
-    useEffect(() => {
-        fetch("/api/student/dashboard")
-            .then((res) => {
-                if (res.ok) return res.json();
-                return null;
-            })
-            .then((result) => {
-                setData(result);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setLoading(false);
-            });
-    }, []);
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-            </div>
-        );
+    if (!session) {
+        return redirect("/");
     }
+
+    const data = await getStudentDashboardData();
 
     if (!data) {
         return (
@@ -274,10 +226,10 @@ export default function StudentDashboard() {
                                             </div>
                                             {activity.score !== null && (
                                                 <div className={`px-2.5 py-1 rounded-full text-xs font-semibold ${activity.score >= 7
-                                                        ? "bg-emerald-100 text-emerald-700"
-                                                        : activity.score >= 5
-                                                            ? "bg-yellow-100 text-yellow-700"
-                                                            : "bg-red-100 text-red-700"
+                                                    ? "bg-emerald-100 text-emerald-700"
+                                                    : activity.score >= 5
+                                                        ? "bg-yellow-100 text-yellow-700"
+                                                        : "bg-red-100 text-red-700"
                                                     }`}>
                                                     {activity.score} điểm
                                                 </div>

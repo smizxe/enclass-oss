@@ -43,7 +43,15 @@ const routes = [
     },
 ];
 
-export const StudentSidebar = () => {
+interface StudentSidebarProps {
+    progressCount?: number;
+    totalCount?: number;
+}
+
+export const StudentSidebar = ({
+    progressCount = 0,
+    totalCount = 0
+}: StudentSidebarProps) => {
     const pathname = usePathname();
     const { data: session } = useSession();
 
@@ -112,21 +120,26 @@ export const StudentSidebar = () => {
                                 <div className="p-1.5 bg-amber-400/20 rounded-lg">
                                     <Trophy className="w-4 h-4 text-amber-300" />
                                 </div>
-                                <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">Mục tiêu tháng</span>
+                                <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">Tiến độ học tập</span>
                             </div>
 
                             <div className="flex items-end gap-2 mb-1 relative z-10">
-                                <span className="text-3xl font-bold text-white tracking-tight">7.5</span>
-                                <span className="text-sm text-indigo-300 mb-1.5 font-medium">IELTS</span>
+                                <span className="text-3xl font-bold text-white tracking-tight">
+                                    {totalCount > 0 ? Math.round((progressCount / totalCount) * 100) : 0}%
+                                </span>
+                                <span className="text-sm text-indigo-300 mb-1.5 font-medium">hoàn thành</span>
                             </div>
 
                             <div className="w-full bg-indigo-950/50 h-2 rounded-full mt-2 border border-white/5 relative z-10">
-                                <div className="w-3/4 h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400 shadow-[0_0_10px_rgba(252,211,77,0.5)]"></div>
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400 shadow-[0_0_10px_rgba(252,211,77,0.5)] transition-all duration-500"
+                                    style={{ width: `${totalCount > 0 ? (progressCount / totalCount) * 100 : 0}%` }}
+                                ></div>
                             </div>
 
                             <div className="flex justify-between items-center mt-3 text-[10px] text-indigo-300 font-medium relative z-10">
-                                <span>Tiến độ rất tốt!</span>
-                                <span className="text-amber-300">+0.5 band</span>
+                                <span>{progressCount}/{totalCount} bài tập</span>
+                                <span className="text-amber-300">Cố lên!</span>
                             </div>
                         </div>
                     </div>

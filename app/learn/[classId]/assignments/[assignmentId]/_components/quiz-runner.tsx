@@ -412,7 +412,7 @@ export const QuizRunner = ({
     };
 
     // Parse questions and group by section, with optional shuffling for Test Mode
-    const groupedQuestions = useMemo(() => {
+    const useMemoResult = useMemo(() => {
         const groups: QuestionGroup[] = [];
         let currentGroup: QuestionGroup | null = null;
         const newOptionMappings: Record<string, number[]> = {};
@@ -481,14 +481,17 @@ export const QuizRunner = ({
             finalGroups = shuffledSections;
         }
 
-        // Update option mappings state (only on mount or when test mode changes)
-        if (isTestMode && Object.keys(newOptionMappings).length > 0) {
-            // Use setTimeout to avoid state update during render
-            setTimeout(() => setOptionMappings(newOptionMappings), 0);
-        }
-
-        return finalGroups;
+        return { groups: finalGroups, newOptionMappings };
     }, [assignment.questions, assignment.id, isTestMode, userId, currentAttemptCount]);
+
+    const { groups: groupedQuestions, newOptionMappings } = useMemoResult;
+
+    // Update option mappings state (only on mount or when test mode changes)
+    useEffect(() => {
+        if (isTestMode && Object.keys(newOptionMappings).length > 0) {
+            setOptionMappings(newOptionMappings);
+        }
+    }, [newOptionMappings, isTestMode]);
 
 
     // Calculate start index for questions in current section
