@@ -2,8 +2,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import mammoth from "mammoth";
-// @ts-expect-error - pdf-parse doesn't have types
-import pdf from "pdf-parse";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -36,8 +34,10 @@ export async function POST(
         const result = await mammoth.extractRawText({ buffer });
         text = result.value;
       } else if (fileName.endsWith(".pdf")) {
-        // Extract text from PDF
-        const pdfData = await pdf(buffer);
+        // Extract text from PDF using dynamic import
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParse = require("pdf-parse");
+        const pdfData = await pdfParse(buffer);
         text = pdfData.text;
       } else {
         return new NextResponse("Unsupported file format. Please upload .docx or .pdf", { status: 400 });
