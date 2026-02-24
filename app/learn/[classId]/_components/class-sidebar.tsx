@@ -13,7 +13,8 @@ import {
     ChevronRight,
     Folder,
     PanelLeftClose,
-    PanelLeftOpen
+    PanelLeftOpen,
+    Sparkles
 } from "lucide-react";
 
 interface ClassSidebarProps {
@@ -72,17 +73,17 @@ export const ClassSidebar = ({
                     key={assignment.id}
                     onClick={() => onClick(assignment.id)}
                     className={cn(
-                        "w-full flex items-center justify-center py-3 mx-0 mb-1 rounded-lg transition",
+                        "w-full flex items-center justify-center py-3 mx-0 mb-2 rounded-xl transition-all duration-300",
                         isActive
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "hover:bg-slate-50 text-slate-600",
+                            ? "bg-white text-indigo-600 shadow-lg shadow-indigo-900/20 scale-105"
+                            : "hover:bg-white/10 text-indigo-200 hover:text-white",
                         isCompleted && !isActive && "opacity-60"
                     )}
                     title={assignment.title}
                 >
                     <AssignmentIcon className={cn(
                         "w-5 h-5",
-                        isActive ? "text-indigo-600" : isCompleted ? "text-emerald-500" : "text-slate-400"
+                        isActive ? "text-indigo-600" : isCompleted ? "text-emerald-400" : "text-indigo-300"
                     )} />
                 </button>
             );
@@ -93,33 +94,33 @@ export const ClassSidebar = ({
                 key={assignment.id}
                 onClick={() => onClick(assignment.id)}
                 className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 mx-2 rounded-lg text-left transition max-w-[95%]",
+                    "w-full flex items-center gap-3 px-4 py-3 mx-2 rounded-xl text-left transition-all duration-300 max-w-[95%] mb-2 backdrop-blur-sm",
                     isActive
-                        ? "bg-indigo-50 text-indigo-700"
-                        : "hover:bg-slate-50 text-slate-600",
-                    isCompleted && !isActive && "opacity-60"
+                        ? "bg-white text-indigo-700 shadow-[0_8px_30px_rgb(0,0,0,0.12)] scale-[1.02] font-semibold border border-white/50"
+                        : "hover:bg-white/10 text-indigo-100/90 border border-transparent hover:border-white/10",
+                    isCompleted && !isActive && "opacity-75"
                 )}
             >
                 <div className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0",
+                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors shadow-sm",
                     isCompleted
-                        ? "bg-emerald-100 text-emerald-600"
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                         : isActive
-                            ? "bg-indigo-200 text-indigo-700"
-                            : "bg-slate-100 text-slate-500"
+                            ? "bg-indigo-100 text-indigo-600"
+                            : "bg-indigo-800/50 text-indigo-300 border border-indigo-700/50"
                 )}>
-                    {isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : index + 1}
+                    {isCompleted ? <CheckCircle className="w-4 h-4" /> : index + 1}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2">
                         <AssignmentIcon className={cn(
-                            "w-3.5 h-3.5",
-                            isActive ? "text-indigo-600" : isCompleted ? "text-emerald-500" : "text-slate-400"
+                            "w-4 h-4",
+                            isActive ? "text-indigo-500" : isCompleted ? "text-emerald-400" : "text-indigo-400"
                         )} />
                         <span className={cn(
-                            "text-sm truncate font-medium",
-                            isActive ? "text-indigo-700" : "text-slate-700"
+                            "text-sm truncate",
+                            isActive ? "text-indigo-900" : "text-indigo-50"
                         )}>
                             {assignment.title}
                         </span>
@@ -133,114 +134,162 @@ export const ClassSidebar = ({
 
     return (
         <div className={cn(
-            "hidden md:flex flex-col border-r border-slate-200 bg-white h-full transition-all duration-300 ease-in-out relative group/sidebar",
-            isCollapsed ? "w-20" : "w-80"
+            "hidden md:flex flex-col h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] relative z-10",
+            // Glassmorphism Container
+            "bg-gradient-to-b from-indigo-950 via-[#1e1b4b] to-indigo-950 border-r border-indigo-800/30 shadow-2xl",
+            isCollapsed ? "w-24" : "w-80"
         )}>
-            {/* Collapse Toggle Button */}
-            <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className={cn(
-                    "absolute -right-3 top-6 z-50 bg-white border border-slate-200 shadow-sm rounded-full p-1.5 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition-all",
-                    isCollapsed && "rotate-180 right-[-12px]"
-                )}
-                title={isCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
-            >
-                <PanelLeftClose className="w-4 h-4" />
-            </button>
+            {/* Decorative Background Elements */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                <div className="absolute top-40 -left-20 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl"></div>
+                <div className="absolute bottom-0 right-0 w-full h-32 bg-gradient-to-t from-black/20 to-transparent"></div>
+            </div>
 
-            {/* Header */}
-            <div className={cn(
-                "border-b border-slate-100 dark:border-slate-800 transition-all",
-                isCollapsed ? "p-4 flex flex-col items-center" : "p-6"
-            )}>
-                <div className={cn("flex items-center gap-3", isCollapsed ? "justify-center" : "mb-4")}>
-                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
-                        <BookOpen className="w-5 h-5 text-indigo-600" />
+            {/* Content Container */}
+            <div className="relative z-10 flex flex-col h-full">
+                {/* Collapse Toggle Button */}
+                <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className={cn(
+                        "absolute -right-3 top-8 z-50 bg-white shadow-lg shadow-indigo-900/20 border border-indigo-50 rounded-full p-1.5 text-indigo-600 hover:scale-110 hover:bg-indigo-50 transition-all duration-300",
+                        isCollapsed && "rotate-180 right-[-12px]"
+                    )}
+                    title={isCollapsed ? "Mở rộng" : "Thu gọn"}
+                >
+                    <PanelLeftClose className="w-4 h-4" />
+                </button>
+
+                {/* Header */}
+                <div className={cn(
+                    "transition-all duration-300 border-b border-white/5 backdrop-blur-md",
+                    isCollapsed ? "p-4 flex flex-col items-center" : "p-6"
+                )}>
+                    <div className={cn("flex items-center gap-3", isCollapsed ? "justify-center" : "mb-6")}>
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-900/30 ring-1 ring-white/20">
+                            <BookOpen className="w-6 h-6 text-white" />
+                        </div>
+                        {!isCollapsed && (
+                            <div className="min-w-0 animate-in fade-in slide-in-from-left-4 duration-500">
+                                <h1 className="font-bold text-white text-lg line-clamp-1 tracking-tight">
+                                    {classItem.title}
+                                </h1>
+                                <p className="text-xs text-indigo-300 flex items-center gap-1.5 mt-1">
+                                    <Sparkles className="w-3 h-3 text-amber-300" />
+                                    {totalAssignments} bài tập
+                                </p>
+                            </div>
+                        )}
                     </div>
+
+                    {/* Progress */}
                     {!isCollapsed && (
-                        <div className="min-w-0">
-                            <h1 className="font-semibold text-slate-900 line-clamp-1">
-                                {classItem.title}
-                            </h1>
-                            <p className="text-xs text-slate-500">{totalAssignments} bài tập</p>
+                        <div className="bg-white/5 rounded-2xl p-4 border border-white/5 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-700 delay-100">
+                            <div className="flex justify-between text-xs mb-2">
+                                <span className="text-indigo-200 font-medium">Tiến độ học tập</span>
+                                <span className="font-bold text-white">{progressPercent}%</span>
+                            </div>
+                            <div className="w-full bg-black/20 h-2.5 rounded-full overflow-hidden p-[2px]">
+                                <div className="h-full w-full rounded-full overflow-hidden bg-transparent">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-purple-400 shadow-[0_0_10px_rgba(129,140,248,0.5)] transition-all duration-1000 ease-out relative"
+                                        style={{ width: `${progressPercent}%` }}
+                                    >
+                                        <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-[shimmer_2s_infinite]"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* Progress */}
-                {!isCollapsed && (
-                    <div className="fade-in animate-in duration-300">
-                        <div className="flex justify-between text-xs mb-2">
-                            <span className="text-slate-500">Tiến độ</span>
-                            <span className="font-medium text-indigo-600">{progressPercent}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full">
-                            <div
-                                className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
-                                style={{ width: `${progressPercent}%` }}
-                            ></div>
-                        </div>
-                    </div>
-                )}
-            </div>
+                {/* List */}
+                <div className={cn(
+                    "flex-1 overflow-y-auto custom-scrollbar-dark",
+                    isCollapsed ? "px-2 py-6" : "py-4"
+                )}>
+                    {/* Groups */}
+                    {classItem.assignmentGroups?.map((group: any) => {
+                        const isExpanded = expandedGroups.has(group.id);
+                        const groupAssignments = group.assignments || [];
 
-            {/* List */}
-            <div className={cn("flex-1 overflow-y-auto", isCollapsed ? "px-2 py-4" : "py-2")}>
-                {/* Groups */}
-                {classItem.assignmentGroups?.map((group: any) => {
-                    const isExpanded = expandedGroups.has(group.id);
-                    const groupAssignments = group.assignments || [];
-
-                    if (isCollapsed) {
-                        // In collapsed mode, showing all assignments flat might be messy if too many.
-                        // Maybe just show dot indicators or still list them?
-                        // Let's just list the icons of assignments in the group, possibly with a separator.
-                        // Or better: Show a folder icon that does nothing or tooltip?
-                        // User wants "sidebar ... minimize lại". So usually keeping navigation capability is key.
-                        // Let's render assignments as icons.
-                        return (
-                            <div key={group.id} className="mb-4 flex flex-col items-center gap-1">
-                                <div className="p-2 rounded-lg bg-slate-50 text-slate-400 mb-1" title={group.title}>
-                                    <Folder className="w-4 h-4" />
-                                </div>
-                                {groupAssignments.map((assignment: any, idx: number) => renderAssignmentItem(assignment, idx))}
-                            </div>
-                        );
-                    }
-
-                    return (
-                        <div key={group.id} className="mb-2">
-                            <div
-                                className="flex items-center gap-2 px-4 py-2 cursor-pointer hover:bg-slate-50 text-slate-700 font-medium text-sm select-none"
-                                onClick={() => toggleGroup(group.id)}
-                            >
-                                {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                                <Folder className="w-4 h-4 text-indigo-500/70" />
-                                <span className="flex-1 truncate">{group.title}</span>
-                                <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{groupAssignments.length}</span>
-                            </div>
-
-                            {isExpanded && (
-                                <div className="pl-2">
+                        if (isCollapsed) {
+                            return (
+                                <div key={group.id} className="mb-6 flex flex-col items-center gap-2">
+                                    <div className="p-2.5 rounded-xl bg-white/5 text-indigo-300 mb-1 ring-1 ring-white/10" title={group.title}>
+                                        <Folder className="w-4 h-4" />
+                                    </div>
                                     {groupAssignments.map((assignment: any, idx: number) => renderAssignmentItem(assignment, idx))}
                                 </div>
-                            )}
-                        </div>
-                    );
-                })}
+                            );
+                        }
 
-                {/* Ungrouped */}
-                {(ungroupedAssignments.length > 0 || (classItem.assignmentGroups?.length === 0 && ungroupedAssignments.length > 0)) && (
-                    <div className={cn("mt-2", isCollapsed && "flex flex-col items-center gap-1 border-t border-slate-100 pt-2")}>
-                        {!isCollapsed && classItem.assignmentGroups?.length > 0 && (
-                            <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                Bài tập khác
+                        return (
+                            <div key={group.id} className="mb-4 px-2">
+                                <div
+                                    className={cn(
+                                        "flex items-center gap-3 px-4 py-2.5 cursor-pointer rounded-xl transition-all duration-200 group select-none",
+                                        isExpanded ? "bg-white/5" : "hover:bg-white/5"
+                                    )}
+                                    onClick={() => toggleGroup(group.id)}
+                                >
+                                    <div className={cn(
+                                        "p-1.5 rounded-lg transition-colors",
+                                        isExpanded ? "bg-indigo-500/20 text-indigo-300" : "bg-white/5 text-slate-400 group-hover:text-indigo-300"
+                                    )}>
+                                        <Folder className="w-4 h-4" />
+                                    </div>
+                                    <span className="flex-1 truncate text-indigo-100 font-medium text-sm group-hover:text-white transition-colors">
+                                        {group.title}
+                                    </span>
+                                    {isExpanded ?
+                                        <ChevronDown className="w-4 h-4 text-indigo-400" /> :
+                                        <ChevronRight className="w-4 h-4 text-slate-500" />
+                                    }
+                                </div>
+
+                                <div className={cn(
+                                    "grid transition-all duration-300 ease-in-out overflow-hidden",
+                                    isExpanded ? "grid-rows-[1fr] opacity-100 mt-2 pl-2" : "grid-rows-[0fr] opacity-0"
+                                )}>
+                                    <div className="min-h-0 border-l border-white/10 pl-2 ml-4">
+                                        {groupAssignments.map((assignment: any, idx: number) => renderAssignmentItem(assignment, idx))}
+                                    </div>
+                                </div>
                             </div>
-                        )}
-                        {ungroupedAssignments.map((assignment: any, index: number) => renderAssignmentItem(assignment, index))}
-                    </div>
-                )}
+                        );
+                    })}
+
+                    {/* Ungrouped */}
+                    {(ungroupedAssignments.length > 0 || (classItem.assignmentGroups?.length === 0 && ungroupedAssignments.length > 0)) && (
+                        <div className={cn("mt-2", isCollapsed && "flex flex-col items-center gap-1 border-t border-white/10 pt-4")}>
+                            {!isCollapsed && classItem.assignmentGroups?.length > 0 && (
+                                <div className="px-6 py-3 text-xs font-bold text-indigo-400 uppercase tracking-widest opacity-80">
+                                    Bài tập khác
+                                </div>
+                            )}
+                            {ungroupedAssignments.map((assignment: any, index: number) => renderAssignmentItem(assignment, index))}
+                        </div>
+                    )}
+                </div>
             </div>
+
+            {/* Custom Scrollbar Styles injected for this component */}
+            <style jsx global>{`
+                .custom-scrollbar-dark::-webkit-scrollbar {
+                    width: 5px;
+                }
+                .custom-scrollbar-dark::-webkit-scrollbar-track {
+                    background: rgba(0, 0, 0, 0.1);
+                }
+                .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 10px;
+                }
+                .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+                    background: rgba(255, 255, 255, 0.2);
+                }
+            `}</style>
         </div>
     );
 };

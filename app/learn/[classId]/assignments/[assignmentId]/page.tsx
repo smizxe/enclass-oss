@@ -81,6 +81,8 @@ export default async function AssignmentIdPage({
                         allSubmissions={allSubmissions}
                         maxAttempts={maxAttempts}
                         currentAttemptCount={currentAttemptCount}
+                        isTestMode={assignment.isTestMode}
+                        userId={session.user.id}
                     />
                 )}
             </div>

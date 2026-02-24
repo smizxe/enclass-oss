@@ -63,6 +63,7 @@ interface Assignment {
     description: string | null;
     type: "MCQ" | "ESSAY" | "MIXED";
     settings: any;
+    isTestMode: boolean;
 }
 
 export default function AssignmentEditorPage() {
@@ -470,9 +471,12 @@ export default function AssignmentEditorPage() {
 
             {/* Content Area */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
-                <div className="text-center text-slate-500">
-                    <p>Chức năng biên tập câu hỏi đang được phát triển...</p>
-                    <p className="text-sm mt-2">Assignment ID: {assignmentId}</p>
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        Cấu hình bài tập
+                    </h2>
+                    <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded font-mono">ID: {assignmentId}</span>
                 </div>
 
                 {/* Audio Manager */}
@@ -484,49 +488,122 @@ export default function AssignmentEditorPage() {
                     description="Áp dụng cho toàn bộ bài thi nếu không có audio riêng từng phần"
                 />
 
-                {/* Max Attempts Setting */}
-                <div className="mt-6 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
-                                🔄 Số lần làm bài tối đa
-                            </h3>
-                            <p className="text-xs text-emerald-600 mt-1">
-                                {localMaxAttempts === 1
-                                    ? "Học viên chỉ được làm 1 lần, không được làm lại."
-                                    : `Học viên được làm tối đa ${localMaxAttempts} lần. Điểm cao nhất sẽ được tính.`}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="number"
-                                    min={1}
-                                    max={10}
-                                    value={localMaxAttempts}
-                                    onChange={(e) => {
-                                        const val = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
-                                        setLocalMaxAttempts(val);
-                                        setMaxAttemptsChanged(val !== (assignment?.settings?.maxAttempts || 1));
-                                    }}
-                                    className="w-16 px-3 py-2 border border-emerald-300 rounded-lg text-center font-bold text-emerald-700 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                                <span className="text-sm text-emerald-600">lần</span>
+                {/* Settings Section */}
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Max Attempts Card */}
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                            <div className="flex gap-3">
+                                <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg h-fit">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M3 21v-5h5" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900">Số lần làm bài</h3>
+                                    <p className="text-sm text-slate-500 mt-1 max-w-[280px]">
+                                        Giới hạn số lần học viên có thể nộp bài.
+                                    </p>
+                                    <p className="text-xs font-medium text-emerald-600 mt-2 bg-emerald-50 inline-block px-2 py-1 rounded">
+                                        {localMaxAttempts === 1
+                                            ? "Chỉ được làm 1 lần duy nhất"
+                                            : `Được phép làm lại ${localMaxAttempts} lần`
+                                        }
+                                    </p>
+                                </div>
                             </div>
-                            {maxAttemptsChanged && (
-                                <button
-                                    onClick={() => {
-                                        onUpdateSettings({
-                                            ...assignment?.settings,
-                                            maxAttempts: localMaxAttempts
-                                        });
-                                        setMaxAttemptsChanged(false);
+
+                            <div className="flex flex-col items-end gap-2">
+                                <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+                                    <button
+                                        onClick={() => {
+                                            const newVal = Math.max(1, localMaxAttempts - 1);
+                                            setLocalMaxAttempts(newVal);
+                                            setMaxAttemptsChanged(newVal !== (assignment?.settings?.maxAttempts || 1));
+                                        }}
+                                        className="px-3 py-2 hover:bg-slate-100 text-slate-500 transition border-r border-slate-200"
+                                    >-</button>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={10}
+                                        value={localMaxAttempts}
+                                        onChange={(e) => {
+                                            const val = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
+                                            setLocalMaxAttempts(val);
+                                            setMaxAttemptsChanged(val !== (assignment?.settings?.maxAttempts || 1));
+                                        }}
+                                        className="w-12 py-2 text-center text-slate-900 font-semibold bg-transparent focus:outline-none"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const newVal = Math.min(10, localMaxAttempts + 1);
+                                            setLocalMaxAttempts(newVal);
+                                            setMaxAttemptsChanged(newVal !== (assignment?.settings?.maxAttempts || 1));
+                                        }}
+                                        className="px-3 py-2 hover:bg-slate-100 text-slate-500 transition border-l border-slate-200"
+                                    >+</button>
+                                </div>
+
+                                {maxAttemptsChanged && (
+                                    <button
+                                        onClick={() => {
+                                            onUpdateSettings({
+                                                ...assignment?.settings,
+                                                maxAttempts: localMaxAttempts
+                                            });
+                                            setMaxAttemptsChanged(false);
+                                        }}
+                                        className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition shadow-sm animate-in fade-in slide-in-from-top-1"
+                                    >
+                                        Lưu thay đổi
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Test Mode Card */}
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                            <div className="flex gap-3">
+                                <div className={`p-2.5 rounded-lg h-fit transition-colors ${assignment?.isTestMode ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-slate-500"}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M12 13v6" /><path d="M9 16l3-3 3 3" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900">Chế độ kiểm tra</h3>
+                                    <p className="text-sm text-slate-500 mt-1 max-w-[280px]">
+                                        Xáo trộn câu hỏi mỗi khi học viên vào làm bài.
+                                    </p>
+                                    <div className={`text-xs font-medium mt-2 inline-block px-2 py-1 rounded transition-colors ${assignment?.isTestMode ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-slate-500"}`}>
+                                        {assignment?.isTestMode
+                                            ? "Đang bật: Câu hỏi sẽ được xáo trộn"
+                                            : "Đang tắt: Giữ nguyên thứ tự câu hỏi"
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <label className="relative inline-flex items-center cursor-pointer mt-1">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={assignment?.isTestMode || false}
+                                    onChange={async (e) => {
+                                        const newVal = e.target.checked;
+                                        // Optimistic update
+                                        setAssignment(prev => prev ? { ...prev, isTestMode: newVal } : null);
+                                        try {
+                                            await axios.patch(`/api/teacher/assignments/${assignmentId}`, {
+                                                isTestMode: newVal
+                                            });
+                                            toast.success(`Đã ${newVal ? "bật" : "tắt"} chế độ kiểm tra`);
+                                        } catch {
+                                            toast.error("Lỗi cập nhật chế độ kiểm tra");
+                                            setAssignment(prev => prev ? { ...prev, isTestMode: !newVal } : null); // Revert
+                                        }
                                     }}
-                                    className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition shadow-sm"
-                                >
-                                    Lưu
-                                </button>
-                            )}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
                         </div>
                     </div>
                 </div>

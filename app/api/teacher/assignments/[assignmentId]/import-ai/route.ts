@@ -14,7 +14,16 @@ const EXTRACTION_PROMPT = `You are an expert at analyzing English exam papers, e
 
 Analyze the following exam content and extract ALL questions in a structured JSON format.
 
-🔴 CRITICAL RULE #1 - TABLE SEPARATION (MUST FOLLOW):
+🔴 CRITICAL RULE #1 - ANSWER KEY DETECTION (VERY IMPORTANT):
+   1. FIRST, look for a section named "Answer Key", "Đáp án", "KEY", "Answers", "Lời giải" or similar.
+   2. If found, use those answers to populate "correctAnswer" for each question.
+   3. If NOT found anywhere in the document, you MUST predict the most likely answer based on:
+      - Context clues in the passage
+      - Grammar rules
+      - Logical reasoning
+   4. Add "predictedAnswer": true to each question where you predicted (not found in answer key).
+
+🔴 CRITICAL RULE #2 - TABLE SEPARATION (MUST FOLLOW):
    IF a section contains BOTH intro text AND a table/form:
    ✅ CORRECT: Put intro text in "passage" field, put ONLY the <table>...</table> HTML code in "passageTable" field
    ❌ WRONG: Do NOT put the table HTML inside "passage" field
@@ -24,11 +33,6 @@ Analyze the following exam content and extract ALL questions in a structured JSO
      "passage": "Complete the form below. Write ONE WORD AND/OR A NUMBER for each answer.",
      "passageTable": "<table border='1'><tr><th>Name</th><td>______</td></tr></table>"
    }
-   
-   Example WRONG output (DO NOT DO THIS):
-   {
-     "passage": "Complete the form below...<table border='1'>...</table>"
-   }
 
 IMPORTANT RULES:
 1. Identify sections/parts (e.g., "Part 1", "Section 1", "Questions 1-5").
@@ -36,7 +40,7 @@ IMPORTANT RULES:
    - "MCQ" for multiple choice questions (has options A, B, C, D)
    - "GAP_FILL" for fill-in-the-blank / write-in questions
    - "ORDERING" for ordering/arrangement questions
-3. Extract the question text, options (for MCQ), and correct answer if visible.
+3. Extract the question text, options (for MCQ), and correct answer.
 4. If there's a passage or audio transcript description, include it.
 5. Assign 1 point per question unless specified otherwise.
 
@@ -62,29 +66,37 @@ FORMATTING RULES FOR TEXT CONTENT:
    - **passage**: Intro text only.
    - **passageTable**: HTML Table (if any) goes HERE, NOT in "passage".
 
-OUTPUT FORMAT (JSON array):
-[
-    {
-        "sectionTitle": "Part 1: Personal Information",
-        "sectionType": "LISTENING",
-        "passage": "Complete the form below. Write ONE WORD AND/OR A NUMBER for each answer.",
-        "passageTable": "<table border='1' style='border-collapse: collapse; width: 100%;'><tr><th>Field</th><th>Answer</th></tr><tr><td>Name</td><td>_____</td></tr></table>",
-        "questions": [
-            {
-                "type": "GAP_FILL",
-                "text": "Question 1: Name",
-                "correctAnswer": "",
-                "points": 1
-            }
-        ]
-    }
-]
+OUTPUT FORMAT (JSON):
+{
+    "hasAnswerKey": true/false,  // true if Answer Key section was found in document
+    "sections": [
+        {
+            "sectionTitle": "Part 1: Personal Information",
+            "sectionType": "LISTENING",
+            "passage": "Complete the form below. Write ONE WORD AND/OR A NUMBER for each answer.",
+            "passageTable": "<table>...</table>",
+            "questions": [
+                {
+                    "type": "MCQ",
+                    "text": "Question 1: What is the speaker's name?",
+                    "options": ["A. John", "B. Jane", "C. Jack", "D. Jill"],
+                    "correctAnswer": "A",
+                    "predictedAnswer": false,
+                    "points": 1
+                }
+            ]
+        }
+    ]
+}
 
-If you cannot determine the correct answer, use an empty string "".
-For GAP_FILL, the correctAnswer should be the expected text to fill in.
 For MCQ, the correctAnswer should be the letter (A, B, C, or D).
+For GAP_FILL, the correctAnswer should be the expected text to fill in.
+For ORDERING, the correctAnswer should be the correct sequence (e.g., "B" if option B is correct).
 
-⚠️ REMEMBER: If you see a table/form, you MUST put it in "passageTable" field, NOT in "passage" field.
+⚠️ REMEMBER: 
+- ALWAYS include "hasAnswerKey" field at the root level
+- Set "predictedAnswer": true if you predicted the answer (no answer key found)
+- If you see a table/form, you MUST put it in "passageTable" field, NOT in "passage" field.
 
 Here is the exam content to analyze:
 
@@ -196,8 +208,21 @@ export async function POST(
         jsonText = jsonText.trim();
 
         let sections;
+        let hasAnswerKey = true; // Assume has answer key unless told otherwise
         try {
-            sections = JSON.parse(jsonText);
+            const parsed = JSON.parse(jsonText);
+
+            // Handle new format: { hasAnswerKey: boolean, sections: [...] }
+            if (parsed.sections && Array.isArray(parsed.sections)) {
+                sections = parsed.sections;
+                hasAnswerKey = parsed.hasAnswerKey ?? true;
+            }
+            // Handle old format: direct array of sections
+            else if (Array.isArray(parsed)) {
+                sections = parsed;
+            } else {
+                throw new Error("Invalid response format");
+            }
         } catch (parseError) {
             console.error("Failed to parse AI response:", text);
             return new NextResponse("AI response parsing failed. Please try again.", { status: 500 });
@@ -205,6 +230,11 @@ export async function POST(
 
         if (!Array.isArray(sections) || sections.length === 0) {
             return new NextResponse("No questions extracted from the file", { status: 400 });
+        }
+
+        // Log warning if answers were predicted
+        if (!hasAnswerKey) {
+            console.log("[IMPORT_AI] ⚠️ No Answer Key found - AI predicted answers");
         }
 
         // 🔧 POST-PROCESSING: Auto-extract tables from passage if AI missed it
@@ -270,7 +300,11 @@ export async function POST(
         return NextResponse.json({
             success: true,
             count: questionsToCreate.length,
-            sections: sections.length
+            sections: sections.length,
+            hasAnswerKey: hasAnswerKey,
+            message: hasAnswerKey
+                ? `Đã import ${questionsToCreate.length} câu hỏi thành công.`
+                : `⚠️ Không tìm thấy Answer Key - AI đã tự dự đoán đáp án cho ${questionsToCreate.length} câu. Vui lòng kiểm tra lại!`
         });
 
     } catch (error) {

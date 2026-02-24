@@ -33,6 +33,8 @@ interface QuizRunnerProps {
     allSubmissions?: any[];
     maxAttempts?: number;
     currentAttemptCount?: number;
+    isTestMode?: boolean;
+    userId?: string;
 }
 
 interface ParsedQuestion {
@@ -269,12 +271,56 @@ const SectionContent = ({
     );
 };
 
+// ====== SHUFFLE UTILITIES FOR TEST MODE ======
+
+// Simple seeded random number generator (Mulberry32)
+function seedRandom(seed: number) {
+    return function () {
+        let t = seed += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
+
+// Hash string to number for deterministic seeding
+function hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+}
+
+// Shuffle array with seed and return both shuffled array and mapping
+function shuffleWithMapping<T>(array: T[], seed: number): { shuffled: T[], mapping: number[] } {
+    const result = [...array];
+    const mapping = array.map((_, i) => i); // Track original indices
+    const random = seedRandom(seed);
+    let m = result.length;
+
+    while (m) {
+        const i = Math.floor(random() * m--);
+        // Swap elements
+        [result[m], result[i]] = [result[i], result[m]];
+        [mapping[m], mapping[i]] = [mapping[i], mapping[m]];
+    }
+
+    return { shuffled: result, mapping };
+}
+
+// ====== END SHUFFLE UTILITIES ======
+
 export const QuizRunner = ({
     assignment,
     initialSubmission,
     allSubmissions = [],
     maxAttempts = 1,
-    currentAttemptCount = 0
+    currentAttemptCount = 0,
+    isTestMode = false,
+    userId = ""
 }: QuizRunnerProps) => {
     const router = useRouter();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -290,6 +336,10 @@ export const QuizRunner = ({
     const [questionFontSize, setQuestionFontSize] = useState(16);
     const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
     const appearanceRef = useRef<HTMLDivElement>(null);
+
+    // Option mappings for Test Mode (questionId -> original indices array)
+    const [optionMappings, setOptionMappings] = useState<Record<string, number[]>>({});
+
 
     const canRetry = currentAttemptCount < maxAttempts;
     const remainingAttempts = maxAttempts - currentAttemptCount;
@@ -361,10 +411,16 @@ export const QuizRunner = ({
         }
     };
 
-    // Parse questions and group by section
+    // Parse questions and group by section, with optional shuffling for Test Mode
     const groupedQuestions = useMemo(() => {
         const groups: QuestionGroup[] = [];
         let currentGroup: QuestionGroup | null = null;
+        const newOptionMappings: Record<string, number[]> = {};
+
+        // Generate deterministic seed from userId + assignmentId + attemptCount
+        const shuffleSeed = isTestMode
+            ? hashCode(`${userId}-${assignment.id}-${currentAttemptCount}`)
+            : 0;
 
         for (const q of assignment.questions) {
             let parsed;
@@ -397,19 +453,42 @@ export const QuizRunner = ({
                 currentGroup.sectionImages = parsed.sectionImages;
             }
 
+            // Shuffle options for MCQ in Test Mode
+            let finalParsed = { ...parsed };
+            if (isTestMode && q.type === "MCQ" && parsed.options && parsed.options.length > 0) {
+                // Use question-specific seed for option shuffling
+                const questionSeed = shuffleSeed + hashCode(q.id);
+                const { shuffled, mapping } = shuffleWithMapping(parsed.options, questionSeed);
+                finalParsed.options = shuffled;
+                newOptionMappings[q.id] = mapping;
+            }
+
             // Add question to current group
             currentGroup.questions.push({
                 ...q,
                 parsed: {
-                    ...parsed,
+                    ...finalParsed,
                     passage: undefined,
                     passageTranslation: undefined
                 }
             });
         }
 
-        return groups;
-    }, [assignment.questions]);
+        // Shuffle sections in Test Mode (Part order)
+        let finalGroups = groups;
+        if (isTestMode && groups.length > 1) {
+            const { shuffled: shuffledSections } = shuffleWithMapping(groups, shuffleSeed);
+            finalGroups = shuffledSections;
+        }
+
+        // Update option mappings state (only on mount or when test mode changes)
+        if (isTestMode && Object.keys(newOptionMappings).length > 0) {
+            // Use setTimeout to avoid state update during render
+            setTimeout(() => setOptionMappings(newOptionMappings), 0);
+        }
+
+        return finalGroups;
+    }, [assignment.questions, assignment.id, isTestMode, userId, currentAttemptCount]);
 
 
     // Calculate start index for questions in current section
@@ -437,7 +516,11 @@ export const QuizRunner = ({
             const response = await fetch(`/api/student/assignments/${assignment.id}/submit`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ answers })
+                body: JSON.stringify({
+                    answers,
+                    optionMappings: isTestMode ? optionMappings : undefined,
+                    isTestMode
+                })
             });
 
             if (response.ok) {

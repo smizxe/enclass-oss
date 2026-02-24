@@ -25,7 +25,7 @@ export async function POST(
 
         const { assignmentId } = await params;
         const body = await req.json();
-        const { answers } = body;
+        const { answers, optionMappings, isTestMode } = body;
 
         if (!answers || typeof answers !== "object") {
             return new NextResponse("Invalid answers format", { status: 400 });
@@ -105,9 +105,26 @@ export async function POST(
             }
 
             if (q.type === "MCQ") {
+                // Test Mode: Decode shuffled answer back to original
+                let effectiveUserAnswer = userAnswer;
+
+                if (isTestMode && optionMappings && optionMappings[q.id]) {
+                    // optionMappings[q.id] = [originalIndexOfPos0, originalIndexOfPos1, ...]
+                    // userAnswer is the text of selected option (after shuffle)
+                    // Find which shuffled position user selected, then map back to original index
+                    const shuffledOptions = parsedContent.options;
+                    const selectedShuffledIndex = shuffledOptions?.findIndex((opt: string) => opt === userAnswer);
+
+                    if (selectedShuffledIndex !== undefined && selectedShuffledIndex >= 0 && optionMappings[q.id][selectedShuffledIndex] !== undefined) {
+                        const originalIndex = optionMappings[q.id][selectedShuffledIndex];
+                        // Convert original index back to letter (A, B, C, D)
+                        effectiveUserAnswer = String.fromCharCode(65 + originalIndex);
+                    }
+                }
+
                 // Robust checking for MCQ
-                // 1. Direct match (Text == Text) or (Letter == Letter)
-                if (userAnswer === q.correctAnswer) {
+                // 1. Direct match (Letter == Letter)
+                if (effectiveUserAnswer === q.correctAnswer) {
                     isCorrect = true;
                 }
                 // 2. Check if correctAnswer is a Letter Key (A, B, C...) and userAnswer is the corresponding text
@@ -115,7 +132,7 @@ export async function POST(
                     const correctIndex = q.correctAnswer.charCodeAt(0) - 65; // 'A' -> 0, 'B' -> 1
                     if (correctIndex >= 0 && correctIndex < parsedContent.options.length) {
                         const correctOptionText = parsedContent.options[correctIndex];
-                        if (userAnswer === correctOptionText) {
+                        if (effectiveUserAnswer === correctOptionText) {
                             isCorrect = true;
                         }
                     }

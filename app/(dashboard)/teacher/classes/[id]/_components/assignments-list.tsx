@@ -336,8 +336,8 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                     const isExpanded = expandedGroups.has(group.id);
 
                     return (
-                        <div key={group.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 bg-slate-50/50 flex items-center justify-between border-b border-slate-100 select-none">
+                        <div key={group.id} className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                            <div className="px-4 py-3 bg-slate-50/50 flex items-center justify-between border-b border-slate-100 select-none rounded-t-xl">
                                 <div
                                     className="flex items-center gap-2 cursor-pointer flex-1"
                                     onClick={() => toggleGroup(group.id)}
@@ -372,7 +372,7 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                                         <div
                                             {...provided.droppableProps}
                                             ref={provided.innerRef}
-                                            className="divide-y divide-slate-100 min-h-[50px] bg-slate-50/30"
+                                            className="divide-y divide-slate-100 min-h-[50px] bg-slate-50/30 rounded-b-xl"
                                         >
                                             {groupAssignments.map((assignment, index) => renderAssignmentRow(assignment, index))}
                                             {provided.placeholder}
@@ -390,8 +390,8 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                 })}
 
                 {/* Ungrouped */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-4 py-3 bg-slate-50/50 border-b border-slate-100">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div className="px-4 py-3 bg-slate-50/50 border-b border-slate-100 rounded-t-xl">
                         <h3 className="font-semibold text-slate-600 text-sm">Chưa phân nhóm</h3>
                     </div>
                     <Droppable droppableId="ungrouped-droppable">
@@ -399,7 +399,7 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                             <div
                                 {...provided.droppableProps}
                                 ref={provided.innerRef}
-                                className="divide-y divide-slate-100 min-h-[50px]"
+                                className="divide-y divide-slate-100 min-h-[50px] rounded-b-xl"
                             >
                                 {ungroupedAssignments.map((assignment, index) => renderAssignmentRow(assignment, index))}
                                 {provided.placeholder}

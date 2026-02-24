@@ -9,6 +9,7 @@ const assignmentSchema = z.object({
     content: z.string().optional(),
     type: z.enum(["LECTURE", "QUIZ", "TEST", "ESSAY"]),
     settings: z.any().optional(),
+    isTestMode: z.boolean().optional(),
 });
 
 // Partial schema for PATCH (all fields optional)
@@ -17,6 +18,7 @@ const assignmentPatchSchema = z.object({
     content: z.string().optional(),
     type: z.enum(["LECTURE", "QUIZ", "TEST", "ESSAY"]).optional(),
     settings: z.any().optional(),
+    isTestMode: z.boolean().optional(),
 });
 
 export async function GET(
@@ -89,6 +91,7 @@ export async function PATCH(
         if (validatedData.content !== undefined) updateData.content = validatedData.content;
         if (validatedData.type !== undefined) updateData.type = validatedData.type;
         if (validatedData.settings !== undefined) updateData.settings = validatedData.settings;
+        if (validatedData.isTestMode !== undefined) updateData.isTestMode = validatedData.isTestMode;
 
         const updatedAssignment = await prisma.assignment.update({
             where: {
