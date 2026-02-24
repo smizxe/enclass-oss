@@ -95,6 +95,8 @@ export async function POST(
         let scoredManually = false; // For multi-gap, scoring is handled inline
 
         assignment.questions.forEach(q => {
+            if (q.type === "SECTION_HEADER") return; // Skip headers from scoring calculations
+
             totalScore += q.points;
             const userAnswer = answers[q.id];
             let isCorrect = false;

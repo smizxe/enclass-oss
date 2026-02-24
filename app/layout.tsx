@@ -5,7 +5,7 @@ import "./globals.css";
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "Online Study Platform",
+    title: "Diepclass - Online Studying",
     description: "IELTS-style learning platform",
 };
 

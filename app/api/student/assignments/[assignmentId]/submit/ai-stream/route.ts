@@ -96,12 +96,30 @@ export async function GET(req: NextRequest) {
                         );
 
                         let fullText = "";
+                        let isFeedbackStarted = false;
 
                         // Stream each chunk to the client
                         for await (const chunk of aiStream) {
                             fullText += chunk;
-                            const eventData = JSON.stringify({ questionId: q.id, chunk, type: "streaming" });
-                            controller.enqueue(encoder.encode(`data: ${eventData}\n\n`));
+
+                            if (!isFeedbackStarted) {
+                                // Look for the start of feedback to begin streaming to client
+                                const feedbackMatch = fullText.match(/FEEDBACK\s*:/i);
+                                if (feedbackMatch) {
+                                    isFeedbackStarted = true;
+                                    // Extract everything generated AFTER the FEEDBACK: keyword
+                                    const idx = feedbackMatch.index! + feedbackMatch[0].length;
+                                    const newContent = fullText.substring(idx).trimStart();
+                                    if (newContent) {
+                                        const eventData = JSON.stringify({ questionId: q.id, chunk: newContent, type: "streaming" });
+                                        controller.enqueue(encoder.encode(`data: ${eventData}\n\n`));
+                                    }
+                                }
+                            } else {
+                                // Feedback has started, send chunks directly
+                                const eventData = JSON.stringify({ questionId: q.id, chunk, type: "streaming" });
+                                controller.enqueue(encoder.encode(`data: ${eventData}\n\n`));
+                            }
                         }
 
                         // Parse final score from fullText

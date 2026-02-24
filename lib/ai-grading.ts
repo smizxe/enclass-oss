@@ -48,7 +48,7 @@ ${contextPassage}
 **TIÊU CHÍ CHẤM:** ${rubric || "Chấm dựa trên ngữ pháp, từ vựng, sự mạch lạc và hoàn thành yêu cầu đề bài."}
 
 **ĐỊNH DẠNG TRẢ VỀ:**
-Trả về theo định dạng sau (KHÔNG bọc trong code block):
+Trả về theo định dạng sau (KHÔNG bọc trong code block, KHÔNG in lại bài làm của học viên):
 
 SCORE: [số điểm từ 0 đến ${maxPoints}]
 FEEDBACK:
@@ -59,7 +59,7 @@ FEEDBACK:
 - Numbered lists với 1. 2. 3.
 - Xuống dòng tự do để dễ đọc]
 
-Hãy đưa ra nhận xét chi tiết, bao gồm điểm mạnh, điểm yếu và gợi ý cải thiện.`;
+Hãy đưa ra nhận xét thẳng thắn, chi tiết, bao gồm điểm mạnh, điểm yếu và gợi ý cải thiện. Tuyệt đối KHÔNG trích dẫn lại toàn bộ câu trả lời của học viên.`;
 
         parts.push({ text: systemPrompt });
 
@@ -165,7 +165,7 @@ ${contextPassage}
 **TIÊU CHÍ CHẤM:** ${rubric || "Chấm dựa trên ngữ pháp, từ vựng, sự mạch lạc và hoàn thành yêu cầu đề bài."}
 
 **ĐỊNH DẠNG TRẢ VỀ:**
-Trả về theo định dạng sau (KHÔNG bọc trong code block):
+Trả về theo định dạng sau (KHÔNG bọc trong code block, KHÔNG in lại bài làm của học viên):
 
 SCORE: [số điểm từ 0 đến ${maxPoints}]
 FEEDBACK:
@@ -176,7 +176,7 @@ FEEDBACK:
 - Numbered lists với 1. 2. 3.
 - Xuống dòng tự do để dễ đọc]
 
-Hãy đưa ra nhận xét chi tiết, bao gồm điểm mạnh, điểm yếu và gợi ý cải thiện.`;
+Hãy đưa ra nhận xét thẳng thắn, chi tiết, bao gồm điểm mạnh, điểm yếu và gợi ý cải thiện. Tuyệt đối KHÔNG trích dẫn lại toàn bộ câu trả lời của học viên.`;
 
         parts.push({ text: systemPrompt });
 
