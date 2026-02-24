@@ -63,7 +63,7 @@ export async function GET() {
         const students = await prisma.user.findMany({
             where: {
                 role: "STUDENT",
-                createdById: session.user.id,
+
             },
             orderBy: {
                 createdAt: "desc",
