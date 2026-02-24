@@ -56,6 +56,12 @@ export default function AssignmentEditorPage() {
     const [loading, setLoading] = useState(true);
     const [isAddingQuestion, setIsAddingQuestion] = useState(false);
     const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+    const [editingSection, setEditingSection] = useState<{
+        questionIds: string[];
+        sectionTitle: string;
+        passage: string;
+        passageTranslation: string;
+    } | null>(null);
     const [newQuestion, setNewQuestion] = useState<{
         text: string;
         options: string[];
@@ -231,6 +237,29 @@ export default function AssignmentEditorPage() {
         }
     };
 
+    const handleEditSection = (group: QuestionGroup) => {
+        const questionIds = group.questions.map(q => q.id);
+        setEditingSection({
+            questionIds,
+            sectionTitle: group.sectionTitle,
+            passage: group.passage || "",
+            passageTranslation: group.passageTranslation || ""
+        });
+    };
+
+    const onSaveSection = async () => {
+        if (!editingSection) return;
+
+        try {
+            await axios.patch(`/api/teacher/assignments/${assignmentId}/sections`, editingSection);
+            toast.success("Đã cập nhật phần thi");
+            setEditingSection(null);
+            fetchQuestions();
+        } catch {
+            toast.error("Không thể cập nhật phần thi");
+        }
+    };
+
     return (
         <div className="p-6 bg-slate-50 min-h-full">
             <div className="mb-8 flex items-center justify-between">
@@ -270,6 +299,15 @@ export default function AssignmentEditorPage() {
                                     <span className="px-3 bg-indigo-50 text-indigo-600 rounded-full py-1">
                                         {group.sectionTitle}
                                     </span>
+                                    {group.passage && (
+                                        <button
+                                            onClick={() => handleEditSection(group)}
+                                            className="ml-2 text-slate-400 hover:text-indigo-600 transition"
+                                            title="Sửa đoạn văn/tiêu đề"
+                                        >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
                                     <div className="h-px flex-1 bg-slate-200"></div>
                                 </div>
 
@@ -494,6 +532,65 @@ export default function AssignmentEditorPage() {
                                     className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
                                 >
                                     {editingQuestionId ? "Lưu thay đổi" : "Lưu câu hỏi"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Section Modal */}
+            {editingSection && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
+                        <h3 className="text-lg font-bold text-slate-900 mb-4">Chỉnh sửa Phần thi / Bài đọc</h3>
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            onSaveSection();
+                        }}>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Tiêu đề phần (Section Title)</label>
+                                    <input
+                                        type="text"
+                                        value={editingSection.sectionTitle}
+                                        onChange={e => setEditingSection({ ...editingSection, sectionTitle: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Đoạn văn (Passage)</label>
+                                    <textarea
+                                        value={editingSection.passage}
+                                        onChange={e => setEditingSection({ ...editingSection, passage: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 h-48"
+                                        placeholder="Nội dung bài đọc..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Dịch nghĩa (Optional)</label>
+                                    <textarea
+                                        value={editingSection.passageTranslation}
+                                        onChange={e => setEditingSection({ ...editingSection, passageTranslation: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 h-24"
+                                        placeholder="Bản dịch của đoạn văn..."
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-2 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingSection(null)}
+                                    className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
+                                >
+                                    Lưu thay đổi
                                 </button>
                             </div>
                         </form>
