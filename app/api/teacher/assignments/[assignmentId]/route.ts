@@ -119,6 +119,60 @@ export async function DELETE(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        // Cleanup Supabase Storage Files
+        // 1. Fetch all questions to find images/audio
+        const questions = await prisma.question.findMany({
+            where: { assignmentId },
+            select: { content: true }
+        });
+
+        const filesToDelete: string[] = [];
+
+        // Check Assignment Settings for Global Audio
+        if (assignment.settings) {
+            const settings = assignment.settings as any;
+            if (settings.audioUrl) {
+                try {
+                    const path = settings.audioUrl.split('/storage/v1/object/public/images/')[1];
+                    if (path) filesToDelete.push(decodeURIComponent(path));
+                } catch { }
+            }
+        }
+
+        // Check Questions for Section Images/Audio
+        for (const q of questions) {
+            try {
+                const parsed = JSON.parse(q.content);
+
+                // Section Images
+                if (parsed.sectionImages && Array.isArray(parsed.sectionImages)) {
+                    parsed.sectionImages.forEach((url: string) => {
+                        try {
+                            const path = url.split('/storage/v1/object/public/images/')[1];
+                            if (path) filesToDelete.push(decodeURIComponent(path));
+                        } catch { }
+                    });
+                }
+
+                // Section Audio
+                if (parsed.sectionAudio) {
+                    try {
+                        const path = parsed.sectionAudio.split('/storage/v1/object/public/images/')[1];
+                        if (path) filesToDelete.push(decodeURIComponent(path));
+                    } catch { }
+                }
+            } catch { }
+        }
+
+        if (filesToDelete.length > 0) {
+            const { createClient } = await import("@supabase/supabase-js");
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+            );
+            await supabase.storage.from('images').remove(filesToDelete);
+        }
+
         const deletedAssignment = await prisma.assignment.delete({
             where: {
                 id: assignmentId,

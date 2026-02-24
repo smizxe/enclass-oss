@@ -12,16 +12,16 @@ import {
     ArrowLeft,
     PlusCircle,
     Trash2,
-    Loader2,
     BookOpen,
     Pencil,
     Upload,
-    Sparkles,
-    FileText
+    ArrowUp,
+    ArrowDown
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { AudioManager } from "@/components/audio-manager";
 import { Editor } from "@/components/editor";
+import { supabase } from "@/lib/supabase";
 
 interface Question {
     id: string;
@@ -41,12 +41,14 @@ interface ParsedContent {
     sectionTitle?: string;
     sectionType?: string;
     sectionAudio?: string;
+    sectionImages?: string[];
 }
 
 interface QuestionGroup {
     sectionTitle: string;
     sectionType: string;
     sectionAudio?: string;
+    sectionImages?: string[];
     passage?: string;
     passageTable?: string;
     passageTranslation?: string;
@@ -80,13 +82,15 @@ export default function AssignmentEditorPage() {
         correctAnswerIndexes: number[];
         correctAnswerText: string;
         points: number;
+        sectionTitle: string;
     }>({
         type: "MCQ",
         text: "",
         options: ["", "", "", ""],
         correctAnswerIndexes: [],
         correctAnswerText: "",
-        points: 1
+        points: 1,
+        sectionTitle: ""
     });
 
     // Essay Prompt State
@@ -105,6 +109,7 @@ export default function AssignmentEditorPage() {
         questionIds: string[];
         sectionTitle: string;
         sectionAudio?: string;
+        sectionImages?: string[];
         passage: string;
         passageTable: string;
         passageTranslation: string;
@@ -186,6 +191,7 @@ export default function AssignmentEditorPage() {
                     sectionTitle,
                     sectionType,
                     sectionAudio: parsed.sectionAudio,
+                    sectionImages: parsed.sectionImages || [],
                     passage: parsed.passage,
                     passageTranslation: parsed.passageTranslation,
                     questions: []
@@ -198,6 +204,15 @@ export default function AssignmentEditorPage() {
             if (parsed.passageTranslation && !currentGroup.passageTranslation) currentGroup.passageTranslation = parsed.passageTranslation;
             // Sync Audio
             if (parsed.sectionAudio && !currentGroup.sectionAudio) currentGroup.sectionAudio = parsed.sectionAudio;
+            // Sync Images (Merge if unique)
+            if (parsed.sectionImages && parsed.sectionImages.length > 0) {
+                if (!currentGroup.sectionImages) currentGroup.sectionImages = [];
+                parsed.sectionImages.forEach(img => {
+                    if (!currentGroup!.sectionImages?.includes(img)) {
+                        currentGroup!.sectionImages!.push(img);
+                    }
+                });
+            }
 
             currentGroup.questions.push(qWithParsed);
         });
@@ -217,6 +232,32 @@ export default function AssignmentEditorPage() {
             fetchQuestions();
         } catch {
             toast.error("Lỗi xóa câu hỏi");
+        }
+    };
+
+    // Delete Section functionality
+    const handleDeleteSection = async (sectionTitle: string) => {
+        if (!confirm(`Bạn có chắc chắn muốn xóa toàn bộ câu hỏi trong phần "${sectionTitle}"? Hành động này không thể hoàn tác.`)) return;
+        try {
+            await axios.delete(`/api/teacher/assignments/${assignmentId}/questions?sectionTitle=${encodeURIComponent(sectionTitle)}`);
+            toast.success(`Đã xóa phần "${sectionTitle}"`);
+            fetchQuestions();
+        } catch {
+            toast.error("Lỗi xóa phần thi");
+        }
+    };
+
+    // Move Section functionality
+    const handleMoveSection = async (sectionTitle: string, direction: "UP" | "DOWN") => {
+        try {
+            await axios.post(`/api/teacher/assignments/${assignmentId}/reorder-section`, {
+                sectionTitle,
+                direction
+            });
+            toast.success(`Đã di chuyển phần "${sectionTitle}"`);
+            fetchQuestions();
+        } catch {
+            toast.error("Lỗi di chuyển phần thi");
         }
     };
 
@@ -246,13 +287,16 @@ export default function AssignmentEditorPage() {
             answerText = q.correctAnswer;
         }
 
+        const existingSectionTitle = parsed.sectionTitle || "General";
+
         setNewQuestion({
             type: q.type,
             text: parsed.text,
             options: options,
             correctAnswerIndexes: indexes,
             correctAnswerText: answerText,
-            points: q.points
+            points: q.points,
+            sectionTitle: existingSectionTitle
         });
         setIsAddingQuestion(true);
     };
@@ -265,11 +309,7 @@ export default function AssignmentEditorPage() {
         const contentObj = {
             text: newQuestion.text,
             options: newQuestion.options,
-            // Preserve section info if editing, or use current section context if adding?
-            // For now, simpler implementation:
-            // If adding new, we need to know which section.
-            // MVP: Add to "General" or last section.
-            sectionTitle: "General"
+            sectionTitle: newQuestion.sectionTitle || "General"
         };
 
         let correctAnswerChar = "";
@@ -316,7 +356,8 @@ export default function AssignmentEditorPage() {
                 options: ["", "", "", ""],
                 correctAnswerIndexes: [],
                 correctAnswerText: "",
-                points: 1
+                points: 1,
+                sectionTitle: ""
             });
             setEssayPrompt("");
             fetchQuestions();
@@ -335,6 +376,7 @@ export default function AssignmentEditorPage() {
             questionIds,
             sectionTitle: group.sectionTitle,
             sectionAudio: group.sectionAudio,
+            sectionImages: group.sectionImages || [],
             passage: group.passage || "",
             passageTable: group.passageTable || "",
             passageTranslation: group.passageTranslation || ""
@@ -439,6 +481,27 @@ export default function AssignmentEditorPage() {
                                     <span className="px-3 bg-indigo-50 text-indigo-600 rounded-full py-1">
                                         {group.sectionTitle}
                                     </span>
+
+                                    {/* Move Buttons */}
+                                    <div className="flex gap-1 ml-2">
+                                        <button
+                                            onClick={() => handleMoveSection(group.sectionTitle, "UP")}
+                                            className="p-1 px-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                            disabled={groupIndex === 0}
+                                            title="Chuyển lên trên"
+                                        >
+                                            <ArrowUp className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleMoveSection(group.sectionTitle, "DOWN")}
+                                            className="p-1 px-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                                            disabled={groupIndex === groupedQuestions.length - 1}
+                                            title="Chuyển xuống dưới"
+                                        >
+                                            <ArrowDown className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
                                     {group.passage ? (
                                         <button
                                             onClick={() => handleEditSection(group)}
@@ -456,6 +519,13 @@ export default function AssignmentEditorPage() {
                                             Sửa / Thêm nội dung
                                         </button>
                                     )}
+                                    <button
+                                        onClick={() => handleDeleteSection(group.sectionTitle)}
+                                        className="ml-2 text-slate-400 hover:text-red-500 transition"
+                                        title="Xóa toàn bộ phần này"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                     <div className="h-px flex-1 bg-slate-200"></div>
                                 </div>
 
@@ -571,12 +641,23 @@ export default function AssignmentEditorPage() {
                                                 {parsed.options && parsed.options.length > 0 && (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                                         {parsed.options.map((opt: string, i: number) => {
-                                                            const isCorrect = opt === q.correctAnswer || q.correctAnswer === String.fromCharCode(65 + i);
+                                                            const optionLetter = String.fromCharCode(65 + i);
+                                                            const val = (q.correctAnswer || "").trim();
+                                                            // Split by comma or semicolon to support multi-select answers
+                                                            const correctAnswers = val.split(/[,;]\s*/).map(s => s.trim()).filter(s => s.length > 0);
+
+                                                            const isCorrect = correctAnswers.some(ans => {
+                                                                return opt === ans ||
+                                                                    ans === optionLetter ||
+                                                                    (opt.startsWith(`${optionLetter}.`) && ans === optionLetter) ||
+                                                                    (ans.length > 0 && opt.includes(ans) && ans.length > 2);
+                                                            });
+
                                                             return (
                                                                 <div
                                                                     key={i}
                                                                     className={`p-2 rounded-lg border text-sm ${isCorrect
-                                                                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-medium"
+                                                                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-bold"
                                                                         : "border-slate-100 bg-slate-50 text-slate-600"
                                                                         }`}
                                                                 >
@@ -616,261 +697,385 @@ export default function AssignmentEditorPage() {
 
             {/* Add Question Button / Form */}
             <div className="mt-6 flex justify-center">
-                {assignment?.type === "ESSAY" ? (
-                    questions.length === 0 && (
-                        <div className="w-full max-w-2xl">
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Đề bài viết (Essay Prompt)</label>
-                            <Textarea
-                                value={essayPrompt || ""}
-                                onChange={(e) => setEssayPrompt(e.target.value)}
-                                placeholder="Nhập chủ đề bài viết..."
-                                className="min-h-[150px] mb-4"
-                            />
+                {assignment?.type === "ESSAY" && questions.length === 0 && (
+                    <div className="w-full max-w-2xl">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Đề bài viết (Essay Prompt)</label>
+                        <Textarea
+                            value={essayPrompt || ""}
+                            onChange={(e) => setEssayPrompt(e.target.value)}
+                            placeholder="Nhập chủ đề bài viết..."
+                            className="min-h-[150px] mb-4"
+                        />
+                        <button
+                            onClick={onSaveQuestion}
+                            disabled={!essayPrompt.trim()}
+                            className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Lưu đề bài
+                        </button>
+                    </div>
+                )}
+                {/* Sticky Action Bar for Non-Essay Assignments */}
+                {assignment?.type !== "ESSAY" && (
+                    <>
+                        {/* Spacer to prevent content from being hidden behind sticky bar */}
+                        <div className="h-24"></div>
+
+                        <div className="fixed bottom-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 z-40 flex justify-center gap-4 transition-all duration-300 md:left-72 left-0 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
                             <button
-                                onClick={onSaveQuestion}
-                                disabled={!essayPrompt.trim()}
-                                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => {
+                                    setNewQuestion({
+                                        type: "MCQ",
+                                        text: "",
+                                        options: ["", "", "", ""],
+                                        correctAnswerIndexes: [],
+                                        correctAnswerText: "",
+                                        points: 1,
+                                        sectionTitle: groupedQuestions.length > 0 ? groupedQuestions[groupedQuestions.length - 1].sectionTitle : "Part 1"
+                                    });
+                                    setIsAddingQuestion(true);
+                                }}
+                                className="flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white font-bold rounded-full hover:bg-indigo-700 shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all transform hover:-translate-y-1"
                             >
-                                Lưu đề bài
+                                <PlusCircle className="w-5 h-5" />
+                                Thêm Câu Hỏi Mới
                             </button>
                         </div>
-                    )
-                ) : (
-                    <>
                     </>
                 )}
-            </div>
 
-            {/* Modals */}
-            {isAddingQuestion && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-2xl p-6">
-                        <h3 className="text-lg font-bold mb-4">{editingQuestionId ? "Sửa câu hỏi" : "Thêm câu hỏi mới"}</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Loại câu hỏi</label>
-                                <select
-                                    value={newQuestion.type}
-                                    onChange={(e) => setNewQuestion({ ...newQuestion, type: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-lg bg-white"
-                                >
-                                    <option value="MCQ">Trắc nghiệm (MCQ)</option>
-                                    <option value="GAP_FILL">Điền vào chỗ trống (Gap Fill)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Nội dung câu hỏi</label>
-                                <Textarea
-                                    value={newQuestion.text || ""}
-                                    onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
-                                    className="min-h-[100px]"
-                                />
-                                {newQuestion.type === "GAP_FILL" && (
-                                    <div className="mt-4">
-                                        <p className="text-xs text-slate-500 mb-2">
-                                            * Nhập nội dung chứa chỗ trống (dùng ...). Nhập đáp án đúng vào ô bên dưới.
-                                        </p>
-                                        <label className="block text-sm font-medium mb-1">Đáp án đúng</label>
-                                        <input
-                                            type="text"
-                                            value={newQuestion.correctAnswerText}
-                                            onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswerText: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-lg"
-                                            placeholder="Ví dụ: apples"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Only show Options inputs for MCQ */}
-                            {newQuestion.type === "MCQ" && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    {newQuestion.options.map((opt, idx) => (
-                                        <div key={idx}>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <label className="text-xs font-medium">Đáp án {String.fromCharCode(65 + idx)}</label>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={newQuestion.correctAnswerIndexes.includes(idx)}
-                                                    onChange={() => {
-                                                        const current = newQuestion.correctAnswerIndexes;
-                                                        const newIndexes = current.includes(idx)
-                                                            ? current.filter(i => i !== idx)
-                                                            : [...current, idx];
-                                                        setNewQuestion({ ...newQuestion, correctAnswerIndexes: newIndexes });
-                                                    }}
-                                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                                />
-                                            </div>
+                {/* Modals */}
+                {isAddingQuestion && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-xl w-full max-w-2xl p-6">
+                            <h3 className="text-lg font-bold mb-4">{editingQuestionId ? "Sửa câu hỏi" : "Thêm câu hỏi mới"}</h3>
+                            <div className="space-y-4">
+                                { /* Section Selection */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Thêm vào Phần (Section)</label>
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={groupedQuestions.map(g => g.sectionTitle).includes(newQuestion.sectionTitle) ? newQuestion.sectionTitle : "__NEW__"}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === "__NEW__") {
+                                                    setNewQuestion({ ...newQuestion, sectionTitle: "" });
+                                                } else {
+                                                    setNewQuestion({ ...newQuestion, sectionTitle: val });
+                                                }
+                                            }}
+                                            className="flex-1 px-3 py-2 border rounded-lg bg-white"
+                                        >
+                                            <option value="" disabled>-- Chọn Phần --</option>
+                                            {groupedQuestions.map((g, idx) => (
+                                                <option key={idx} value={g.sectionTitle}>{g.sectionTitle}</option>
+                                            ))}
+                                            <option value="__NEW__">+ Tạo phần mới...</option>
+                                        </select>
+                                        {!groupedQuestions.map(g => g.sectionTitle).includes(newQuestion.sectionTitle) && (
                                             <input
                                                 type="text"
-                                                value={opt}
-                                                onChange={(e) => {
-                                                    const newOpts = [...newQuestion.options];
-                                                    newOpts[idx] = e.target.value;
-                                                    setNewQuestion({ ...newQuestion, options: newOpts });
-                                                }}
-                                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                placeholder="Nhập tên phần mới..."
+                                                value={newQuestion.sectionTitle}
+                                                onChange={(e) => setNewQuestion({ ...newQuestion, sectionTitle: e.target.value })}
+                                                className="flex-1 px-3 py-2 border rounded-lg bg-white border-indigo-300"
                                             />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <div className="flex justify-end gap-3 mt-4">
-                                <button onClick={() => setIsAddingQuestion(false)} className="px-4 py-2 text-slate-500">Hủy</button>
-                                <button onClick={onSaveQuestion} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Lưu</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {editingSection && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
-                        <h3 className="text-lg font-bold mb-4">Chỉnh sửa nội dung: {editingSection.sectionTitle}</h3>
-                        <div className="space-y-4">
-                            {/* Section Title */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Tiêu đề phần (Section Title)</label>
-                                <input
-                                    type="text"
-                                    value={editingSection.sectionTitle}
-                                    onChange={(e) => setEditingSection({ ...editingSection, sectionTitle: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-lg"
-                                />
-                            </div>
-
-                            {/* Section Audio */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Audio cho phần này - <span className="italic font-normal text-slate-500">Dành cho Listening</span></label>
-                                <AudioManager
-                                    assignmentId={assignmentId}
-                                    settings={{ audioUrl: editingSection.sectionAudio }}
-                                    onUpdateSettings={(newSettings) => setEditingSection({ ...editingSection, sectionAudio: newSettings.audioUrl })}
-                                    label="Cài đặt Audio"
-                                />
-                            </div>
-
-                            {/* Passage Editor - Hybrid Mode */}
-                            {/* Conditional Editor Logic: Table Mode vs Rich Text Mode */}
-                            {(() => {
-                                // Combine content if needed (for legacy split data)
-                                const combinedContent = (editingSection.passage || "") + (editingSection.passageTable ? "\n" + editingSection.passageTable : "");
-                                const hasTable = combinedContent.includes("<table") || (editingSection.passageTable && editingSection.passageTable.includes("<table"));
-
-                                return (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <label className="block text-sm font-medium">Nội dung đoạn văn</label>
-                                            <span className={`text-xs px-2 py-1 rounded-full ${hasTable ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700"}`}>
-                                                {hasTable ? "📄 Chế độ Mã nguồn (Do có Bảng)" : "📝 Chế độ Soạn thảo (Văn bản)"}
-                                            </span>
-                                        </div>
-
-                                        {hasTable ? (
-                                            /* HTML Source Mode (For Tables) */
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <span className="text-xs font-semibold text-slate-500">Mã nguồn HTML (Chứa bảng):</span>
-                                                    <Textarea
-                                                        value={editingSection.passageTable || editingSection.passage} // Prefer table field if mostly table, or passage if mixed. Actually let's use a local state? 
-                                                        // Better: We are editing 'passage' as the main storage now.
-                                                        // But wait, existing state has split fields.
-                                                        // Let's edit 'passageTable' if it exists, or 'passage' if it has table?
-                                                        // User wants MERGED view. 
-                                                        // Let's edit 'passage' and clear 'passageTable' on save.
-                                                        // For now, display combined, edit 'passage'.
-                                                        defaultValue={combinedContent}
-                                                        onChange={(e) => setEditingSection({ ...editingSection, passage: e.target.value, passageTable: "" })}
-                                                        className="h-64 font-mono text-xs"
-                                                        placeholder='<table border="1">...</table>'
-                                                    />
-                                                    <p className="text-[10px] text-slate-400">* Hệ thống phát hiện có Bảng, chuyển sang chế độ mã nguồn để tránh lỗi cấu trúc.</p>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <span className="text-xs font-semibold text-indigo-600">Xem trước:</span>
-                                                    <div className="h-64 overflow-y-auto w-full p-3 border rounded-lg bg-slate-50 text-sm [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-100 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2 prose prose-sm max-w-none">
-                                                        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                                                            {combinedContent}
-                                                        </ReactMarkdown>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            /* Rich Text Mode (Normal Text) */
-                                            <div className="space-y-1">
-                                                {/* Markdown Fix: Convert Markdown to HTML for Editor */}
-                                                <Editor
-                                                    value={editingSection.passage
-                                                        .replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>') // Bold
-                                                        .replace(/__([\s\S]*?)__/g, '<u>$1</u>')             // Underline
-                                                        .replace(/\*([\s\S]*?)\*/g, '<em>$1</em>')           // Italic
-                                                    }
-                                                    onChange={(val) => setEditingSection({ ...editingSection, passage: val })}
-                                                />
-                                                <p className="text-[10px] text-slate-400">* Soạn thảo văn bản bình thường (Đậm, nghiêng...).</p>
-                                            </div>
                                         )}
                                     </div>
-                                );
-                            })()}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Loại câu hỏi</label>
+                                    <select
+                                        value={newQuestion.type}
+                                        onChange={(e) => setNewQuestion({ ...newQuestion, type: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg bg-white"
+                                    >
+                                        <option value="MCQ">Trắc nghiệm (MCQ)</option>
+                                        <option value="GAP_FILL">Điền vào chỗ trống (Gap Fill)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Nội dung câu hỏi</label>
+                                    <Textarea
+                                        value={newQuestion.text || ""}
+                                        onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
+                                        className="min-h-[100px]"
+                                    />
+                                    {newQuestion.type === "GAP_FILL" && (
+                                        <div className="mt-4">
+                                            <p className="text-xs text-slate-500 mb-2">
+                                                * Nhập nội dung chứa chỗ trống (dùng ...). Nhập đáp án đúng vào ô bên dưới.
+                                            </p>
+                                            <label className="block text-sm font-medium mb-1">Đáp án đúng</label>
+                                            <input
+                                                type="text"
+                                                value={newQuestion.correctAnswerText}
+                                                onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswerText: e.target.value })}
+                                                className="w-full px-3 py-2 border rounded-lg"
+                                                placeholder="Ví dụ: apples"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
 
-                            {/* Translation Editor */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Dịch nghĩa (Optional)</label>
-                                <Textarea
-                                    value={editingSection.passageTranslation}
-                                    onChange={(e) => setEditingSection({ ...editingSection, passageTranslation: e.target.value })}
-                                    className="min-h-[100px]"
-                                />
-                            </div>
-
-                            <div className="flex justify-end gap-3 mt-4">
-                                <button onClick={() => setEditingSection(null)} className="px-4 py-2 text-slate-500">Hủy</button>
-                                <button onClick={onSaveSection} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Lưu thay đổi</button>
+                                {/* Only show Options inputs for MCQ */}
+                                {newQuestion.type === "MCQ" && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {newQuestion.options.map((opt, idx) => (
+                                            <div key={idx}>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <label className="text-xs font-medium">Đáp án {String.fromCharCode(65 + idx)}</label>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={newQuestion.correctAnswerIndexes.includes(idx)}
+                                                        onChange={() => {
+                                                            const current = newQuestion.correctAnswerIndexes;
+                                                            const newIndexes = current.includes(idx)
+                                                                ? current.filter(i => i !== idx)
+                                                                : [...current, idx];
+                                                            setNewQuestion({ ...newQuestion, correctAnswerIndexes: newIndexes });
+                                                        }}
+                                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={opt}
+                                                    onChange={(e) => {
+                                                        const newOpts = [...newQuestion.options];
+                                                        newOpts[idx] = e.target.value;
+                                                        setNewQuestion({ ...newQuestion, options: newOpts });
+                                                    }}
+                                                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="flex justify-end gap-3 mt-4">
+                                    <button onClick={() => setIsAddingQuestion(false)} className="px-4 py-2 text-slate-500">Hủy</button>
+                                    <button onClick={onSaveQuestion} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Lưu</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {isAddingSection && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl w-full max-w-md p-6">
-                        <h3 className="text-lg font-bold mb-4">Thêm Phần Thi Mới</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Tên phần (VD: Part 1, Reading Passage 1...)</label>
-                                <input
-                                    type="text"
-                                    value={newSectionTitle}
-                                    onChange={(e) => setNewSectionTitle(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-lg"
-                                    placeholder="Part X..."
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Loại phần thi</label>
-                                <select
-                                    value={newSectionType}
-                                    onChange={(e) => setNewSectionType(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-lg"
-                                >
-                                    <option value="MCQ">Trắc nghiệm (MCQ)</option>
-                                    <option value="LISTENING">Listening</option>
-                                    <option value="READING">Reading</option>
-                                    <option value="WRITING">Writing</option>
-                                </select>
-                            </div>
-                            <div className="flex justify-end gap-3 mt-4">
-                                <button onClick={() => setIsAddingSection(false)} className="px-4 py-2 text-slate-500">Hủy</button>
-                                <button onClick={handleCreateSection} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Tạo mới</button>
+                {editingSection && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+                            <h3 className="text-lg font-bold mb-4">Chỉnh sửa nội dung: {editingSection.sectionTitle}</h3>
+                            <div className="space-y-4">
+                                {/* Section Title */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Tiêu đề phần (Section Title)</label>
+                                    <input
+                                        type="text"
+                                        value={editingSection.sectionTitle}
+                                        onChange={(e) => setEditingSection({ ...editingSection, sectionTitle: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    />
+                                </div>
+
+                                {/* Section Audio */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Audio cho phần này - <span className="italic font-normal text-slate-500">Dành cho Listening</span></label>
+                                    <AudioManager
+                                        assignmentId={assignmentId}
+                                        settings={{ audioUrl: editingSection.sectionAudio }}
+                                        onUpdateSettings={(newSettings) => setEditingSection({ ...editingSection, sectionAudio: newSettings.audioUrl })}
+                                        label="Cài đặt Audio"
+                                    />
+                                </div>
+
+                                {/* Section Images */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Hình ảnh đính kèm (Cho Part)</label>
+                                    <div className="space-y-3">
+                                        <div className="flex flex-wrap gap-3">
+                                            {editingSection.sectionImages?.map((url, idx) => (
+                                                <div key={idx} className="relative w-24 h-24 border rounded-lg overflow-hidden group">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={url} alt="Section" className="w-full h-full object-cover" />
+                                                    <button
+                                                        onClick={() => {
+                                                            const newImages = editingSection.sectionImages?.filter((_, i) => i !== idx);
+                                                            setEditingSection({ ...editingSection, sectionImages: newImages });
+                                                        }}
+                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                                                        title="Xóa ảnh"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <label className="w-24 h-24 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 hover:bg-slate-50 transition">
+                                                <Upload className="w-6 h-6 text-slate-400" />
+                                                <span className="text-[10px] text-slate-500 mt-1">Upload</span>
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                        const files = e.target.files;
+                                                        if (!files || files.length === 0) return;
+
+                                                        const newUrls: string[] = [];
+                                                        const toastId = toast.loading("Đang tải ảnh lên...");
+
+                                                        for (let i = 0; i < files.length; i++) {
+                                                            const file = files[i];
+                                                            // Sanitize filename
+                                                            const fileName = `${assignmentId}/${editingSection.sectionTitle}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+                                                            const { data, error } = await supabase.storage
+                                                                .from('images')
+                                                                .upload(fileName, file);
+
+                                                            if (error) {
+                                                                console.error(error);
+                                                                toast.error(`Lỗi tải ảnh: ${file.name}`);
+                                                                continue;
+                                                            }
+
+                                                            // Get Public URL
+                                                            const { data: publicUrlData } = supabase.storage
+                                                                .from('images')
+                                                                .getPublicUrl(fileName);
+
+                                                            if (publicUrlData.publicUrl) {
+                                                                newUrls.push(publicUrlData.publicUrl);
+                                                            }
+                                                        }
+
+                                                        setEditingSection(prev => prev ? {
+                                                            ...prev,
+                                                            sectionImages: [...(prev.sectionImages || []), ...newUrls]
+                                                        } : null);
+
+                                                        toast.dismiss(toastId);
+                                                        toast.success(`Đã tải lên ${newUrls.length} ảnh`);
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Passage Editor - Hybrid Mode */}
+                                {/* Conditional Editor Logic: Table Mode vs Rich Text Mode */}
+                                {(() => {
+                                    // Combine content if needed (for legacy split data)
+                                    const combinedContent = (editingSection.passage || "") + (editingSection.passageTable ? "\n" + editingSection.passageTable : "");
+                                    const hasTable = combinedContent.includes("<table") || (editingSection.passageTable && editingSection.passageTable.includes("<table"));
+
+                                    return (
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <label className="block text-sm font-medium">Nội dung đoạn văn</label>
+                                                <span className={`text-xs px-2 py-1 rounded-full ${hasTable ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700"}`}>
+                                                    {hasTable ? "📄 Chế độ Mã nguồn (Do có Bảng)" : "📝 Chế độ Soạn thảo (Văn bản)"}
+                                                </span>
+                                            </div>
+
+                                            {hasTable ? (
+                                                /* HTML Source Mode (For Tables) */
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <span className="text-xs font-semibold text-slate-500">Mã nguồn HTML (Chứa bảng):</span>
+                                                        <Textarea
+                                                            value={combinedContent}
+                                                            onChange={(e) => setEditingSection({ ...editingSection, passage: e.target.value, passageTable: "" })}
+                                                            className="h-64 font-mono text-xs"
+                                                            placeholder='<table border="1">...</table>'
+                                                        />
+                                                        <p className="text-[10px] text-slate-400">* Hệ thống phát hiện có Bảng, chuyển sang chế độ mã nguồn để tránh lỗi cấu trúc.</p>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <span className="text-xs font-semibold text-indigo-600">Xem trước:</span>
+                                                        <div className="h-64 overflow-y-auto w-full p-3 border rounded-lg bg-slate-50 text-sm [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-100 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2 prose prose-sm max-w-none">
+                                                            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                                                                {combinedContent}
+                                                            </ReactMarkdown>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                /* Rich Text Mode (Normal Text) */
+                                                <div className="space-y-1">
+                                                    {/* Markdown Fix: Convert Markdown to HTML for Editor */}
+                                                    <Editor
+                                                        value={editingSection.passage
+                                                            .replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>') // Bold
+                                                            .replace(/__([\s\S]*?)__/g, '<u>$1</u>')             // Underline
+                                                            .replace(/\*([\s\S]*?)\*/g, '<em>$1</em>')           // Italic
+                                                        }
+                                                        onChange={(val) => setEditingSection({ ...editingSection, passage: val })}
+                                                    />
+                                                    <p className="text-[10px] text-slate-400">* Soạn thảo văn bản bình thường (Đậm, nghiêng...).</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Translation Editor */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Dịch nghĩa (Optional)</label>
+                                    <Textarea
+                                        value={editingSection.passageTranslation}
+                                        onChange={(e) => setEditingSection({ ...editingSection, passageTranslation: e.target.value })}
+                                        className="min-h-[100px]"
+                                    />
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-4">
+                                    <button onClick={() => setEditingSection(null)} className="px-4 py-2 text-slate-500">Hủy</button>
+                                    <button onClick={onSaveSection} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Lưu thay đổi</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {isAddingSection && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-xl w-full max-w-md p-6">
+                            <h3 className="text-lg font-bold mb-4">Thêm Phần Thi Mới</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Tên phần (VD: Part 1, Reading Passage 1...)</label>
+                                    <input
+                                        type="text"
+                                        value={newSectionTitle}
+                                        onChange={(e) => setNewSectionTitle(e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                        placeholder="Part X..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Loại phần thi</label>
+                                    <select
+                                        value={newSectionType}
+                                        onChange={(e) => setNewSectionType(e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                    >
+                                        <option value="MCQ">Trắc nghiệm (MCQ)</option>
+                                        <option value="LISTENING">Listening</option>
+                                        <option value="READING">Reading</option>
+                                        <option value="WRITING">Writing</option>
+                                    </select>
+                                </div>
+                                <div className="flex justify-end gap-3 mt-4">
+                                    <button onClick={() => setIsAddingSection(false)} className="px-4 py-2 text-slate-500">Hủy</button>
+                                    <button onClick={handleCreateSection} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Tạo mới</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
