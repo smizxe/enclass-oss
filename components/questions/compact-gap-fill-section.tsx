@@ -147,47 +147,54 @@ export const CompactGapFillSection = ({
                 </div>
 
                 {/* Questions List */}
-                <div className="space-y-6">
+                {/* Questions List - Fallback View (Inline-like style) */}
+                <div className="space-y-4">
                     {questions.map((q, idx) => {
                         const num = startIndex + idx + 1;
                         const result = results?.[q.id];
                         const currentValue = answers[q.id] || "";
 
                         return (
-                            <div key={q.id} className="flex flex-col gap-2">
-                                <div className="flex items-start gap-3">
-                                    <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-600 font-bold text-sm rounded-full">
-                                        {num}
+                            <div key={q.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                                <span className="flex-shrink-0 font-bold text-sm text-indigo-600 select-none">
+                                    {num}.
+                                </span>
+                                <div className="flex-grow">
+                                    <span className="text-slate-800 mr-2 leading-8">
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            rehypePlugins={[rehypeRaw]}
+                                            components={{
+                                                p: ({ children }) => <span className="inline">{children}</span>
+                                            }}
+                                        >
+                                            {q.parsed.text || ""}
+                                        </ReactMarkdown>
                                     </span>
-                                    <div className="flex-grow pt-1.5">
-                                        <div className="mb-2 text-slate-800">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{q.parsed.text || ""}</ReactMarkdown>
-                                        </div>
 
-                                        {mode === "teacher_preview" ? (
-                                            <span className="inline-flex items-center gap-2">
-                                                <span className="px-2 py-1 bg-green-100 text-green-700 text-sm font-medium rounded border border-green-200">
-                                                    Đáp án: {q.correctAnswer}
-                                                </span>
+                                    {mode === "teacher_preview" ? (
+                                        <span className="inline-flex items-center gap-2 translate-y-[-1px]">
+                                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-sm font-medium rounded border border-green-200">
+                                                {q.correctAnswer}
                                             </span>
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                <Input
-                                                    className={`max-w-md ${result
-                                                        ? (result.isCorrect ? "border-emerald-500 bg-emerald-50" : "border-red-400 bg-red-50")
-                                                        : ""}`}
-                                                    value={currentValue}
-                                                    onChange={(e) => onAnswerChange(q.id, e.target.value)}
-                                                    placeholder="Nhập câu trả lời..."
-                                                    disabled={disabled || !!result}
-                                                />
-                                                {result && !result.isCorrect && (
-                                                    <span className="text-sm text-red-600 font-medium">→ {result.correctAnswer}</span>
-                                                )}
-                                                {result?.isCorrect && <span className="text-emerald-600">✓</span>}
-                                            </div>
-                                        )}
-                                    </div>
+                                        </span>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-2 translate-y-1">
+                                            <Input
+                                                className={`w-40 h-8 text-sm ${result
+                                                    ? (result.isCorrect ? "border-emerald-500 bg-emerald-50" : "border-red-400 bg-red-50")
+                                                    : ""}`}
+                                                value={currentValue}
+                                                onChange={(e) => onAnswerChange(q.id, e.target.value)}
+                                                placeholder="............"
+                                                disabled={disabled || !!result}
+                                            />
+                                            {result && !result.isCorrect && (
+                                                <span className="text-sm text-red-600 font-medium">→ {result.correctAnswer}</span>
+                                            )}
+                                            {result?.isCorrect && <span className="text-emerald-600">✓</span>}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );

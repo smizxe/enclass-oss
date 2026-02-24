@@ -94,10 +94,13 @@ const SectionContent = ({
     let questionCounter = startIndex;
 
     // Detect if ALL questions in this section are GAP_FILL → use compact inline mode
-    // Case-insensitive: handles "Gap Fill", "gap-fill", "GAP_FILL" etc.
+    // Extremely permissive check: handles "Gap Fill", "gap-fill", "GAP_FILL", "GapFilling", etc.
     const allGapFill = group.questions
         .filter(q => q.type !== "SECTION_HEADER")
-        .every(q => (q.type || "").toUpperCase().replace(/[\s-]/g, "_") === "GAP_FILL");
+        .every(q => {
+            const type = (q.type || "").toUpperCase();
+            return type.includes("GAP") && type.includes("FILL");
+        });
     // CompactGapFillSection handles its own fallback internally, so always delegate
     const useCompactMode = allGapFill && !!group.passage;
 

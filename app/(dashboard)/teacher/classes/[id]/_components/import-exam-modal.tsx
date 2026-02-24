@@ -348,10 +348,10 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                             <div className="p-4 space-y-4">
                                                 {/* Check if all questions are GAP_FILL with {N} markers in passage */}
                                                 {(() => {
-                                                    // Detect if ALL questions in this section are GAP_FILL (case insensitive)
+                                                    // Detect if ALL questions in this section are GAP_FILL (permissive check)
                                                     const allGapFill = section.questions.every(q => {
-                                                        const type = (q.type || "").toUpperCase().replace(/[\s-]/g, "_");
-                                                        return type === "GAP_FILL";
+                                                        const type = (q.type || "").toUpperCase();
+                                                        return type.includes("GAP") && type.includes("FILL");
                                                     });
 
                                                     if (allGapFill && section.passage) {
