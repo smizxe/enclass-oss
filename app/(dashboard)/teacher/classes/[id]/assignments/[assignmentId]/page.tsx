@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import axios from "axios";
@@ -9,7 +9,8 @@ import {
     ArrowLeft,
     PlusCircle,
     Trash2,
-    Loader2
+    Loader2,
+    BookOpen
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -19,6 +20,24 @@ interface Question {
     content: string;
     correctAnswer: string;
     points: number;
+}
+
+interface ParsedContent {
+    text: string;
+    items?: string[];
+    options?: string[];
+    passage?: string;
+    passageTranslation?: string;
+    sectionTitle?: string;
+    sectionType?: string;
+}
+
+interface QuestionGroup {
+    sectionTitle: string;
+    sectionType: string;
+    passage?: string;
+    passageTranslation?: string;
+    questions: (Question & { parsed: ParsedContent })[];
 }
 
 interface Assignment {
@@ -81,6 +100,44 @@ export default function AssignmentEditorPage() {
             </div>
         );
     }
+
+    // Group questions by section for display
+    const groupedQuestions: QuestionGroup[] = (() => {
+        const groups: QuestionGroup[] = [];
+        let currentGroup: QuestionGroup | null = null;
+
+        for (const q of questions) {
+            let parsed: ParsedContent;
+            try {
+                parsed = JSON.parse(q.content);
+            } catch {
+                parsed = { text: q.content };
+            }
+
+            const sectionTitle = parsed.sectionTitle || "Câu hỏi độc lập";
+            const sectionType = parsed.sectionType || "STANDALONE";
+
+            // Check if we need a new group
+            if (!currentGroup || currentGroup.sectionTitle !== sectionTitle) {
+                currentGroup = {
+                    sectionTitle,
+                    sectionType,
+                    passage: parsed.passage,
+                    passageTranslation: parsed.passageTranslation,
+                    questions: []
+                };
+                groups.push(currentGroup);
+            }
+
+            // Add question to current group
+            currentGroup.questions.push({
+                ...q,
+                parsed
+            });
+        }
+
+        return groups;
+    })();
 
     const onAddQuestion = async () => {
         try {
@@ -152,45 +209,102 @@ export default function AssignmentEditorPage() {
                     <p className="text-sm mt-2">Assignment ID: {assignmentId}</p>
                 </div>
 
-                {/* Questions List Logic Here */}
-                <div className="mt-8 space-y-4">
-                    {questions.map((q, idx) => {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        let contentObj: any = {};
-                        try {
-                            contentObj = JSON.parse(q.content);
-                        } catch {
-                            contentObj = { text: q.content };
-                        }
+                {/* Questions List grouped by Section */}
+                <div className="mt-8 space-y-6">
+                    {groupedQuestions.map((group, groupIndex) => {
+                        let questionCounter = groupedQuestions
+                            .slice(0, groupIndex)
+                            .reduce((acc, g) => acc + g.questions.length, 0);
 
                         return (
-                            <div key={q.id} className="p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="font-bold text-slate-700">Câu {idx + 1} ({q.type})</span>
-                                    <div className="flex gap-2">
-                                        <button className="text-slate-400 hover:text-red-500 transition">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                            <div key={groupIndex} className="space-y-4">
+                                {/* Section Header */}
+                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 uppercase tracking-wide">
+                                    <div className="h-px flex-1 bg-slate-200"></div>
+                                    <span className="px-3 bg-indigo-50 text-indigo-600 rounded-full py-1">
+                                        {group.sectionTitle}
+                                    </span>
+                                    <div className="h-px flex-1 bg-slate-200"></div>
                                 </div>
-                                <div className="text-slate-900 font-medium mb-3">{contentObj.text}</div>
-                                {q.type === "MCQ" && contentObj.options && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        {contentObj.options.map((opt: string, i: number) => (
-                                            <div
-                                                key={i}
-                                                className={`p-2 rounded-lg border text-sm ${opt === q.correctAnswer
-                                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                    : "border-slate-100 bg-slate-50 text-slate-600"
-                                                    }`}
-                                            >
-                                                {opt}
+
+                                {/* Section Passage (shown once for the group) */}
+                                {group.passage && (
+                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
+                                        <div className="flex items-center gap-2 text-sm font-medium text-blue-700 mb-4">
+                                            <BookOpen className="w-4 h-4" />
+                                            <span>Đoạn văn chung:</span>
+                                        </div>
+                                        <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-white rounded-xl p-4 border border-blue-100">
+                                            {group.passage}
+                                        </div>
+                                        {group.passageTranslation && (
+                                            <div className="mt-4 pt-4 border-t border-blue-200">
+                                                <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
+                                                <div className="text-sm text-slate-600 italic leading-relaxed">
+                                                    {group.passageTranslation}
+                                                </div>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 )}
-                                <div className="mt-3 text-xs text-slate-400">
-                                    Điểm: {q.points} | Đáp án đúng: {q.correctAnswer}
+
+                                {/* Questions in this section */}
+                                <div className="space-y-3">
+                                    {group.questions.map((q) => {
+                                        const currentIndex = questionCounter++;
+                                        const parsed = q.parsed;
+
+                                        return (
+                                            <div key={q.id} className="p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className="font-bold text-slate-700">Câu {currentIndex + 1} ({q.type})</span>
+                                                    <div className="flex gap-2">
+                                                        <button className="text-slate-400 hover:text-red-500 transition">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="text-slate-900 font-medium mb-3">{parsed.text}</div>
+
+                                                {/* Display Items for ORDERING questions */}
+                                                {parsed.items && parsed.items.length > 0 && (
+                                                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2 mb-3">
+                                                        <div className="text-sm font-medium text-amber-700 mb-2">
+                                                            📝 Các câu cần sắp xếp:
+                                                        </div>
+                                                        {parsed.items.map((item, index) => (
+                                                            <div
+                                                                key={index}
+                                                                className="text-sm text-slate-700 pl-3 py-2 border-l-4 border-amber-400 bg-white rounded-r-lg px-3 shadow-sm"
+                                                            >
+                                                                {item}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* MCQ Options */}
+                                                {q.type === "MCQ" && parsed.options && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                        {parsed.options.map((opt: string, i: number) => (
+                                                            <div
+                                                                key={i}
+                                                                className={`p-2 rounded-lg border text-sm ${opt === q.correctAnswer
+                                                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                                    : "border-slate-100 bg-slate-50 text-slate-600"
+                                                                    }`}
+                                                            >
+                                                                {opt}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div className="mt-3 text-xs text-slate-400">
+                                                    Điểm: {q.points} | Đáp án đúng: {q.correctAnswer}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         );
