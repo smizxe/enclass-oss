@@ -170,14 +170,6 @@ export default function LoginPage() {
                         </Link>
                     </div>
 
-                    {/* Demo accounts hint */}
-                    <div className="mt-8 p-4 bg-slate-100 rounded-xl text-xs text-slate-600">
-                        <div className="font-semibold mb-2">🔑 Tài khoản Demo:</div>
-                        <div className="space-y-1">
-                            <div><span className="font-medium">Giáo viên:</span> teacher@example.com / teacher123</div>
-                            <div><span className="font-medium">Học sinh:</span> student@example.com / student123</div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

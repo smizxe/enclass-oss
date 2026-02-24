@@ -7,14 +7,14 @@ async function main() {
     console.log("Seeding database...");
 
     // Create Teacher
-    const teacherEmail = "teacher@example.com";
+    const teacherEmail = "Cuongdiepvuong@gmail.com";
     let teacher = await prisma.user.findUnique({ where: { email: teacherEmail } });
     if (!teacher) {
         teacher = await prisma.user.create({
             data: {
                 email: teacherEmail,
                 password: await hash("teacher123", 12),
-                name: "Mr. Teacher",
+                name: "Thầy Điệp Vương",
                 role: "TEACHER",
             },
         });

@@ -14,7 +14,7 @@ import {
     Globe,
     PenSquare
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 const routes = [
     {
@@ -51,6 +51,11 @@ const routes = [
 
 export const Sidebar = () => {
     const pathname = usePathname();
+    const { data: session } = useSession();
+
+    const userName = session?.user?.name || "Thầy Điệp";
+    const userEmail = session?.user?.email || "teacher@example.com";
+    const userInitials = userName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
 
     return (
         <div className="flex flex-col h-full bg-slate-900 text-white">
@@ -98,8 +103,13 @@ export const Sidebar = () => {
                 </div>
                 <nav className="space-y-1">
                     <Link
-                        href="#"
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all duration-200"
+                        href="/teacher/settings"
+                        className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                            pathname === "/teacher/settings"
+                                ? "bg-slate-800 text-white"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800"
+                        )}
                     >
                         <Settings className="w-5 h-5" />
                         Cài đặt
@@ -111,11 +121,11 @@ export const Sidebar = () => {
             <div className="p-3 border-t border-slate-800">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 mb-3">
                     <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold">
-                        TD
+                        {userInitials}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">Thầy Điệp</div>
-                        <div className="text-xs text-slate-400 truncate">teacher@example.com</div>
+                        <div className="text-sm font-medium truncate">{userName}</div>
+                        <div className="text-xs text-slate-400 truncate">{userEmail}</div>
                     </div>
                 </div>
                 <button
