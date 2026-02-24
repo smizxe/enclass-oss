@@ -72,15 +72,15 @@ export default function StudentsPageClient({ initialStudents }: StudentsPageClie
         <div className="p-6 bg-slate-50 min-h-full">
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Quan ly hoc vien</h1>
-                    <p className="text-slate-500 mt-1">Theo doi va quan ly danh sach hoc vien.</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Quản lý học viên</h1>
+                    <p className="text-slate-500 mt-1">Theo dõi và quản lý danh sách học viên.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Tim kiem hoc vien..."
+                            placeholder="Tìm kiếm học viên..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10 pr-4 py-2 w-64 text-sm rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition"
@@ -96,7 +96,7 @@ export default function StudentsPageClient({ initialStudents }: StudentsPageClie
                     <Link href="/teacher/students/create">
                         <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition shadow-lg shadow-indigo-600/25">
                             <PlusCircle className="w-4 h-4" />
-                            Them hoc vien
+                            Thêm học viên
                         </button>
                     </Link>
                 </div>
@@ -109,7 +109,7 @@ export default function StudentsPageClient({ initialStudents }: StudentsPageClie
                     </div>
                     <div>
                         <div className="text-2xl font-bold text-slate-900">{students.length}</div>
-                        <div className="text-sm text-slate-500">Tong hoc vien</div>
+                        <div className="text-sm text-slate-500">Tổng học viên</div>
                     </div>
                 </div>
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -118,7 +118,7 @@ export default function StudentsPageClient({ initialStudents }: StudentsPageClie
                     </div>
                     <div>
                         <div className="text-2xl font-bold text-slate-900">--</div>
-                        <div className="text-sm text-slate-500">Dang hoat dong</div>
+                        <div className="text-sm text-slate-500">Đang hoạt động</div>
                     </div>
                 </div>
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -127,14 +127,14 @@ export default function StudentsPageClient({ initialStudents }: StudentsPageClie
                     </div>
                     <div>
                         <div className="text-2xl font-bold text-slate-900">--</div>
-                        <div className="text-sm text-slate-500">Moi trong thang</div>
+                        <div className="text-sm text-slate-500">Mới trong tháng</div>
                     </div>
                 </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100">
-                    <h2 className="font-semibold text-slate-900">Danh sach hoc vien</h2>
+                    <h2 className="font-semibold text-slate-900">Danh sách học viên</h2>
                 </div>
 
                 {loading ? (
@@ -147,10 +147,10 @@ export default function StudentsPageClient({ initialStudents }: StudentsPageClie
                             <Users className="w-8 h-8 text-slate-400" />
                         </div>
                         <h3 className="font-medium text-slate-900 mb-1">
-                            {searchQuery ? "Khong tim thay ket qua" : "Chua co hoc vien nao"}
+                            {searchQuery ? "Không tìm thấy kết quả" : "Chưa có học viên nào"}
                         </h3>
                         <p className="text-sm text-slate-500">
-                            {searchQuery ? "Thu tim kiem voi tu khoa khac." : "Hoc vien se xuat hien khi ho dang ky."}
+                            {searchQuery ? "Thử tìm kiếm với từ khóa khác." : "Học viên sẽ xuất hiện khi họ đăng ký."}
                         </p>
                     </div>
                 ) : (
@@ -158,19 +158,19 @@ export default function StudentsPageClient({ initialStudents }: StudentsPageClie
                         <thead className="bg-slate-50 border-b border-slate-100">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                    Hoc vien
+                                    Học viên
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                     Email
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                    Lop
+                                    Lớp
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                    Ngay tham gia
+                                    Ngày tham gia
                                 </th>
                                 <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                    Thao tac
+                                    Thao tác
                                 </th>
                             </tr>
                         </thead>
@@ -183,7 +183,7 @@ export default function StudentsPageClient({ initialStudents }: StudentsPageClie
                                                 {student.name?.charAt(0)?.toUpperCase() || "?"}
                                             </div>
                                             <div className="font-medium text-slate-900">
-                                                {student.name || "Chua dat ten"}
+                                                {student.name || "Chưa đặt tên"}
                                             </div>
                                         </div>
                                     </td>
@@ -202,7 +202,7 @@ export default function StudentsPageClient({ initialStudents }: StudentsPageClie
                                                     </span>
                                                 ))
                                             ) : (
-                                                <span className="text-slate-400 text-xs italic">Chua vao lop</span>
+                                                <span className="text-slate-400 text-xs italic">Chưa vào lớp</span>
                                             )}
                                         </div>
                                     </td>

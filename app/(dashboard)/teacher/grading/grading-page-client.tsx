@@ -116,12 +116,12 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
         const isGradedByTeacher = submission.gradedById !== null;
 
         if (!hasScore) {
-            return { type: "pending", label: "Cho cham", color: "orange" };
+            return { type: "pending", label: "Chờ chấm", color: "orange" };
         }
         if (isGradedByTeacher) {
-            return { type: "teacher", label: `${submission.score} diem`, color: "emerald" };
+            return { type: "teacher", label: `${submission.score} điểm`, color: "emerald" };
         }
-        return { type: "ai", label: `AI: ${submission.score} diem`, color: "blue" };
+        return { type: "ai", label: `AI: ${submission.score} điểm`, color: "blue" };
     };
 
     return (
@@ -132,7 +132,7 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
                         className={view === "CLASSES" ? "font-bold text-indigo-600" : "cursor-pointer hover:text-indigo-600"}
                         onClick={() => { setView("CLASSES"); setSelectedClass(null); }}
                     >
-                        Lop hoc
+                        Lớp học
                     </span>
                     {selectedClass && (
                         <>
@@ -153,9 +153,9 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
                     )}
                 </div>
                 <h1 className="text-2xl font-bold text-slate-900">
-                    {view === "CLASSES" && "Chon Lop Hoc"}
-                    {view === "ASSIGNMENTS" && "Danh sach Bai tap"}
-                    {view === "SUBMISSIONS" && "Danh sach Bai nop"}
+                    {view === "CLASSES" && "Chọn Lớp Học"}
+                    {view === "ASSIGNMENTS" && "Danh sách Bài tập"}
+                    {view === "SUBMISSIONS" && "Danh sách Bài nộp"}
                 </h1>
             </div>
 
@@ -177,15 +177,15 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
                                 <School className="w-6 h-6 text-indigo-600" />
                             </div>
                             <h3 className="text-lg font-bold text-slate-900 mb-1">{cls.title}</h3>
-                            <p className="text-sm text-slate-500 line-clamp-2">{cls.description || "Khong co mo ta"}</p>
+                            <p className="text-sm text-slate-500 line-clamp-2">{cls.description || "Không có mô tả"}</p>
                             <div className="mt-4 flex items-center text-sm font-medium text-indigo-600">
-                                Xem bai tap <ChevronRight className="w-4 h-4 ml-1" />
+                                Xem bài tập <ChevronRight className="w-4 h-4 ml-1" />
                             </div>
                         </div>
                     ))}
                     {classes.length === 0 && (
                         <div className="col-span-full text-center py-12 text-slate-500">
-                            Chua co lop hoc nao.
+                            Chưa có lớp học nào.
                         </div>
                     )}
                 </div>
@@ -194,7 +194,7 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
             {!loading && view === "ASSIGNMENTS" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <button onClick={goBack} className="md:col-span-2 lg:col-span-3 flex items-center gap-2 text-slate-500 hover:text-slate-900 mb-4 w-fit">
-                        <ArrowLeft className="w-4 h-4" /> Quay lai
+                        <ArrowLeft className="w-4 h-4" /> Quay lại
                     </button>
                     {assignments.map((assignment) => (
                         <div
@@ -213,7 +213,7 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
                     ))}
                     {assignments.length === 0 && (
                         <div className="col-span-full text-center py-12 text-slate-500 bg-white rounded-xl border border-dashed border-slate-300">
-                            Lop hoc nay chua co bai tap nao.
+                            Lớp học này chưa có bài tập nào.
                         </div>
                     )}
                 </div>
@@ -223,9 +223,9 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                         <button onClick={goBack} className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900">
-                            <ArrowLeft className="w-4 h-4" /> Quay lai danh sach bai tap
+                            <ArrowLeft className="w-4 h-4" /> Quay lại danh sách bài tập
                         </button>
-                        <span className="text-sm text-slate-500">{submissions.length} bai nop</span>
+                        <span className="text-sm text-slate-500">{submissions.length} bài nộp</span>
                     </div>
 
                     {submissions.length === 0 ? (
@@ -233,8 +233,8 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
                             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <ClipboardCheck className="w-8 h-8 text-slate-300" />
                             </div>
-                            <h3 className="font-medium text-slate-900">Chua co bai nop nao</h3>
-                            <p className="text-sm text-slate-500">Hoc vien chua nop bai cho bai tap nay.</p>
+                            <h3 className="font-medium text-slate-900">Chưa có bài nộp nào</h3>
+                            <p className="text-sm text-slate-500">Học viên chưa nộp bài cho bài tập này.</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-slate-100">
@@ -257,36 +257,36 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
                                                 {submission.attemptNumber > 1 && (
                                                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 flex items-center gap-1">
                                                         <RefreshCw className="w-3 h-3" />
-                                                        Lan {submission.attemptNumber}
+                                                        Lần {submission.attemptNumber}
                                                     </span>
                                                 )}
                                                 {status.type === "pending" && (
                                                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 flex items-center gap-1">
-                                                        <Loader2 className="w-3 h-3 animate-spin" /> {status.label}
+                                                        <Loader2 className="w-3 h-3 animate-spin" /> {status.label.replace("Cho cham", "Chờ chấm")}
                                                     </span>
                                                 )}
                                                 {status.type === "ai" && (
                                                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 flex items-center gap-1">
-                                                        <Bot className="w-3 h-3" /> {status.label}
+                                                        <Bot className="w-3 h-3" /> {status.label.replace("diem", "điểm")}
                                                     </span>
                                                 )}
                                                 {status.type === "teacher" && (
                                                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center gap-1">
-                                                        <CheckCircle className="w-3 h-3" /> {status.label}
+                                                        <CheckCircle className="w-3 h-3" /> {status.label.replace("diem", "điểm")}
                                                     </span>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3 text-sm text-slate-500">
                                                 <span className="flex items-center gap-1">
                                                     <Calendar className="w-3.5 h-3.5" />
-                                                    Nop: {format(new Date(submission.submittedAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+                                                    Nộp: {format(new Date(submission.submittedAt), "dd/MM/yyyy HH:mm", { locale: vi })}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition flex items-center gap-1.5">
                                                 <Pencil className="w-3.5 h-3.5" />
-                                                {status.type === "pending" ? "Cham diem" : "Xem / Sua"}
+                                                {status.type === "pending" ? "Chấm điểm" : "Xem / Sửa"}
                                             </div>
                                         </div>
                                     </Link>
