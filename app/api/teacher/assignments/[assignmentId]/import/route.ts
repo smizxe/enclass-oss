@@ -27,14 +27,18 @@ function parseCSV(csvText: string) {
     return questions;
 }
 
-export async function POST(req: Request, { params }: { params: { assignmentId: string } }) {
+export async function POST(
+    req: Request,
+    { params }: { params: Promise<{ assignmentId: string }> }
+) {
     try {
         const session = await getServerSession(authOptions);
         if (!session || session.user.role !== "TEACHER") {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const assignmentId = params.assignmentId;
+        const { assignmentId } = await params;
+
         // Verify ownership
         const assignment = await prisma.assignment.findUnique({
             where: { id: assignmentId },

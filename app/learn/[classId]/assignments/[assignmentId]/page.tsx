@@ -10,9 +10,10 @@ import { FileText, ClipboardList, Clock } from "lucide-react";
 export default async function AssignmentIdPage({
     params
 }: {
-    params: { classId: string; assignmentId: string }
+    params: Promise<{ classId: string; assignmentId: string }>
 }) {
     const session = await getServerSession(authOptions);
+    const { assignmentId } = await params;
 
     if (!session) {
         return redirect("/");
@@ -20,7 +21,7 @@ export default async function AssignmentIdPage({
 
     const assignment = await prisma.assignment.findUnique({
         where: {
-            id: params.assignmentId,
+            id: assignmentId,
         },
         include: {
             questions: true,
@@ -47,8 +48,8 @@ export default async function AssignmentIdPage({
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isQuiz
-                                        ? "bg-orange-50 text-orange-700"
-                                        : "bg-indigo-50 text-indigo-700"
+                                    ? "bg-orange-50 text-orange-700"
+                                    : "bg-indigo-50 text-indigo-700"
                                     }`}>
                                     {isQuiz ? "Bài tập" : "Bài giảng"}
                                 </span>

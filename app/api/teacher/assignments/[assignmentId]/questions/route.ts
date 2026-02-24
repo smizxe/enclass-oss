@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(
     req: Request,
-    { params }: { params: { assignmentId: string } }
+    { params }: { params: Promise<{ assignmentId: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -13,12 +13,13 @@ export async function POST(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        const { assignmentId } = await params;
         const body = await req.json();
         const { type, content, correctAnswer, points } = body;
 
         // Verify ownership via Assignment -> Class -> Teacher
         const assignment = await prisma.assignment.findUnique({
-            where: { id: params.assignmentId },
+            where: { id: assignmentId },
             include: {
                 class: true
             }
@@ -30,7 +31,7 @@ export async function POST(
 
         const question = await prisma.question.create({
             data: {
-                assignmentId: params.assignmentId,
+                assignmentId,
                 type,
                 content,
                 correctAnswer, // String
@@ -47,12 +48,14 @@ export async function POST(
 
 export async function GET(
     req: Request,
-    { params }: { params: { assignmentId: string } }
+    { params }: { params: Promise<{ assignmentId: string }> }
 ) {
     try {
+        const { assignmentId } = await params;
+
         const questions = await prisma.question.findMany({
             where: {
-                assignmentId: params.assignmentId
+                assignmentId
             },
             orderBy: {
                 createdAt: "asc" // Or add orderIndex to Question model later if needed

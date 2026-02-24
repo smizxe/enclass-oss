@@ -11,9 +11,10 @@ export default async function ClassLayout({
     params
 }: {
     children: React.ReactNode;
-    params: { classId: string };
+    params: Promise<{ classId: string }>;
 }) {
     const session = await getServerSession(authOptions);
+    const { classId } = await params;
 
     if (!session) {
         return redirect("/");
@@ -21,7 +22,7 @@ export default async function ClassLayout({
 
     const classItem = await prisma.class.findUnique({
         where: {
-            id: params.classId,
+            id: classId,
         },
         include: {
             assignments: {

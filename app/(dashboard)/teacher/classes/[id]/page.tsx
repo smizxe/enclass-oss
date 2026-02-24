@@ -19,9 +19,10 @@ import { CreateAssignmentButton } from "./_components/create-assignment-button";
 export default async function ClassIdPage({
     params
 }: {
-    params: { id: string }
+    params: Promise<{ id: string }>
 }) {
     const session = await getServerSession(authOptions);
+    const { id } = await params;
 
     if (!session || session.user.role !== "TEACHER") {
         return redirect("/");
@@ -29,7 +30,7 @@ export default async function ClassIdPage({
 
     const classItem = await prisma.class.findUnique({
         where: {
-            id: params.id,
+            id,
         },
         include: {
             assignments: {

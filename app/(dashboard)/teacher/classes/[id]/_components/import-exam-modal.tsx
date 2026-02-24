@@ -6,12 +6,20 @@ import axios from "axios";
 import toast from "react-hot-toast";
 
 interface Question {
+    questionNumber?: number;
     type: string;
     content: string;
     options?: string[];
     correctAnswer?: string;
     explanation?: string | null;
+}
+
+interface Section {
+    title: string;
+    type: string;
     passage?: string | null;
+    passageTranslation?: string | null;
+    questions: Question[];
 }
 
 interface ImportExamModalProps {
@@ -23,11 +31,12 @@ interface ImportExamModalProps {
 export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModalProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [questions, setQuestions] = useState<Question[]>([]);
+    const [sections, setSections] = useState<Section[]>([]);
     const [step, setStep] = useState<"upload" | "preview" | "saving">("upload");
     const [title, setTitle] = useState("");
     const [error, setError] = useState("");
-    const [expandedExplanations, setExpandedExplanations] = useState<Set<number>>(new Set());
+    const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
+    const [expandedExplanations, setExpandedExplanations] = useState<Set<string>>(new Set());
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -38,7 +47,6 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
             }
             setFile(selectedFile);
             setError("");
-            // Auto-set title from filename
             setTitle(selectedFile.name.replace(".docx", ""));
         }
     };
@@ -57,7 +65,26 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                 headers: { "Content-Type": "multipart/form-data" },
             });
 
-            setQuestions(response.data);
+            const data = response.data;
+
+            // Handle both section-based output and legacy flat array
+            if (data.sections && Array.isArray(data.sections)) {
+                setSections(data.sections);
+            } else if (Array.isArray(data)) {
+                // Legacy flat array - convert to single section
+                setSections([{
+                    title: "Câu hỏi",
+                    type: "STANDALONE",
+                    passage: null,
+                    passageTranslation: null,
+                    questions: data.map((q: Question, i: number) => ({
+                        ...q,
+                        questionNumber: i + 1
+                    }))
+                }]);
+            } else {
+                setSections([]);
+            }
             setStep("preview");
         } catch (err: unknown) {
             console.error(err);
@@ -80,7 +107,7 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
         try {
             await axios.post(`/api/teacher/classes/${classId}/import/save`, {
                 title,
-                questions,
+                sections,
             });
 
             toast.success("Import thành công!");
@@ -96,12 +123,8 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
         }
     };
 
-    const removeQuestion = (index: number) => {
-        setQuestions((prev) => prev.filter((_, i) => i !== index));
-    };
-
-    const toggleExplanation = (index: number) => {
-        setExpandedExplanations((prev) => {
+    const toggleSection = (index: number) => {
+        setExpandedSections((prev) => {
             const newSet = new Set(prev);
             if (newSet.has(index)) {
                 newSet.delete(index);
@@ -112,12 +135,23 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
         });
     };
 
-    // Count questions with explanations
-    const questionsWithExplanations = questions.filter(q => q.explanation).length;
+    const toggleExplanation = (key: string) => {
+        setExpandedExplanations((prev) => {
+            const newSet = new Set(prev);
+            if (newSet.has(key)) {
+                newSet.delete(key);
+            } else {
+                newSet.add(key);
+            }
+            return newSet;
+        });
+    };
+
+    const totalQuestions = sections.reduce((acc, s) => acc + s.questions.length, 0);
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b">
                     <h2 className="text-xl font-bold text-slate-900">
@@ -125,10 +159,7 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                         {step === "preview" && "Xem trước và chỉnh sửa"}
                         {step === "saving" && "Đang lưu..."}
                     </h2>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition"
-                    >
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -145,36 +176,23 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                     {step === "upload" && (
                         <div className="space-y-4">
                             <div
-                                className={`border-2 border-dashed rounded-xl p-8 text-center transition ${file ? "border-indigo-300 bg-indigo-50" : "border-slate-300 hover:border-indigo-400"
-                                    }`}
+                                className={`border-2 border-dashed rounded-xl p-8 text-center transition ${file ? "border-indigo-300 bg-indigo-50" : "border-slate-300 hover:border-indigo-400"}`}
                             >
-                                <input
-                                    type="file"
-                                    accept=".docx"
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                    id="file-upload"
-                                />
+                                <input type="file" accept=".docx" onChange={handleFileChange} className="hidden" id="file-upload" />
                                 <label htmlFor="file-upload" className="cursor-pointer">
                                     {file ? (
                                         <div className="flex items-center justify-center gap-3">
                                             <FileText className="w-10 h-10 text-indigo-600" />
                                             <div className="text-left">
                                                 <p className="font-medium text-slate-900">{file.name}</p>
-                                                <p className="text-sm text-slate-500">
-                                                    {(file.size / 1024).toFixed(1)} KB
-                                                </p>
+                                                <p className="text-sm text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
                                             </div>
                                         </div>
                                     ) : (
                                         <>
                                             <Upload className="w-12 h-12 mx-auto text-slate-400 mb-3" />
-                                            <p className="text-slate-600 font-medium">
-                                                Kéo thả file hoặc click để chọn
-                                            </p>
-                                            <p className="text-sm text-slate-400 mt-1">
-                                                Hỗ trợ file .docx (Word) - Đề thi TNPT
-                                            </p>
+                                            <p className="text-slate-600 font-medium">Kéo thả file hoặc click để chọn</p>
+                                            <p className="text-sm text-slate-400 mt-1">Hỗ trợ file .docx (Word) - Đề thi TNPT</p>
                                         </>
                                     )}
                                 </label>
@@ -184,8 +202,8 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                 <h3 className="font-medium text-slate-700 mb-2">Hướng dẫn</h3>
                                 <ul className="text-sm text-slate-600 space-y-1">
                                     <li>• Hỗ trợ định dạng đề thi TNPT (THPT Quốc gia)</li>
-                                    <li>• AI sẽ tự động nhận diện các phần, bài đọc và câu hỏi</li>
-                                    <li>• Lời giải (nếu có) sẽ được trích xuất tự động</li>
+                                    <li>• AI sẽ tự động nhận diện các phần (Reading, Gap Fill...)</li>
+                                    <li>• Bài đọc chung sẽ được nhóm với các câu hỏi liên quan</li>
                                 </ul>
                             </div>
                         </div>
@@ -194,101 +212,119 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                     {step === "preview" && (
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    Tiêu đề bài tập
-                                </label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Tiêu đề bài tập</label>
                                 <input
                                     type="text"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                                     placeholder="Nhập tiêu đề..."
                                 />
                             </div>
 
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-slate-600">
-                                    Đã tìm thấy <span className="font-bold text-indigo-600">{questions.length}</span> câu hỏi
+                                    <span className="font-bold text-indigo-600">{sections.length}</span> phần,{" "}
+                                    <span className="font-bold text-indigo-600">{totalQuestions}</span> câu hỏi
                                 </span>
-                                {questionsWithExplanations > 0 && (
-                                    <span className="flex items-center gap-1 text-emerald-600">
-                                        <BookOpen className="w-4 h-4" />
-                                        {questionsWithExplanations} câu có lời giải
-                                    </span>
-                                )}
                             </div>
 
-                            <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                                {questions.map((q, index) => (
-                                    <div
-                                        key={index}
-                                        className="bg-slate-50 rounded-xl p-4 border border-slate-200"
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded">
-                                                        {q.type}
-                                                    </span>
-                                                    <span className="text-xs text-slate-500">Câu {index + 1}</span>
-                                                    {q.correctAnswer && (
-                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
-                                                            Đáp án: {q.correctAnswer}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-slate-900 whitespace-pre-wrap text-sm">
-                                                    {q.content}
-                                                </p>
-                                                {q.options && q.options.length > 0 && (
-                                                    <div className="mt-2 grid grid-cols-2 gap-1">
-                                                        {q.options.map((opt, i) => (
-                                                            <div
-                                                                key={i}
-                                                                className={`text-sm px-3 py-1.5 rounded ${q.correctAnswer && String.fromCharCode(65 + i) === q.correctAnswer
-                                                                    ? "bg-green-100 text-green-800 font-medium"
-                                                                    : "bg-white text-slate-600"
-                                                                    }`}
-                                                            >
-                                                                {String.fromCharCode(65 + i)}. {opt}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {/* Explanation toggle */}
-                                                {q.explanation && (
-                                                    <div className="mt-3">
-                                                        <button
-                                                            onClick={() => toggleExplanation(index)}
-                                                            className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition"
-                                                        >
-                                                            {expandedExplanations.has(index) ? (
-                                                                <>
-                                                                    <ChevronUp className="w-3 h-3" />
-                                                                    Ẩn lời giải
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <ChevronDown className="w-3 h-3" />
-                                                                    Xem lời giải
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                        {expandedExplanations.has(index) && (
-                                                            <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900 whitespace-pre-wrap">
-                                                                {q.explanation}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
+                            <div className="space-y-4 max-h-[450px] overflow-y-auto">
+                                {sections.map((section, sIndex) => (
+                                    <div key={sIndex} className="border border-slate-200 rounded-xl overflow-hidden">
+                                        {/* Section Header */}
+                                        <button
+                                            onClick={() => toggleSection(sIndex)}
+                                            className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-medium rounded">
+                                                    {section.type}
+                                                </span>
+                                                <span className="font-medium text-slate-900">{section.title}</span>
+                                                <span className="text-xs text-slate-500">({section.questions.length} câu)</span>
                                             </div>
-                                            <button
-                                                onClick={() => removeQuestion(index)}
-                                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                                            {expandedSections.has(sIndex) ? (
+                                                <ChevronUp className="w-5 h-5 text-slate-400" />
+                                            ) : (
+                                                <ChevronDown className="w-5 h-5 text-slate-400" />
+                                            )}
+                                        </button>
+
+                                        {expandedSections.has(sIndex) && (
+                                            <div className="p-4 space-y-4">
+                                                {/* Passage */}
+                                                {section.passage && (
+                                                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                        <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-2">
+                                                            <BookOpen className="w-4 h-4" />
+                                                            Đoạn văn chung
+                                                        </div>
+                                                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                                            {section.passage}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Questions */}
+                                                <div className="space-y-3">
+                                                    {section.questions.map((q, qIndex) => {
+                                                        const expKey = `${sIndex}-${qIndex}`;
+                                                        return (
+                                                            <div key={qIndex} className="p-3 bg-white border border-slate-200 rounded-lg">
+                                                                <div className="flex items-start gap-3">
+                                                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded">
+                                                                        Câu {q.questionNumber || qIndex + 1}
+                                                                    </span>
+                                                                    {q.correctAnswer && (
+                                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+                                                                            Đáp án: {q.correctAnswer}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {q.content && (
+                                                                    <p className="mt-2 text-sm text-slate-800">{q.content}</p>
+                                                                )}
+                                                                {q.options && q.options.length > 0 && (
+                                                                    <div className="mt-2 grid grid-cols-2 gap-1">
+                                                                        {q.options.map((opt, i) => (
+                                                                            <div
+                                                                                key={i}
+                                                                                className={`text-sm px-2 py-1 rounded ${q.correctAnswer === String.fromCharCode(65 + i)
+                                                                                    ? "bg-green-100 text-green-800 font-medium"
+                                                                                    : "bg-slate-50 text-slate-600"
+                                                                                    }`}
+                                                                            >
+                                                                                {String.fromCharCode(65 + i)}. {opt}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                {q.explanation && (
+                                                                    <div className="mt-2">
+                                                                        <button
+                                                                            onClick={() => toggleExplanation(expKey)}
+                                                                            className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                                                        >
+                                                                            {expandedExplanations.has(expKey) ? (
+                                                                                <><ChevronUp className="w-3 h-3" /> Ẩn lời giải</>
+                                                                            ) : (
+                                                                                <><ChevronDown className="w-3 h-3" /> Xem lời giải</>
+                                                                            )}
+                                                                        </button>
+                                                                        {expandedExplanations.has(expKey) && (
+                                                                            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 whitespace-pre-wrap">
+                                                                                {q.explanation}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -307,27 +343,18 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                 <div className="p-5 border-t bg-slate-50 flex justify-end gap-3">
                     {step === "upload" && (
                         <>
-                            <button
-                                onClick={onClose}
-                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
-                            >
+                            <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition">
                                 Hủy
                             </button>
                             <button
                                 onClick={handleUpload}
                                 disabled={!file || isLoading}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition"
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition"
                             >
                                 {isLoading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Đang phân tích...
-                                    </>
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> Đang phân tích...</>
                                 ) : (
-                                    <>
-                                        <Upload className="w-4 h-4" />
-                                        Phân tích bằng AI
-                                    </>
+                                    <><Upload className="w-4 h-4" /> Phân tích bằng AI</>
                                 )}
                             </button>
                         </>
@@ -335,19 +362,16 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
 
                     {step === "preview" && (
                         <>
-                            <button
-                                onClick={() => setStep("upload")}
-                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
-                            >
+                            <button onClick={() => setStep("upload")} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition">
                                 Quay lại
                             </button>
                             <button
                                 onClick={handleSave}
-                                disabled={questions.length === 0 || isLoading}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition"
+                                disabled={totalQuestions === 0 || isLoading}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2 transition"
                             >
                                 <Check className="w-4 h-4" />
-                                Lưu {questions.length} câu hỏi
+                                Lưu {totalQuestions} câu hỏi
                             </button>
                         </>
                     )}

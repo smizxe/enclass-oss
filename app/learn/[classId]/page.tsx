@@ -4,11 +4,13 @@ import prisma from "@/lib/prisma";
 export default async function ClassIdPage({
     params
 }: {
-    params: { classId: string; }
+    params: Promise<{ classId: string; }>
 }) {
+    const { classId } = await params;
+
     const classItem = await prisma.class.findUnique({
         where: {
-            id: params.classId,
+            id: classId,
         },
         include: {
             assignments: {

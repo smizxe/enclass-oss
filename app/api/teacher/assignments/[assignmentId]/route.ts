@@ -12,7 +12,7 @@ const assignmentSchema = z.object({
 
 export async function GET(
     req: Request,
-    { params }: { params: { assignmentId: string } }
+    { params }: { params: Promise<{ assignmentId: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -20,9 +20,11 @@ export async function GET(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        const { assignmentId } = await params;
+
         const assignment = await prisma.assignment.findUnique({
             where: {
-                id: params.assignmentId,
+                id: assignmentId,
             },
             include: {
                 class: true,
@@ -42,7 +44,7 @@ export async function GET(
 
 export async function PATCH(
     req: Request,
-    { params }: { params: { assignmentId: string } }
+    { params }: { params: Promise<{ assignmentId: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -50,7 +52,7 @@ export async function PATCH(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const { assignmentId } = params;
+        const { assignmentId } = await params;
         const body = await req.json();
         const { title, content, type } = assignmentSchema.parse(body);
 

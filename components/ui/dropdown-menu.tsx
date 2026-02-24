@@ -21,7 +21,8 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
         <div className="relative inline-block text-left" ref={dropdownRef}>
             {React.Children.map(children, (child) => {
                 if (React.isValidElement(child)) {
-                    return React.cloneElement(child, { isOpen, setIsOpen });
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    return React.cloneElement(child as React.ReactElement<any>, { isOpen, setIsOpen });
                 }
                 return child;
             })}
