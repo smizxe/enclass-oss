@@ -14,6 +14,15 @@ export async function POST(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        // Verify user exists in DB (to catch stale sessions after DB reset)
+        const userExists = await prisma.user.findUnique({
+            where: { id: session.user.id }
+        });
+
+        if (!userExists) {
+            return new NextResponse("User record not found. Please log out and log in again.", { status: 401 });
+        }
+
         const { assignmentId } = await params;
         const body = await req.json();
         const { answers } = body;
