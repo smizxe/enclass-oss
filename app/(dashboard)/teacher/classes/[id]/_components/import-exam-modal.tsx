@@ -261,9 +261,10 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                                             <BookOpen className="w-4 h-4" />
                                                             Đoạn văn chung
                                                         </div>
-                                                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                                                            {section.passage}
-                                                        </p>
+                                                        <div
+                                                            className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&>p]:mb-2 [&>strong]:font-bold [&>u]:underline"
+                                                            dangerouslySetInnerHTML={{ __html: section.passage || '' }}
+                                                        />
                                                     </div>
                                                 )}
 
@@ -284,7 +285,10 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                                                     )}
                                                                 </div>
                                                                 {q.content && (
-                                                                    <p className="mt-2 text-sm text-slate-800">{q.content}</p>
+                                                                    <div
+                                                                        className="mt-2 text-sm text-slate-800 [&>strong]:font-bold [&>u]:underline [&>em]:italic"
+                                                                        dangerouslySetInnerHTML={{ __html: q.content }}
+                                                                    />
                                                                 )}
 
                                                                 {/* Display Items for ORDERING questions */}
