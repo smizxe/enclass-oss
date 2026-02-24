@@ -58,7 +58,7 @@ export const GapFillQuestion = ({
         };
 
         return (
-            <div className="text-base leading-8">
+            <div className="leading-8">
                 {parts.map((part: string, index: number) => {
                     if (part.startsWith("{") && part.endsWith("}")) {
                         const currentInputIndex = inputCounter++;
@@ -86,12 +86,12 @@ export const GapFillQuestion = ({
     return (
         <div className="space-y-4">
             {/* Question text with blanks shown */}
-            <div className="text-base text-slate-800 leading-relaxed">
+            <div className="text-slate-800 leading-relaxed">
                 {hasUnderscoreGaps ? (
                     questionText.split(/(_____+)/g).map((part: string, index: number) => {
                         if (part.match(/^_+$/)) {
                             return (
-                                <span key={index} className="inline-block mx-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded font-mono text-sm">
+                                <span key={index} className="inline-block mx-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded font-mono">
                                     ({index + 1})
                                 </span>
                             );
@@ -105,7 +105,7 @@ export const GapFillQuestion = ({
 
             {/* Single Input */}
             <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-slate-600">Câu trả lời của bạn:</label>
+                <label className="font-medium text-slate-600">Câu trả lời của bạn:</label>
                 <Input
                     className={`max-w-md ${result
                         ? (result.isCorrect
@@ -123,7 +123,7 @@ export const GapFillQuestion = ({
 
             {/* Result feedback */}
             {result && (
-                <div className={`p-3 rounded-lg text-sm ${result.isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                <div className={`p-3 rounded-lg ${result.isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
                     <span className="font-bold">{result.isCorrect ? "Chính xác!" : "Chưa chính xác!"}</span>
                     {!result.isCorrect && (
                         <span className="ml-2">Đáp án đúng: <strong>{result.correctAnswer}</strong></span>

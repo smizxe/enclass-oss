@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History, ClipboardList, FileText, Clock } from "lucide-react";
@@ -71,7 +71,8 @@ const SectionContent = ({
     showPassage = true,
     startIndex,
     submissionResult,
-    fontSize = 16
+    passageFontSize = 16,
+    questionFontSize = 16
 }: {
     group: QuestionGroup,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,11 +83,12 @@ const SectionContent = ({
     startIndex: number,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     submissionResult?: any,
-    fontSize?: number
+    passageFontSize?: number,
+    questionFontSize?: number
 }) => {
     let questionCounter = startIndex;
     return (
-        <div className="space-y-8 pb-10" style={{ fontSize: `${fontSize}px` }}>
+        <div className="space-y-8 pb-10">
             <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 uppercase tracking-wide">
                     <div className="h-px flex-1 bg-slate-200"></div>
@@ -127,7 +129,7 @@ const SectionContent = ({
 
                         {/* Render HTML/Markdown from Editor */}
                         <div className="text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
-                            style={{ fontSize: `${fontSize}px` }}>
+                            style={{ fontSize: `${passageFontSize}px` }}>
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 rehypePlugins={[rehypeRaw]}
@@ -138,7 +140,7 @@ const SectionContent = ({
                         {group.passageTranslation && (
                             <div className="mt-4 pt-4 border-t border-slate-200">
                                 <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                <div className="text-slate-600 italic leading-relaxed" style={{ fontSize: `${fontSize}px` }}>
+                                <div className="text-slate-600 italic leading-relaxed" style={{ fontSize: `${passageFontSize}px` }}>
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
                                         rehypePlugins={[rehypeRaw]}
@@ -152,7 +154,7 @@ const SectionContent = ({
                 )}
 
                 {/* Questions */}
-                <div className="space-y-4">
+                <div className="space-y-4" style={{ fontSize: `${questionFontSize}px` }}>
                     {group.questions.filter(q => q.type !== "SECTION_HEADER").map((q) => {
                         const currentIndex = questionCounter++;
                         const result = submissionResult?.results?.[q.id];
@@ -284,7 +286,10 @@ export const QuizRunner = ({
     const [submissionResult, setSubmissionResult] = useState<any>(null);
     const [viewingAttempt, setViewingAttempt] = useState<number | null>(null); // null = latest/current
     const [isStartingNewAttempt, setIsStartingNewAttempt] = useState(false);
-    const [fontSize, setFontSize] = useState(16);
+    const [passageFontSize, setPassageFontSize] = useState(16);
+    const [questionFontSize, setQuestionFontSize] = useState(16);
+    const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
+    const appearanceRef = useRef<HTMLDivElement>(null);
 
     const canRetry = currentAttemptCount < maxAttempts;
     const remainingAttempts = maxAttempts - currentAttemptCount;
@@ -559,25 +564,118 @@ export const QuizRunner = ({
     );
 
 
-    const FontSizeControl = () => (
-        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 mr-2 shadow-sm">
+    // Close appearance popup when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (appearanceRef.current && !appearanceRef.current.contains(event.target as Node)) {
+                setIsAppearanceOpen(false);
+            }
+        };
+
+        if (isAppearanceOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isAppearanceOpen]);
+
+    const AppearanceControl = (
+        <div className="relative appearance-control" ref={appearanceRef}>
             <button
-                onClick={() => setFontSize(prev => Math.max(12, prev - 1))}
-                className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-600 font-medium text-xs transition"
-                title="Giảm kích thước chữ"
+                onClick={() => setIsAppearanceOpen(!isAppearanceOpen)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition text-sm font-medium ${isAppearanceOpen
+                    ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
             >
-                A-
+                <span className="text-base">Aa</span>
             </button>
-            <span className="w-6 text-center text-xs font-semibold text-slate-700 select-none">
-                {fontSize}
-            </span>
-            <button
-                onClick={() => setFontSize(prev => Math.min(24, prev + 1))}
-                className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-600 font-medium text-sm transition"
-                title="Tăng kích thước chữ"
-            >
-                A+
-            </button>
+
+            {isAppearanceOpen && (
+                <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50 animate-in fade-in zoom-in-95 duration-200 transform origin-top-right">
+                    <div className="space-y-4">
+                        {/* Passage Font Size */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cỡ chữ bài đọc</span>
+                                <input
+                                    type="number"
+                                    min={12}
+                                    max={32}
+                                    value={passageFontSize}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        if (!isNaN(val)) setPassageFontSize(Math.max(12, Math.min(32, val)));
+                                    }}
+                                    className="w-12 text-xs font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-transparent focus:border-indigo-500 focus:outline-none text-center"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                                <button
+                                    onClick={() => setPassageFontSize(prev => Math.max(12, prev - 1))}
+                                    className="w-8 h-8 flex items-center justify-center rounded bg-white border border-slate-200 shadow-sm text-slate-600 hover:text-indigo-600 active:scale-95 transition"
+                                >
+                                    A-
+                                </button>
+                                <div className="flex-1 h-1 bg-slate-200 rounded-full mx-2 overflow-hidden">
+                                    <div
+                                        className="h-full bg-indigo-500 rounded-full transition-all"
+                                        style={{ width: `${((passageFontSize - 12) / 20) * 100}%` }}
+                                    ></div>
+                                </div>
+                                <button
+                                    onClick={() => setPassageFontSize(prev => Math.min(32, prev + 1))}
+                                    className="w-8 h-8 flex items-center justify-center rounded bg-white border border-slate-200 shadow-sm text-slate-600 hover:text-indigo-600 active:scale-95 transition"
+                                >
+                                    A+
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Separator */}
+                        <div className="h-px bg-slate-100"></div>
+
+                        {/* Question Font Size */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cỡ chữ câu hỏi</span>
+                                <input
+                                    type="number"
+                                    min={12}
+                                    max={32}
+                                    value={questionFontSize}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        if (!isNaN(val)) setQuestionFontSize(Math.max(12, Math.min(32, val)));
+                                    }}
+                                    className="w-12 text-xs font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-transparent focus:border-indigo-500 focus:outline-none text-center"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                                <button
+                                    onClick={() => setQuestionFontSize(prev => Math.max(12, prev - 1))}
+                                    className="w-8 h-8 flex items-center justify-center rounded bg-white border border-slate-200 shadow-sm text-slate-600 hover:text-indigo-600 active:scale-95 transition"
+                                >
+                                    A-
+                                </button>
+                                <div className="flex-1 h-1 bg-slate-200 rounded-full mx-2 overflow-hidden">
+                                    <div
+                                        className="h-full bg-indigo-500 rounded-full transition-all"
+                                        style={{ width: `${((questionFontSize - 12) / 20) * 100}%` }}
+                                    ></div>
+                                </div>
+                                <button
+                                    onClick={() => setQuestionFontSize(prev => Math.min(32, prev + 1))}
+                                    className="w-8 h-8 flex items-center justify-center rounded bg-white border border-slate-200 shadow-sm text-slate-600 hover:text-indigo-600 active:scale-95 transition"
+                                >
+                                    A+
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 
@@ -728,7 +826,7 @@ export const QuizRunner = ({
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <FontSizeControl />
+                            {AppearanceControl}
 
                             {/* Submit Button (Header - always visible on desktop) */}
                             {!isSubmitted ? (
@@ -765,7 +863,7 @@ export const QuizRunner = ({
                                 passage={activeGroup.passage}
                                 passageTranslation={activeGroup.passageTranslation}
                                 sectionImages={activeGroup.sectionImages}
-                                fontSize={fontSize}
+                                fontSize={passageFontSize}
                             />
                         </div>
                     }
@@ -780,7 +878,8 @@ export const QuizRunner = ({
                                     showPassage={false} // Don't show passage on right side in Split View
                                     startIndex={currentSectionStartIndex}
                                     submissionResult={submissionResult}
-                                    fontSize={fontSize}
+                                    passageFontSize={passageFontSize}
+                                    questionFontSize={questionFontSize}
                                 />
                             </div>
 
@@ -801,7 +900,8 @@ export const QuizRunner = ({
                         showPassage={true}
                         startIndex={currentSectionStartIndex}
                         submissionResult={submissionResult}
-                        fontSize={fontSize}
+                        passageFontSize={passageFontSize}
+                        questionFontSize={questionFontSize}
                     />
                 </div>
 
@@ -871,13 +971,13 @@ const McqQuestionSimple = ({
             {/* Display Items for ORDERING questions */}
             {displayData.items.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
-                    <div className="text-sm font-medium text-amber-700 mb-2">
+                    <div className="font-medium text-amber-700 mb-2">
                         📝 Các câu cần sắp xếp:
                     </div>
                     {displayData.items.map((item, index) => (
                         <div
                             key={index}
-                            className="text-sm text-slate-700 pl-3 py-2 border-l-3 border-amber-400 bg-white rounded-r-lg px-3 shadow-sm"
+                            className="text-slate-700 pl-3 py-2 border-l-3 border-amber-400 bg-white rounded-r-lg px-3 shadow-sm"
                         >
                             {item}
                         </div>
@@ -969,7 +1069,7 @@ const McqQuestionSimple = ({
                                     )}
                                 </div>
                                 <div className="flex-1">
-                                    <span className="text-sm font-medium">{option}</span>
+                                    <span className="font-medium">{option}</span>
                                 </div>
                             </button>
                         );
@@ -979,7 +1079,7 @@ const McqQuestionSimple = ({
 
             {/* Explanation / Result Text */}
             {result && (
-                <div className={`mt-3 text-sm p-3 rounded-lg ${result.isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                <div className={`mt-3 p-3 rounded-lg ${result.isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
                     <span className="font-bold">{result.isCorrect ? "Chính xác!" : "Chưa chính xác!"}</span>
                     {!result.isCorrect && (
                         <span className="ml-2">Đáp án đúng: <strong>{result.correctAnswer}</strong></span>
