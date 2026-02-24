@@ -131,14 +131,21 @@ IF a section contains BOTH intro text AND a table/form:
    - **items**: ["a. Sentence 1", "b. Sentence 2", ...]
    - **options**: ["A. a-b-c", "B. c-b-a", ...]
 
-2. **READING / GAP_FILL**:
+2. **TRUE/FALSE/NOT GIVEN or YES/NO/NOT GIVEN** (IELTS Reading):
+   - Type: "MCQ" (treat as multiple choice!)
+   - **options**: ["TRUE", "FALSE", "NOT GIVEN"] or ["YES", "NO", "NOT GIVEN"]
+   - **correctAnswer**: "TRUE" or "FALSE" or "NOT GIVEN" (the exact option text)
+   - These are MCQ questions with predefined options. ALWAYS include the options array.
+
+3. **READING / GAP_FILL**:
    - Group questions sharing a passage.
    - **passage**: The COMPLETE, FULL reading passage text. Do NOT shorten or omit ANY part.
    - **passageTable**: If there's a table/form, put the HTML table here.
    - Include task instructions in "passage" or in the first question's "content".
 
-3. **MCQ**: Standard multiple choice.
+4. **MCQ**: Standard multiple choice.
    - **passage**: Reading passage + task instructions if applicable.
+   - **options**: MUST include all answer choices. NEVER leave options empty for MCQ.
 
 **JSON STRUCTURE:**
 {
@@ -267,8 +274,14 @@ IF a section contains BOTH intro text AND a table/form:
 
                     sendSSE(controller, "progress", { stage: "parsing", message: "Đang hoàn tất..." });
 
-                    // Parse the complete response
-                    const jsonString = fullText.replace(/```json/g, "").replace(/```/g, "").trim();
+                    // Robust JSON extraction
+                    let jsonString = fullText.replace(/```json/g, "").replace(/```/g, "").trim();
+                    const firstBrace = jsonString.indexOf("{");
+                    const lastBrace = jsonString.lastIndexOf("}");
+
+                    if (firstBrace !== -1 && lastBrace !== -1) {
+                        jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+                    }
 
                     try {
                         const data = JSON.parse(jsonString);
@@ -317,7 +330,14 @@ IF a section contains BOTH intro text AND a table/form:
         const response = await result.response;
         const fullText = response.text();
 
-        const jsonString = fullText.replace(/```json/g, "").replace(/```/g, "").trim();
+        // Robust JSON extraction
+        let jsonString = fullText.replace(/```json/g, "").replace(/```/g, "").trim();
+        const firstBrace = jsonString.indexOf("{");
+        const lastBrace = jsonString.lastIndexOf("}");
+
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+        }
 
         let data;
         try {

@@ -127,9 +127,6 @@ const SectionContent = ({
                         </div>
 
 
-                        import remarkGfm from "remark-gfm";
-
-                        // ... imports ...
 
                         {/* Render HTML/Markdown from Editor */}
                         <div className="text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
@@ -258,10 +255,13 @@ const SectionContent = ({
                                         />
                                     )}
                                     {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY", "ORDERING", "SPEAKING", "WRITING"].includes(q.type) && (
-                                        <div className="bg-slate-50 p-4 rounded-lg">
-                                            <p className="text-slate-600">{q.content}</p>
-                                            <p className="mt-2 text-xs text-slate-400">[Loại câu hỏi chưa hỗ trợ: {q.type}]</p>
-                                        </div>
+                                        <McqQuestionSimple
+                                            question={q}
+                                            value={answers[q.id] as string}
+                                            onChange={(val) => onAnswerChange(q.id, val)}
+                                            result={result}
+                                            isMultiSelect={!!(q.correctAnswer && q.correctAnswer.includes(","))}
+                                        />
                                     )}
                                 </div>
                             </div>
@@ -427,9 +427,22 @@ export const QuizRunner = ({
         for (const q of assignment.questions) {
             let parsed;
             try {
+                // Try strictly first
                 parsed = JSON.parse(q.content);
-            } catch {
-                parsed = { text: q.content, options: [] };
+            } catch (e) {
+                // If strict parse fails, try to sanitize common issues
+                try {
+                    // Replace literal newlines with escaped newlines
+                    // This handles cases where content might have been saved with physical line breaks
+                    const sanitized = q.content
+                        .replace(/\n/g, "\\n")
+                        .replace(/\r/g, "");
+                    parsed = JSON.parse(sanitized);
+                } catch (e2) {
+                    console.error("Failed to parse question content:", q.id, e2);
+                    // Fallback to treating it as plain text
+                    parsed = { text: q.content, options: [] };
+                }
             }
 
             const sectionTitle = parsed.sectionTitle || "Câu hỏi";
@@ -1028,6 +1041,23 @@ const McqQuestionSimple = ({
 }) => {
     const { parsed } = question;
 
+    // Auto-detect TRUE/FALSE/NOT GIVEN or YES/NO/NOT GIVEN questions
+    // If no options but answer matches T/F/NG pattern, generate options
+    const effectiveOptions = useMemo(() => {
+        if (parsed.options && parsed.options.length > 0) {
+            return parsed.options;
+        }
+        // Check if correctAnswer suggests TRUE/FALSE/NOT GIVEN
+        const answer = (question.correctAnswer || "").toUpperCase().trim();
+        if (["TRUE", "FALSE", "NOT GIVEN"].includes(answer)) {
+            return ["TRUE", "FALSE", "NOT GIVEN"];
+        }
+        if (["YES", "NO", "NOT GIVEN"].includes(answer)) {
+            return ["YES", "NO", "NOT GIVEN"];
+        }
+        return parsed.options || [];
+    }, [parsed.options, question.correctAnswer]);
+
     // Fallback: If no items are present, try to extract them from the text
     // This handles older assignments where items were merged into the text
     const displayData = useMemo(() => {
@@ -1077,9 +1107,9 @@ const McqQuestionSimple = ({
             )}
 
             {/* Options */}
-            {parsed.options && parsed.options.length > 0 && (
+            {effectiveOptions && effectiveOptions.length > 0 && (
                 <div className="flex flex-col space-y-2">
-                    {parsed.options.map((option, index) => {
+                    {effectiveOptions.map((option, index) => {
                         const optionValue = typeof option === 'string' ? option : option;
                         // Single Select vs Multi Select check
                         const isSelected = isMultiSelect
