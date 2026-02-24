@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AudioManager } from "@/components/audio-manager";
 import { Editor } from "@/components/editor";
 import { supabase } from "@/lib/supabase";
+import showdown from "showdown";
 
 interface Question {
     id: string;
@@ -377,7 +378,10 @@ export default function AssignmentEditorPage() {
             sectionTitle: group.sectionTitle,
             sectionAudio: group.sectionAudio,
             sectionImages: group.sectionImages || [],
-            passage: group.passage || "",
+            passage: (() => {
+                const converter = new showdown.Converter();
+                return converter.makeHtml(group.passage || "");
+            })(),
             passageTable: group.passageTable || "",
             passageTranslation: group.passageTranslation || ""
         });
@@ -542,13 +546,18 @@ export default function AssignmentEditorPage() {
                                         {group.passage && (
                                             <div className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-blue-100 prose prose-sm max-w-none [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
                                                 {/* If passage looks like HTML (contains table or tags), render directly. Otherwise Markdown. */}
-                                                {(group.passage.includes("<table") || group.passage.includes("<p>")) ? (
-                                                    <div dangerouslySetInnerHTML={{ __html: group.passage }} />
-                                                ) : (
-                                                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                                        {group.passage}
-                                                    </ReactMarkdown>
-                                                )}
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    rehypePlugins={[rehypeRaw]}
+                                                    components={{
+                                                        // Ensure tables don't get stripped or messed up
+                                                        table: ({ node: _node, ...props }) => <table className="w-full border-collapse border border-slate-300" {...props} />,
+                                                        th: ({ node: _node, ...props }) => <th className="border border-slate-300 bg-slate-50 p-2 text-left" {...props} />,
+                                                        td: ({ node: _node, ...props }) => <td className="border border-slate-300 p-2" {...props} />,
+                                                    }}
+                                                >
+                                                    {group.passage.replace(/\n/g, "  \n")}
+                                                </ReactMarkdown>
                                             </div>
                                         )}
 

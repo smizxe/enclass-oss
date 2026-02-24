@@ -13,6 +13,7 @@ import { GapFillQuestion } from "@/components/questions/gap-fill-question";
 import { SortableQuestion } from "@/components/questions/sortable-question";
 import { EssayQuestion } from "@/components/questions/essay-question";
 import { StickyAudioPlayer } from "@/components/sticky-audio-player";
+import { PassageViewer } from "./passage-viewer";
 
 interface QuizRunnerProps {
     assignment: {
@@ -39,6 +40,7 @@ interface ParsedQuestion {
         passageTranslation?: string;
         sectionTitle?: string;
         sectionType?: string;
+        sectionImages?: string[];
     };
 }
 
@@ -47,7 +49,8 @@ interface QuestionGroup {
     sectionType: string;
     passage?: string;
     passageTranslation?: string;
-    sectionAudio?: string; // Added field
+    sectionAudio?: string;
+    sectionImages?: string[];
     questions: ParsedQuestion[];
 }
 
@@ -277,15 +280,17 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                     sectionType,
                     passage: parsed.passage,
                     passageTranslation: parsed.passageTranslation,
-                    sectionAudio: parsed.sectionAudio, // Capture sectionAudio
+                    sectionAudio: parsed.sectionAudio,
+                    sectionImages: parsed.sectionImages || [],
                     questions: []
                 };
                 groups.push(currentGroup);
             }
 
-            // Fallback: If current question has sectionAudio but group doesn't 
-            if (parsed.sectionAudio && !currentGroup.sectionAudio) {
-                currentGroup.sectionAudio = parsed.sectionAudio;
+            // Fallback: update group info if missing
+            if (parsed.sectionAudio && !currentGroup.sectionAudio) currentGroup.sectionAudio = parsed.sectionAudio;
+            if (parsed.sectionImages && (!currentGroup.sectionImages || currentGroup.sectionImages.length === 0)) {
+                currentGroup.sectionImages = parsed.sectionImages;
             }
 
             // Add question to current group
@@ -500,40 +505,13 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                 <ResizableSplitPane
                     // Passage Pane (Left)
                     left={
-                        <div id="split-left" className="h-full overflow-y-auto p-6 space-y-8 pb-20 scroll-smooth">
-                            {activeGroup.passage ? (
-                                <div className="scroll-mt-4 animate-in fade-in duration-500">
-                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
-                                        <span>{activeGroup.sectionTitle}</span>
-                                    </div>
-                                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                                        <div className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-3 border-b border-slate-100 pb-2">
-                                            <BookOpen className="w-4 h-4" />
-                                            <span>Đọc đoạn văn</span>
-                                        </div>
-                                        <div
-                                            className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2"
-                                            dangerouslySetInnerHTML={{ __html: activeGroup.passage || '' }}
-                                        />
-                                        {activeGroup.passageTranslation && (
-                                            <div className="mt-4 pt-4 border-t border-slate-200">
-                                                <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                                <div
-                                                    className="text-sm text-slate-600 italic leading-relaxed"
-                                                    dangerouslySetInnerHTML={{ __html: activeGroup.passageTranslation }}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-slate-400 italic">
-                                    <div className="text-center">
-                                        <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                                        <p>Phần này không có bài đọc</p>
-                                    </div>
-                                </div>
-                            )}
+                        <div id="split-left" className="h-full overflow-y-auto p-6 pb-20 scroll-smooth">
+                            <PassageViewer
+                                sectionTitle={activeGroup.sectionTitle}
+                                passage={activeGroup.passage}
+                                passageTranslation={activeGroup.passageTranslation}
+                                sectionImages={activeGroup.sectionImages}
+                            />
                         </div>
                     }
                     // Questions Pane (Right)

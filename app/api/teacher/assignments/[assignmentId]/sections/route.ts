@@ -58,6 +58,9 @@ export async function PATCH(
                 if (body.sectionAudio !== undefined) {
                     parsedContent.sectionAudio = body.sectionAudio;
                 }
+                if (body.sectionImages !== undefined) {
+                    parsedContent.sectionImages = body.sectionImages;
+                }
 
                 return prisma.question.update({
                     where: { id: q.id },
