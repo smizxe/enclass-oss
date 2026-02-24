@@ -52,6 +52,43 @@ Analyze the following exam content and extract ALL questions in a structured JSO
      "passageTable": "<table border='1'><tr><th>Name</th><td>______</td></tr></table>"
    }
 
+🔴🔴🔴 CRITICAL RULE #4 - READING PASSAGE MUST BE LINKED (VERY IMPORTANT) 🔴🔴🔴
+   For IELTS Reading tests, EVERY section/part that has questions about a reading passage MUST include the FULL reading passage text in the "passage" field.
+   - If the document has a long reading passage followed by multiple question groups (e.g., Questions 1-5 MCQ, Questions 6-10 GAP_FILL), ALL those groups MUST include the SAME full reading passage in their "passage" field.
+   - Do NOT create a section with questions but an empty/missing passage if those questions reference a reading text.
+   - If multiple Parts share one reading passage, DUPLICATE the full passage into each Part's "passage" field.
+   - The passage must be COMPLETE - do NOT shorten, summarize, or truncate it.
+   
+   ❌ WRONG: { "sectionTitle": "Part 2: Questions 6-10", "passage": "", "questions": [...] }
+   ✅ CORRECT: { "sectionTitle": "Part 2: Questions 6-10", "passage": "[THE FULL READING PASSAGE TEXT]", "questions": [...] }
+
+🔴 CRITICAL RULE #5 - PRESERVE ALL TASK INSTRUCTIONS AND INTRO TEXT:
+   Many IELTS sections have instruction lines BEFORE the questions, such as:
+   - "Choose TWO letters, A-E."
+   - "Complete the sentences below. Write NO MORE THAN TWO WORDS."
+   - "Which paragraph contains the following information?"
+   - A list of items/statements to match (like bullet lists)
+   - A small descriptive paragraph explaining the task
+   
+   These MUST be preserved! Rules:
+   1. If the instruction applies to ALL questions in the section, put it at the BEGINNING of the "passage" field (before the reading text, separated by a newline).
+   2. If the instruction is a task-specific intro that only applies to a sub-group of questions, include it in the FIRST question's "text" field of that sub-group, prefixed before the actual question.
+   3. NEVER drop or skip instruction lines. They are critical for students to understand what to do.
+   
+   Example: If the exam says:
+   "Questions 8-9: Choose TWO letters, A-E. Which TWO of the following are mentioned?"
+   Then question 8's text should be: "**Choose TWO letters, A-E.**\\nWhich TWO of the following are mentioned?"
+
+🔴 CRITICAL RULE #6 - COMPLETE QUESTION CONTENT (NEVER TRUNCATE):
+   Each question's "text" field must contain ALL text that belongs to that question:
+   - If a question has a mini-passage, introductory sentence, or context paragraph before the actual question stem, include ALL of it.
+   - If there are bullet points, numbered lists, or example items within a question, include ALL of them.
+   - If the question references a small text excerpt (not the main passage), include it in the "text" field.
+   - NEVER drop the first line of a question's content. The first line often contains critical context.
+   
+   ❌ WRONG (first line dropped): { "text": "What is the main purpose of the center?" }
+   ✅ CORRECT (all content preserved): { "text": "Read the following announcement and answer the question.\\nThe Riverside Community Center opened in 2019...\\nWhat is the main purpose of the center?" }
+
 IMPORTANT RULES:
 1. Identify sections/parts (e.g., "Part 1", "Section 1", "Questions 1-5").
 2. For each question, determine the type:
@@ -77,11 +114,11 @@ FORMATTING RULES FOR TEXT CONTENT:
 
 2. **READING / GAP_FILL**:
    - Group questions sharing a passage.
-   - **passage**: COMPLETE intro text / Context description (WITHOUT the table). Do NOT shorten.
+   - **passage**: The FULL reading passage text + any task instructions. Do NOT shorten or omit.
    - **passageTable**: The COMPLETE HTML Table code (\`<table...>...</table>\`) if present. ALWAYS separate tables from text.
 
 3. **MCQ**: Standard multiple choice.
-   - **passage**: Intro text only.
+   - **passage**: Reading passage + intro text.
    - **passageTable**: HTML Table (if any) goes HERE, NOT in "passage".
 
 OUTPUT FORMAT (JSON):
@@ -89,16 +126,30 @@ OUTPUT FORMAT (JSON):
     "hasAnswerKey": true/false,
     "sections": [
         {
-            "sectionTitle": "Part 1: Personal Information",
-            "sectionType": "LISTENING",
-            "passage": "Complete the form below. Write ONE WORD AND/OR A NUMBER for each answer.",
-            "passageTable": "<table border='1' style='border-collapse: collapse; width: 100%;'><tr><th>Field</th><th>Answer</th></tr><tr><td>Name</td><td>_____</td></tr></table>",
+            "sectionTitle": "Part 1: Questions 1-7",
+            "sectionType": "READING",
+            "passage": "Read the following passage and answer Questions 1-7.\\n\\n[THE FULL READING PASSAGE TEXT - NEVER OMIT THIS]",
+            "passageTable": "",
             "questions": [
                 {
                     "type": "MCQ",
-                    "text": "Question 1: What is the speaker's name?",
-                    "options": ["A. John", "B. Jane", "C. Jack", "D. Jill"],
-                    "correctAnswer": "A",
+                    "text": "**Choose the correct letter A, B, C or D.**\\nWhat is the main idea of the first paragraph?",
+                    "options": ["A. The history of the building", "B. The purpose of the center", "C. The location details", "D. The opening ceremony"],
+                    "correctAnswer": "B",
+                    "predictedAnswer": false,
+                    "points": 1
+                }
+            ]
+        },
+        {
+            "sectionTitle": "Part 2: Questions 8-13",
+            "sectionType": "READING",
+            "passage": "[SAME FULL READING PASSAGE if questions reference the same text]\\n\\n**Complete the sentences below. Write NO MORE THAN TWO WORDS for each answer.**",
+            "questions": [
+                {
+                    "type": "GAP_FILL",
+                    "text": "The center was originally built as a _____.",
+                    "correctAnswer": "warehouse",
                     "predictedAnswer": false,
                     "points": 1
                 }
@@ -119,10 +170,14 @@ For ORDERING, the correctAnswer should be the correct sequence (e.g., "B" if opt
 - Set "predictedAnswer": true if you predicted the answer ✅
 - Does EVERY question have a "correctAnswer" filled? ✅
 - If you see a table/form, is it in "passageTable" field, NOT in "passage" field? ✅
+- Does EVERY Reading section include the FULL reading passage in "passage"? ✅
+- Are ALL task instructions (Choose TWO, Write NO MORE THAN...) preserved? ✅
+- Is EVERY question's "text" field COMPLETE with no truncated content? ✅
 
 Here is the exam content to analyze:
 
 `;
+
 
 export async function POST(
     req: Request,
