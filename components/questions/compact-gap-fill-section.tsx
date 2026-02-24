@@ -81,14 +81,17 @@ export const CompactGapFillSection = ({
 
         for (const [num] of questionMap) {
             // Pattern: number followed by dots or underscores (with optional spaces)
+            // No 'g' flag: each question number should appear once, and avoids .test()/.replace() lastIndex bug
             const patterns = [
-                new RegExp(`(\\b${num})\\s*[\\.…]{3,}`, 'g'),
-                new RegExp(`(\\b${num})\\s*_{3,}`, 'g'),
+                new RegExp(`(\\b${num})\\s*[\\.…]{3,}`),
+                new RegExp(`(\\b${num})\\s*_{3,}`),
             ];
             for (const pattern of patterns) {
-                if (pattern.test(processed)) {
-                    processed = processed.replace(pattern, `{${num}}`);
+                const replaced = processed.replace(pattern, `{${num}}`);
+                if (replaced !== processed) {
+                    processed = replaced;
                     foundMarkers = true;
+                    break; // Found match for this number, skip other patterns
                 }
             }
         }
@@ -120,13 +123,11 @@ export const CompactGapFillSection = ({
                 // Actually, usually the question text IS the context. The blank follows it.
                 // So we replace [Text] with [Text {N}]
 
-                // We use a global regex to find the occurrence. 
-                // Note: This modifies 'processed' iteratively.
+                // Single .replace() call — avoids redundant regex work
                 const regex = new RegExp(`(${escapedText})\\s*([\\._]{3,})?`, 'i');
-
-                if (regex.test(processed)) {
-                    // Replace: Keep the text, append {N}
-                    processed = processed.replace(regex, `$1 {${num}}`);
+                const replaced = processed.replace(regex, `$1 {${num}}`);
+                if (replaced !== processed) {
+                    processed = replaced;
                     foundMarkers = true;
                 }
             }
