@@ -37,9 +37,7 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
     const [title, setTitle] = useState("");
     const [error, setError] = useState("");
     const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
-
     const [expandedExplanations, setExpandedExplanations] = useState<Set<string>>(new Set());
-    const [foundQuestionsCount, setFoundQuestionsCount] = useState(0);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -59,110 +57,40 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
 
         setIsLoading(true);
         setError("");
-        setIsLoading(true);
-        setError("");
-        setSections([]); // Clear previous results
-        setFoundQuestionsCount(0);
 
         const formData = new FormData();
         formData.append("file", file);
 
         try {
-            // Use fetch for streaming support
-            const response = await fetch(`/api/teacher/classes/${classId}/import/stream`, {
-                method: "POST",
-                body: formData,
+            const response = await axios.post(`/api/teacher/classes/${classId}/import`, formData, {
+                headers: { "Content-Type": "multipart/form-data" },
             });
 
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(text || "Upload failed");
-            }
+            const data = response.data;
 
-            if (!response.body) throw new Error("No response body");
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "";
-            let fullResult = "";
-
-            setStep("preview"); // Move to preview mode immediately to show progress
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value, { stream: true });
-                buffer += chunk;
-
-                // Process SSE events
-                const lines = buffer.split("\n\n");
-                // Keep the last partial line in the buffer
-                buffer = lines.pop() || "";
-
-                for (const line of lines) {
-                    if (line.startsWith("data: ")) {
-                        const dataContent = line.slice(6);
-
-                        // Check for completion signal
-                        if (dataContent === "[DONE]") continue;
-
-                        try {
-                            const { chunk: textChunk } = JSON.parse(dataContent);
-                            fullResult += textChunk;
-
-                            // Update progress using regex counting
-                            const questionCount = (fullResult.match(/"questionNumber"\s*:/g) || []).length;
-                            if (questionCount > foundQuestionsCount) {
-                                setFoundQuestionsCount(questionCount);
-                            }
-
-                            // Try to parse partial JSON for real-time preview if it closes any objects
-                            // This is a naive heuristic but works for simple streaming updates
-                            // For strict JSON, we might wait for full result, but to show "Real-time" 
-                            // we can try to find array closures or just wait for the end for perfect structure.
-                            // Better approach: AI is outputting one big JSON. 
-                            // We can try to repair "broken" JSON to preview partial results
-                            // OR mostly wait. 
-
-                            // Let's try a simple extraction of "sections" array if it exists
-                            // Or simpler: just let it stream and parse at end, 
-                            // BUT showing partial text is cool too.
-
-                            // For now, let's just show a "Processing..." text with length
-                        } catch (e) {
-                            console.log("Chunk parse error", e);
-                        }
-                    }
-                }
-            }
-
-            // Final parse
-            const cleanJson = fullResult.replace(/```json/g, "").replace(/```/g, "").trim();
-            let data;
-            try {
-                data = JSON.parse(cleanJson);
-            } catch (e) {
-                console.error("Final JSON parse error:", e);
-                console.log("Full result was:", fullResult);
-                throw new Error("AI response was incomplete or invalid JSON. Please check the console for details.");
-            }
-
+            // Handle both section-based output and legacy flat array
             if (data.sections && Array.isArray(data.sections)) {
                 setSections(data.sections);
             } else if (Array.isArray(data)) {
+                // Legacy flat array - convert to single section
                 setSections([{
                     title: "Câu hỏi",
                     type: "STANDALONE",
-                    questions: data.map((q: Question, i: number) => ({ ...q, questionNumber: i + 1 }))
+                    passage: null,
+                    passageTranslation: null,
+                    questions: data.map((q: Question, i: number) => ({
+                        ...q,
+                        questionNumber: i + 1
+                    }))
                 }]);
+            } else {
+                setSections([]);
             }
-
+            setStep("preview");
         } catch (err: unknown) {
             console.error(err);
-            const errorMsg = err instanceof Error ? err.message : "Lỗi khi phân tích file";
-            setError(errorMsg);
-            setStep("upload"); // Go back to upload on error
+            const errorMsg = (err as { response?: { data?: string } })?.response?.data;
+            setError(errorMsg || "Lỗi khi phân tích file. Vui lòng thử lại.");
         } finally {
             setIsLoading(false);
         }
@@ -298,16 +226,8 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-slate-600">
                                     <span className="font-bold text-indigo-600">{sections.length}</span> phần,{" "}
-                                    <span className="font-bold text-indigo-600">
-                                        {sections.length > 0 ? totalQuestions : foundQuestionsCount}
-                                    </span> câu hỏi
+                                    <span className="font-bold text-indigo-600">{totalQuestions}</span> câu hỏi
                                 </span>
-                                {isLoading && (
-                                    <span className="flex items-center gap-2 text-indigo-600 font-medium text-xs bg-indigo-50 px-3 py-1 rounded-full animate-pulse">
-                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                        AI đang phân tích...
-                                    </span>
-                                )}
                             </div>
 
                             <div className="space-y-4 max-h-[450px] overflow-y-auto">
