@@ -38,8 +38,10 @@ export default async function AssignmentIdPage({
     }
 
     // Get max attempts from settings
-    const settings = assignment.settings as { maxAttempts?: number } | null;
+    const settings = assignment.settings as { maxAttempts?: number; timeLimitMinutes?: number; deadline?: string } | null;
     const maxAttempts = settings?.maxAttempts || 1;
+    const timeLimitMinutes = settings?.timeLimitMinutes || 0;
+    const deadline = settings?.deadline || null;
 
     // Fetch ALL submissions for this user (not just latest)
     const progress = await prisma.assignmentProgress.findUnique({
@@ -83,6 +85,8 @@ export default async function AssignmentIdPage({
                         currentAttemptCount={currentAttemptCount}
                         isTestMode={assignment.isTestMode}
                         userId={session.user.id}
+                        timeLimitMinutes={timeLimitMinutes}
+                        deadline={deadline}
                     />
                 )}
             </div>

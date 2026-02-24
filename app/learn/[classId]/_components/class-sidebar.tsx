@@ -115,7 +115,7 @@ export const ClassSidebar = ({
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                         <AssignmentIcon className={cn(
-                            "w-4 h-4",
+                            "w-4 h-4 shrink-0",
                             isActive ? "text-indigo-500" : isCompleted ? "text-emerald-400" : "text-indigo-400"
                         )} />
                         <span className={cn(
@@ -125,6 +125,42 @@ export const ClassSidebar = ({
                             {assignment.title}
                         </span>
                     </div>
+                    {/* Time Limit & Deadline Badges */}
+                    {(() => {
+                        const settings = assignment.settings as { timeLimitMinutes?: number; deadline?: string } | null;
+                        const hasTimer = settings?.timeLimitMinutes && settings.timeLimitMinutes > 0;
+                        const hasDeadline = settings?.deadline;
+                        if (!hasTimer && !hasDeadline) return null;
+
+                        const deadlineDate = hasDeadline ? new Date(settings!.deadline!) : null;
+                        const isUrgent = deadlineDate && (deadlineDate.getTime() - Date.now() < 24 * 60 * 60 * 1000);
+                        const isExpired = deadlineDate && deadlineDate < new Date();
+
+                        return (
+                            <div className="flex items-center gap-1.5 mt-1 ml-6">
+                                {hasTimer && (
+                                    <span className={cn(
+                                        "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                                        isActive ? "bg-amber-100 text-amber-700" : "bg-amber-500/20 text-amber-300"
+                                    )}>
+                                        ⏱️ {Math.floor(settings!.timeLimitMinutes! / 60) > 0 ? `${Math.floor(settings!.timeLimitMinutes! / 60)}h` : ""}{settings!.timeLimitMinutes! % 60 > 0 ? `${settings!.timeLimitMinutes! % 60}m` : ""}
+                                    </span>
+                                )}
+                                {deadlineDate && (
+                                    <span className={cn(
+                                        "text-[10px] px-1.5 py-0.5 rounded-full font-medium truncate",
+                                        isExpired
+                                            ? (isActive ? "bg-red-100 text-red-600" : "bg-red-500/20 text-red-300")
+                                            : isUrgent
+                                                ? (isActive ? "bg-orange-100 text-orange-600" : "bg-orange-500/20 text-orange-300")
+                                                : (isActive ? "bg-slate-100 text-slate-500" : "bg-white/10 text-indigo-300")
+                                    )}>
+                                        {isExpired ? "Hết hạn" : `${deadlineDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}`}
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
             </button>
         );

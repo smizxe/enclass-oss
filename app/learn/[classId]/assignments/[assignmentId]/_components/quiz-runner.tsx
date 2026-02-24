@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History, ClipboardList, FileText, Clock } from "lucide-react";
@@ -36,6 +36,8 @@ interface QuizRunnerProps {
     currentAttemptCount?: number;
     isTestMode?: boolean;
     userId?: string;
+    timeLimitMinutes?: number;
+    deadline?: string | null;
 }
 
 interface ParsedQuestion {
@@ -387,7 +389,9 @@ export const QuizRunner = ({
     maxAttempts = 1,
     currentAttemptCount = 0,
     isTestMode = false,
-    userId = ""
+    userId = "",
+    timeLimitMinutes = 0,
+    deadline = null
 }: QuizRunnerProps) => {
     const router = useRouter();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -407,6 +411,103 @@ export const QuizRunner = ({
     // Option mappings for Test Mode (questionId -> original indices array)
     const [optionMappings, setOptionMappings] = useState<Record<string, number[]>>({});
 
+    // ====== TIMER & DEADLINE STATE ======
+    const timerKey = `timer_${assignment.id}_${userId}`;
+    const hasTimeLimit = timeLimitMinutes > 0;
+    const [showTimerWarning, setShowTimerWarning] = useState(false); // Popup cảnh báo
+    const [timerStarted, setTimerStarted] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState(timeLimitMinutes * 60); // seconds
+    const autoSubmitRef = useRef(false); // Prevent double auto-submit
+
+    // Check deadline expiry
+    const isDeadlineExpired = deadline ? new Date(deadline) < new Date() : false;
+    const deadlineDate = deadline ? new Date(deadline) : null;
+
+    // Format time remaining as HH:MM:SS
+    const formatTime = useCallback((seconds: number) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }, []);
+
+    // Auto-submit when timer expires
+    const handleAutoSubmit = useCallback(async () => {
+        if (autoSubmitRef.current || isSubmitted) return;
+        autoSubmitRef.current = true;
+        toast.error("⏰ Hết giờ! Bài làm đang được tự động nộp...");
+        try {
+            const response = await fetch(`/api/student/assignments/${assignment.id}/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    answers,
+                    optionMappings: isTestMode ? optionMappings : undefined,
+                    isTestMode
+                })
+            });
+            if (response.ok) {
+                const result = await response.json();
+                setSubmissionResult(result);
+                setIsSubmitted(true);
+                localStorage.removeItem(timerKey);
+                toast.success(`Bài đã được tự động nộp. Điểm: ${result.score}/${result.totalScore}`);
+            }
+        } catch (error) {
+            console.error("Auto-submit error:", error);
+            toast.error("Lỗi khi tự động nộp bài");
+            autoSubmitRef.current = false;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [answers, assignment.id, isSubmitted, isTestMode, optionMappings, timerKey]);
+
+    // Initialize timer from localStorage on mount
+    useEffect(() => {
+        if (!hasTimeLimit || isSubmitted || initialSubmission) return;
+
+        const savedStartTime = localStorage.getItem(timerKey);
+        if (savedStartTime) {
+            // Timer was already started — resume
+            const elapsed = Math.floor((Date.now() - parseInt(savedStartTime)) / 1000);
+            const remaining = Math.max(0, timeLimitMinutes * 60 - elapsed);
+            setTimeRemaining(remaining);
+            setTimerStarted(true);
+            if (remaining <= 0) {
+                handleAutoSubmit();
+            }
+        } else {
+            // Show warning popup for first-time visit
+            setShowTimerWarning(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasTimeLimit, isSubmitted, initialSubmission]);
+
+    // Countdown interval
+    useEffect(() => {
+        if (!timerStarted || isSubmitted) return;
+
+        const interval = setInterval(() => {
+            setTimeRemaining(prev => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    handleAutoSubmit();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [timerStarted, isSubmitted, handleAutoSubmit]);
+
+    // Start timer (called from warning popup)
+    const handleStartTimer = () => {
+        localStorage.setItem(timerKey, Date.now().toString());
+        setTimerStarted(true);
+        setShowTimerWarning(false);
+        setTimeRemaining(timeLimitMinutes * 60);
+    };
 
     const canRetry = currentAttemptCount < maxAttempts;
     const remainingAttempts = maxAttempts - currentAttemptCount;
@@ -618,6 +719,8 @@ export const QuizRunner = ({
                     toast.success(`Nộp bài thành công! Điểm số: ${result.score}/${result.totalScore}`);
                 }
                 setIsSubmitted(true);
+                // Clear timer from localStorage
+                if (hasTimeLimit) localStorage.removeItem(timerKey);
             } else {
                 toast.error("Có lỗi xảy ra khi nộp bài");
             }
@@ -658,17 +761,73 @@ export const QuizRunner = ({
         );
     }
 
+    // ====== TIMER WARNING POPUP ======
+    if (showTimerWarning && hasTimeLimit && !isSubmitted && !initialSubmission) {
+        const hours = Math.floor(timeLimitMinutes / 60);
+        const mins = timeLimitMinutes % 60;
+        return (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 fade-in duration-300">
+                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white text-center">
+                        <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Clock className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-xl font-bold">⏱️ Bài tập có giới hạn thời gian</h2>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                            <p className="text-2xl font-bold text-amber-700">
+                                {hours > 0 ? `${hours} giờ ` : ""}{mins > 0 ? `${mins} phút` : ""}
+                            </p>
+                            <p className="text-sm text-amber-600 mt-1">để hoàn thành bài tập</p>
+                        </div>
+                        <div className="text-sm text-slate-600 space-y-2">
+                            <p>⚠️ Thời gian sẽ bắt đầu tính ngay khi bạn bấm <strong>"Bắt đầu"</strong>.</p>
+                            <p>⚠️ Nếu hết giờ, bài sẽ <strong>tự động nộp</strong>.</p>
+                            <p>⚠️ Không thể tạm dừng hoặc bắt đầu lại đồng hồ.</p>
+                            {deadlineDate && (
+                                <p className="text-red-600">📅 Hạn nộp: {deadlineDate.toLocaleString("vi-VN", { dateStyle: "long", timeStyle: "short" })}</p>
+                            )}
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => window.history.back()}
+                                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition"
+                            >
+                                ← Quay lại
+                            </button>
+                            <button
+                                onClick={handleStartTimer}
+                                className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold hover:from-emerald-700 hover:to-emerald-600 transition shadow-lg shadow-emerald-200"
+                            >
+                                🚀 Bắt đầu làm bài
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const activeGroup = groupedQuestions[activeSectionIndex];
     const isFirstSection = activeSectionIndex === 0;
     const isLastSection = activeSectionIndex === groupedQuestions.length - 1;
 
     const SubmitButton = ({ className }: { className?: string }) => {
         if (isSubmitted) return null;
+        if (isDeadlineExpired) {
+            return (
+                <div className={`bg-red-100 text-red-700 font-medium flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm ${className}`}>
+                    <Clock className="w-4 h-4" />
+                    Đã hết hạn nộp bài
+                </div>
+            );
+        }
 
         return (
             <button
                 onClick={onSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (hasTimeLimit && showTimerWarning)}
                 className={`bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-indigo-200 ${className}`}
             >
                 {isSubmitting ? (
@@ -995,6 +1154,28 @@ export const QuizRunner = ({
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {/* Countdown Timer */}
+                            {hasTimeLimit && timerStarted && !isSubmitted && (
+                                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${timeRemaining <= 300
+                                        ? "bg-red-100 text-red-700 border border-red-200 animate-pulse"
+                                        : timeRemaining <= 600
+                                            ? "bg-amber-100 text-amber-700 border border-amber-200"
+                                            : "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                    }`}>
+                                    <Clock className="w-4 h-4" />
+                                    {formatTime(timeRemaining)}
+                                </div>
+                            )}
+
+                            {/* Deadline Badge */}
+                            {deadlineDate && !isSubmitted && (
+                                <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${isDeadlineExpired
+                                        ? "bg-red-50 text-red-600 border-red-200"
+                                        : "bg-slate-50 text-slate-600 border-slate-200"
+                                    }`}>
+                                    📅 {isDeadlineExpired ? "Hết hạn" : `Hạn: ${deadlineDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })} ${deadlineDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`}
+                                </div>
+                            )}
                             {AppearanceControl}
 
                             {/* Submit Button (Header - always visible on desktop) */}
