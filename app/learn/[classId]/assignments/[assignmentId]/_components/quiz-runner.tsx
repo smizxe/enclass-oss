@@ -309,20 +309,44 @@ const McqQuestionSimple = ({
 }) => {
     const { parsed } = question;
 
+    // Fallback: If no items are present, try to extract them from the text
+    // This handles older assignments where items were merged into the text
+    const displayData = useMemo(() => {
+        if (parsed.items && parsed.items.length > 0) {
+            return { text: parsed.text, items: parsed.items };
+        }
+
+        // Attempt to extract "a. ... b. ..." pattern
+        const regex = /(?:^|\s)([a-e])\.\s+(.*?)(?=\s+[a-e]\.\s+|$)/g;
+        const matches = Array.from(parsed.text.matchAll(regex));
+
+        if (matches.length >= 2) {
+            const items = matches.map(m => `${m[1]}. ${m[2]}`);
+            // The intro is everything before the first item
+            const firstMatchIndex = parsed.text.indexOf(matches[0][0]);
+            const intro = parsed.text.substring(0, firstMatchIndex).trim();
+            return { text: intro, items };
+        }
+
+        return { text: parsed.text, items: [] };
+    }, [parsed.text, parsed.items]);
+
     return (
         <div className="space-y-4">
             {/* Question Text */}
-            <div className="text-base font-medium text-slate-900">
-                {parsed.text}
-            </div>
+            {displayData.text && (
+                <div className="text-base font-medium text-slate-900">
+                    {displayData.text}
+                </div>
+            )}
 
             {/* Display Items for ORDERING questions */}
-            {parsed.items && parsed.items.length > 0 && (
+            {displayData.items.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
                     <div className="text-sm font-medium text-amber-700 mb-2">
                         📝 Các câu cần sắp xếp:
                     </div>
-                    {parsed.items.map((item, index) => (
+                    {displayData.items.map((item, index) => (
                         <div
                             key={index}
                             className="text-sm text-slate-700 pl-3 py-2 border-l-3 border-amber-400 bg-white rounded-r-lg px-3 shadow-sm"
@@ -346,8 +370,8 @@ const McqQuestionSimple = ({
                                 type="button"
                                 onClick={() => onChange(optionValue)}
                                 className={`flex items-center space-x-3 border p-3 rounded-lg transition text-left ${isSelected
-                                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
-                                        : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                                    ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
+                                    : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                                     }`}
                             >
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? "border-indigo-500 bg-indigo-500" : "border-slate-300"

@@ -254,6 +254,23 @@ export default function AssignmentEditorPage() {
                                         const currentIndex = questionCounter++;
                                         const parsed = q.parsed;
 
+                                        // Fallback: If no items are present, try to extract them from the text
+                                        let displayText = parsed.text;
+                                        let displayItems = parsed.items || [];
+
+                                        if (displayItems.length === 0) {
+                                            // Attempt to extract "a. ... b. ..." pattern
+                                            const regex = /(?:^|\s)([a-e])\.\s+(.*?)(?=\s+[a-e]\.\s+|$)/g;
+                                            const matches = Array.from(parsed.text.matchAll(regex));
+
+                                            if (matches.length >= 2) {
+                                                displayItems = matches.map(m => `${m[1]}. ${m[2]}`);
+                                                // The intro is everything before the first item
+                                                const firstMatchIndex = parsed.text.indexOf(matches[0][0]);
+                                                displayText = parsed.text.substring(0, firstMatchIndex).trim();
+                                            }
+                                        }
+
                                         return (
                                             <div key={q.id} className="p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
                                                 <div className="flex justify-between items-start mb-2">
@@ -264,15 +281,15 @@ export default function AssignmentEditorPage() {
                                                         </button>
                                                     </div>
                                                 </div>
-                                                <div className="text-slate-900 font-medium mb-3">{parsed.text}</div>
+                                                <div className="text-slate-900 font-medium mb-3">{displayText}</div>
 
                                                 {/* Display Items for ORDERING questions */}
-                                                {parsed.items && parsed.items.length > 0 && (
+                                                {displayItems.length > 0 && (
                                                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2 mb-3">
                                                         <div className="text-sm font-medium text-amber-700 mb-2">
                                                             📝 Các câu cần sắp xếp:
                                                         </div>
-                                                        {parsed.items.map((item, index) => (
+                                                        {displayItems.map((item, index) => (
                                                             <div
                                                                 key={index}
                                                                 className="text-sm text-slate-700 pl-3 py-2 border-l-4 border-amber-400 bg-white rounded-r-lg px-3 shadow-sm"
