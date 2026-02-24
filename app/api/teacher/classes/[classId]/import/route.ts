@@ -108,13 +108,10 @@ ${text.substring(0, 60000)}
 Return ONLY the JSON object, no markdown code blocks.
 `;
 
-    // Use streaming for faster response
-    const streamResult = await model.generateContentStream(prompt);
-
-    let fullText = "";
-    for await (const chunk of streamResult.stream) {
-      fullText += chunk.text();
-    }
+    // Use standard generation to avoid stream parsing errors on Vercel
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const fullText = response.text();
 
     // Clean up markdown code blocks if present
     const jsonString = fullText.replace(/```json/g, "").replace(/```/g, "").trim();
