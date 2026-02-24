@@ -16,7 +16,7 @@ export async function PATCH(
 
         const { assignmentId } = await params;
         const body = await req.json();
-        const { questionIds, sectionTitle, passage, passageTranslation } = body;
+        const { questionIds, sectionTitle, passage, passageTable, passageTranslation } = body;
 
         if (!Array.isArray(questionIds) || questionIds.length === 0) {
             return new NextResponse("Invalid question IDs", { status: 400 });
@@ -53,6 +53,7 @@ export async function PATCH(
                 // Update section data
                 parsedContent.sectionTitle = sectionTitle;
                 parsedContent.passage = passage;
+                parsedContent.passageTable = passageTable;
                 parsedContent.passageTranslation = passageTranslation;
                 if (body.sectionAudio !== undefined) {
                     parsedContent.sectionAudio = body.sectionAudio;

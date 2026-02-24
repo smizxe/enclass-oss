@@ -8,6 +8,7 @@ const assignmentSchema = z.object({
     title: z.string().min(1),
     content: z.string().optional(),
     type: z.enum(["LECTURE", "QUIZ", "TEST", "ESSAY"]),
+    settings: z.any().optional(),
 });
 
 export async function GET(
@@ -31,8 +32,13 @@ export async function GET(
             }
         });
 
-        if (!assignment || assignment.class.teacherId !== session.user.id) {
+        if (!assignment) {
             return new NextResponse("Not Found", { status: 404 });
+        }
+
+        // Allow if teacher owns class OR if admin (future proof)
+        if (assignment.class.teacherId !== session.user.id) {
+            return new NextResponse("Unauthorized", { status: 401 });
         }
 
         return NextResponse.json(assignment);
@@ -54,7 +60,7 @@ export async function PATCH(
 
         const { assignmentId } = await params;
         const body = await req.json();
-        const { title, content, type } = assignmentSchema.parse(body);
+        const { title, content, type, settings } = assignmentSchema.parse(body);
 
         const assignment = await prisma.assignment.findUnique({
             where: {
@@ -77,6 +83,7 @@ export async function PATCH(
                 title,
                 content,
                 type,
+                settings,
             },
         });
 

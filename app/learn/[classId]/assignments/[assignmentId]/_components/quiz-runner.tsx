@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
 import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import { ResizableSplitPane } from "@/components/ui/resizable-split-pane";
 
 import { McqQuestion } from "@/components/questions/mcq-question";
@@ -28,6 +30,7 @@ interface ParsedQuestion {
     type: string;
     content: string;
     points: number;
+    correctAnswer: string;
     parsed: {
         text: string;
         items?: string[];
@@ -102,18 +105,32 @@ const SectionContent = ({
                             <BookOpen className="w-4 h-4" />
                             <span>Đọc đoạn văn sau:</span>
                         </div>
-                        {/* Render HTML from Quill Editor */}
-                        <div
-                            className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2"
-                            dangerouslySetInnerHTML={{ __html: group.passage }}
-                        />
+
+
+                        import remarkGfm from "remark-gfm";
+
+                        // ... imports ...
+
+                        {/* Render HTML/Markdown from Editor */}
+                        <div className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw]}
+                            >
+                                {group.passage || ""}
+                            </ReactMarkdown>
+                        </div>
                         {group.passageTranslation && (
                             <div className="mt-4 pt-4 border-t border-slate-200">
                                 <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                <div
-                                    className="text-sm text-slate-600 italic leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: group.passageTranslation }}
-                                />
+                                <div className="text-sm text-slate-600 italic leading-relaxed">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw]}
+                                    >
+                                        {group.passageTranslation || ""}
+                                    </ReactMarkdown>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -174,6 +191,7 @@ const SectionContent = ({
                                             value={answers[q.id] as string}
                                             onChange={(val) => onAnswerChange(q.id, val)}
                                             result={result}
+                                            isMultiSelect={!!(q.correctAnswer && q.correctAnswer.includes(","))}
                                         />
                                     )}
                                     {q.type === "GAP_FILL" && (
@@ -572,13 +590,15 @@ const McqQuestionSimple = ({
     question,
     value,
     onChange,
-    result
+    result,
+    isMultiSelect
 }: {
     question: ParsedQuestion;
     value: string | undefined;
     onChange: (val: string) => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    result?: any
+    result?: any;
+    isMultiSelect?: boolean;
 }) => {
     const { parsed } = question;
 
@@ -635,7 +655,10 @@ const McqQuestionSimple = ({
                 <div className="flex flex-col space-y-2">
                     {parsed.options.map((option, index) => {
                         const optionValue = typeof option === 'string' ? option : option;
-                        const isSelected = value === optionValue;
+                        // Single Select vs Multi Select check
+                        const isSelected = isMultiSelect
+                            ? (value ? value.split(",").includes(optionValue) : false)
+                            : (value === optionValue);
 
                         // Result Styling
                         let resultClass = "";
@@ -643,50 +666,78 @@ const McqQuestionSimple = ({
                         let isCorrectAnswer = false;
 
                         if (result) {
-                            disabled = true;
+                            // Check correct answer based on whether optionValue is in the correct answer string (for multi) or exact match (for single)
+                            const correctAnswersList = result.correctAnswer ? result.correctAnswer.split(",") : [];
                             const optionLetter = String.fromCharCode(65 + index);
-                            isCorrectAnswer = (optionValue === result.correctAnswer || result.correctAnswer === optionLetter);
+
+                            // Check if this option is ONE OF the correct answers
+                            isCorrectAnswer = correctAnswersList.includes(optionValue) || correctAnswersList.includes(optionLetter);
 
                             if (isCorrectAnswer) {
                                 // Correct Answer (always highlighted)
                                 resultClass = "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-200 text-emerald-800";
                             } else if (isSelected && !result.isCorrect) {
-                                // Selected but Wrong
+                                // Selected but Wrong (Note: In multi-select, entire question is marked correct/wrong, but we can show partials? Logic usually marks whole Q wrong if any wrong)
+                                // If this option was selected but is NOT correct
                                 resultClass = "border-red-500 bg-red-100 ring-2 ring-red-200 text-red-800";
-                            } else if (isSelected && result.isCorrect) {
-                                // Selected and Correct (already handled by first case, but valid for clarity)
+                            } else if (isSelected && isCorrectAnswer) {
+                                // Selected and Correct
                                 resultClass = "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-200 text-emerald-800";
                             } else {
                                 // Not selected, plain
                                 resultClass = "opacity-60";
+                            }
+                        } else {
+                            // Normal Interaction state
+                            if (isSelected) {
+                                resultClass = "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-200 text-indigo-700 shadow-sm";
+                            } else {
+                                resultClass = "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 text-slate-700";
                             }
                         }
 
                         return (
                             <button
                                 key={index}
-                                type="button"
-                                onClick={() => !disabled && onChange(optionValue)}
-                                disabled={disabled}
-                                className={`flex items-center space-x-3 border p-3 rounded-lg transition text-left ${resultClass
-                                    ? resultClass
-                                    : (isSelected
-                                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
-                                        : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-                                    )
-                                    }`}
+                                disabled={!!result}
+                                onClick={() => {
+                                    if (result) return;
+
+                                    if (isMultiSelect) {
+                                        const currentSelected = value ? value.split(",").filter(Boolean) : [];
+                                        let newSelected;
+                                        if (isSelected) {
+                                            newSelected = currentSelected.filter(v => v !== optionValue);
+                                        } else {
+                                            newSelected = [...currentSelected, optionValue];
+                                        }
+                                        newSelected.sort();
+                                        onChange(newSelected.join(","));
+                                    } else {
+                                        onChange(optionValue);
+                                    }
+                                }}
+                                className={`w-full text-left p-4 rounded-xl border transition-all duration-200 flex items-start gap-3 group relative ${resultClass}`}
                             >
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${result
-                                    ? (optionValue === result.correctAnswer ? "border-emerald-500 bg-emerald-500" : (isSelected ? "border-red-500 bg-red-500" : "border-slate-300"))
-                                    : (isSelected ? "border-indigo-500 bg-indigo-500" : "border-slate-300")
+                                <div className={`mt-0.5 w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${isSelected
+                                    ? (result ? (isCorrectAnswer ? "border-emerald-500 bg-emerald-500 text-white" : "border-red-500 bg-red-500 text-white") : "border-indigo-600 bg-indigo-600 text-white")
+                                    : (result && isCorrectAnswer ? "border-emerald-500 bg-emerald-500 text-emerald-100" : "border-slate-300 group-hover:border-indigo-400")
                                     }`}>
-                                    {((isSelected && !result) || (result && (isCorrectAnswer || isSelected))) && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                                    {/* Icon: Check if selected, or just dot. For Multi-select use Square style visually?
+                                        Actually, keeping Circle UI is fine, just behavior changes.
+                                        But Checkbox usually implies multi. Let's adapt icon.
+                                    */}
+                                    {isMultiSelect ? (
+                                        isSelected ? <CheckCircle className="w-3.5 h-3.5" /> : null
+                                    ) : (
+                                        isSelected && <div className="w-2 h-2 rounded-full bg-white" />
+                                    )}
                                 </div>
-                                <span className={`flex-1 text-sm ${isSelected && !result ? "text-indigo-700 font-medium" : "text-slate-700"}`}>
-                                    {optionValue}
-                                </span>
+                                <div className="flex-1">
+                                    <span className="text-sm font-medium">{option}</span>
+                                </div>
                             </button>
-                        )
+                        );
                     })}
                 </div>
             )}

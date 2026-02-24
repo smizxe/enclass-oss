@@ -1,6 +1,5 @@
-"use client";
-
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import { BookOpen } from "lucide-react";
@@ -13,6 +12,7 @@ interface McqQuestionProps {
     value: string | undefined;
     onChange: (val: string) => void;
     disabled?: boolean;
+    isMultiSelect?: boolean;
 }
 
 interface ParsedContent {
@@ -29,7 +29,8 @@ export const McqQuestion = ({
     question,
     value,
     onChange,
-    disabled
+    disabled,
+    isMultiSelect
 }: McqQuestionProps) => {
     const [parsedContent, setParsedContent] = useState<ParsedContent | null>(null);
 
@@ -44,6 +45,19 @@ export const McqQuestion = ({
     }, [question.content]);
 
     if (!parsedContent) return null;
+
+    const handleMultiSelectChange = (optionValue: string, checked: boolean) => {
+        const currentSelected = value ? value.split(",").filter(Boolean) : [];
+        let newSelected;
+        if (checked) {
+            newSelected = [...currentSelected, optionValue];
+        } else {
+            newSelected = currentSelected.filter(v => v !== optionValue);
+        }
+        // sort alphabetical A, B, C... (Assuming values are simple IDs or chars, but sort keeps consistency)
+        newSelected.sort();
+        onChange(newSelected.join(","));
+    };
 
     return (
         <div className="space-y-4">
@@ -71,6 +85,11 @@ export const McqQuestion = ({
             {/* Question Text */}
             <div className="text-base font-medium text-slate-900">
                 {parsedContent.text}
+                {isMultiSelect && (
+                    <span className="ml-2 text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        (Chọn nhiều đáp án)
+                    </span>
+                )}
             </div>
 
             {/* Display Items for ORDERING questions (sentences on separate lines) */}
@@ -92,28 +111,55 @@ export const McqQuestion = ({
 
             {/* Options */}
             {parsedContent.options && parsedContent.options.length > 0 && (
-                <RadioGroup
-                    disabled={disabled}
-                    onValueChange={onChange}
-                    value={value}
-                    className="flex flex-col space-y-2"
-                >
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {parsedContent.options.map((option: any, index: number) => {
-                        // Handle both string array and object array
-                        const optionValue = typeof option === 'string' ? option : option.id;
-                        const optionLabel = typeof option === 'string' ? option : option.text;
+                isMultiSelect ? (
+                    /* Multi-Select (Checkbox) */
+                    <div className="flex flex-col space-y-2">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {parsedContent.options.map((option: any, index: number) => {
+                            const optionValue = typeof option === 'string' ? option : option.id;
+                            const optionLabel = typeof option === 'string' ? option : option.text;
+                            // Check if value (comma separated) contains this option
+                            const isChecked = value ? value.split(",").includes(optionValue) : false;
 
-                        return (
-                            <div key={index} className="flex items-center space-x-3 border border-slate-200 p-3 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition cursor-pointer">
-                                <RadioGroupItem value={optionValue} id={`${question.id}-${index}`} />
-                                <Label htmlFor={`${question.id}-${index}`} className="flex-1 cursor-pointer font-normal text-slate-700">
-                                    {optionLabel}
-                                </Label>
-                            </div>
-                        )
-                    })}
-                </RadioGroup>
+                            return (
+                                <div key={index} className="flex items-center space-x-3 border border-slate-200 p-3 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition cursor-pointer">
+                                    <Checkbox
+                                        id={`${question.id}-${index}`}
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) => handleMultiSelectChange(optionValue, checked as boolean)}
+                                        disabled={disabled}
+                                    />
+                                    <Label htmlFor={`${question.id}-${index}`} className="flex-1 cursor-pointer font-normal text-slate-700">
+                                        {optionLabel}
+                                    </Label>
+                                </div>
+                            )
+                        })}
+                    </div>
+                ) : (
+                    /* Single Select (Radio) */
+                    <RadioGroup
+                        disabled={disabled}
+                        onValueChange={onChange}
+                        value={value}
+                        className="flex flex-col space-y-2"
+                    >
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {parsedContent.options.map((option: any, index: number) => {
+                            const optionValue = typeof option === 'string' ? option : option.id;
+                            const optionLabel = typeof option === 'string' ? option : option.text;
+
+                            return (
+                                <div key={index} className="flex items-center space-x-3 border border-slate-200 p-3 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition cursor-pointer">
+                                    <RadioGroupItem value={optionValue} id={`${question.id}-${index}`} />
+                                    <Label htmlFor={`${question.id}-${index}`} className="flex-1 cursor-pointer font-normal text-slate-700">
+                                        {optionLabel}
+                                    </Label>
+                                </div>
+                            )
+                        })}
+                    </RadioGroup>
+                )
             )}
         </div>
     );

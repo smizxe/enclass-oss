@@ -7,6 +7,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import remarkGfm from "remark-gfm";
 import {
     ArrowLeft,
     PlusCircle,
@@ -35,6 +36,7 @@ interface ParsedContent {
     items?: string[];
     options?: string[];
     passage?: string;
+    passageTable?: string;
     passageTranslation?: string;
     sectionTitle?: string;
     sectionType?: string;
@@ -46,6 +48,7 @@ interface QuestionGroup {
     sectionType: string;
     sectionAudio?: string;
     passage?: string;
+    passageTable?: string;
     passageTranslation?: string;
     questions: (Question & { parsed: ParsedContent })[];
 }
@@ -71,14 +74,18 @@ export default function AssignmentEditorPage() {
     const [isAddingQuestion, setIsAddingQuestion] = useState(false);
     const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
     const [newQuestion, setNewQuestion] = useState<{
+        type: string;
         text: string;
         options: string[];
-        correctAnswerIndex: number | null;
+        correctAnswerIndexes: number[];
+        correctAnswerText: string;
         points: number;
     }>({
+        type: "MCQ",
         text: "",
         options: ["", "", "", ""],
-        correctAnswerIndex: null,
+        correctAnswerIndexes: [],
+        correctAnswerText: "",
         points: 1
     });
 
@@ -90,12 +97,16 @@ export default function AssignmentEditorPage() {
     const [newSectionTitle, setNewSectionTitle] = useState("");
     const [newSectionType, setNewSectionType] = useState("MCQ");
 
+    // Editor Mode State
+    const [inputType, setInputType] = useState<"RICH" | "HTML">("RICH");
+
     // Edit Section Modal State (For Passage/Translation)
     const [editingSection, setEditingSection] = useState<{
         questionIds: string[];
         sectionTitle: string;
         sectionAudio?: string;
         passage: string;
+        passageTable: string;
         passageTranslation: string;
     } | null>(null);
 
@@ -213,10 +224,34 @@ export default function AssignmentEditorPage() {
         setEditingQuestionId(q.id);
         const parsed = q.parsed;
 
+        // Handle Options loading (Robust check for Object vs String)
+        let options: string[] = ["", "", "", ""];
+        if (parsed.options && Array.isArray(parsed.options) && parsed.options.length > 0) {
+            options = parsed.options.map((opt: any) => typeof opt === 'string' ? opt : opt.text || "");
+            // Ensure at least 4 options for consistency in editor, or match length
+            if (options.length < 4) {
+                options = [...options, ...Array(4 - options.length).fill("")];
+            }
+        }
+
+        // Parse correct answers (e.g. "A" or "A, C")
+        let indexes: number[] = [];
+        let answerText = "";
+
+        if (q.correctAnswer) {
+            // If MCQ, try to parse indices
+            if (q.type === "MCQ") {
+                indexes = q.correctAnswer.split(",").map(s => s.trim()).map(char => char.charCodeAt(0) - 65).filter(idx => idx >= 0);
+            }
+            answerText = q.correctAnswer;
+        }
+
         setNewQuestion({
+            type: q.type,
             text: parsed.text,
-            options: parsed.options && parsed.options.length >= 4 ? parsed.options : ["", "", "", ""],
-            correctAnswerIndex: parsed.options ? parsed.options.findIndex(opt => opt === q.correctAnswer || q.correctAnswer === String.fromCharCode(65 + parsed.options.indexOf(opt))) : null,
+            options: options,
+            correctAnswerIndexes: indexes,
+            correctAnswerText: answerText,
             points: q.points
         });
         setIsAddingQuestion(true);
@@ -232,17 +267,23 @@ export default function AssignmentEditorPage() {
             options: newQuestion.options,
             // Preserve section info if editing, or use current section context if adding?
             // For now, simpler implementation:
-            // If adding new, we need to know which section. 
+            // If adding new, we need to know which section.
             // MVP: Add to "General" or last section.
             sectionTitle: "General"
         };
 
-        const correctAnswerChar = newQuestion.correctAnswerIndex !== null
-            ? String.fromCharCode(65 + newQuestion.correctAnswerIndex)
-            : "";
+        let correctAnswerChar = "";
+        if (newQuestion.type === "MCQ") {
+            correctAnswerChar = newQuestion.correctAnswerIndexes.length > 0
+                ? newQuestion.correctAnswerIndexes.sort((a, b) => a - b).map(idx => String.fromCharCode(65 + idx)).join(",")
+                : "";
+        } else {
+            // For GAP_FILL etc., use the text input
+            correctAnswerChar = newQuestion.correctAnswerText;
+        }
 
         const data = {
-            type: "MCQ",
+            type: newQuestion.type, // Use selected type
             content: JSON.stringify(contentObj),
             correctAnswer: correctAnswerChar,
             points: newQuestion.points
@@ -270,9 +311,11 @@ export default function AssignmentEditorPage() {
             setIsAddingQuestion(false);
             setEditingQuestionId(null);
             setNewQuestion({
+                type: "MCQ",
                 text: "",
                 options: ["", "", "", ""],
-                correctAnswerIndex: null,
+                correctAnswerIndexes: [],
+                correctAnswerText: "",
                 points: 1
             });
             setEssayPrompt("");
@@ -284,11 +327,16 @@ export default function AssignmentEditorPage() {
 
     const handleEditSection = (group: QuestionGroup) => {
         const questionIds = group.questions.map(q => q.id);
+
+        // Default to RICH mode for text editing
+        setInputType("RICH");
+
         setEditingSection({
             questionIds,
             sectionTitle: group.sectionTitle,
             sectionAudio: group.sectionAudio,
             passage: group.passage || "",
+            passageTable: group.passageTable || "",
             passageTranslation: group.passageTranslation || ""
         });
     };
@@ -412,17 +460,35 @@ export default function AssignmentEditorPage() {
                                 </div>
 
                                 {/* Section Passage (shown once for the group) */}
-                                {group.passage && (
+                                {/* Section Passage (shown once for the group) */}
+                                {(group.passage || group.passageTable) && (
                                     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
                                         <div className="flex items-center gap-2 text-sm font-medium text-blue-700 mb-4">
                                             <BookOpen className="w-4 h-4" />
-                                            <span>Đoạn văn chung:</span>
+                                            <span>Đoạn văn chung / Dữ liệu bài:</span>
                                         </div>
-                                        <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic bg-white rounded-xl p-4 border border-blue-100 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
-                                            <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                                {group.passage}
-                                            </ReactMarkdown>
-                                        </div>
+
+                                        {/* Render Passage (Text or Merged HTML) */}
+                                        {group.passage && (
+                                            <div className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-blue-100 prose prose-sm max-w-none [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                                                {/* If passage looks like HTML (contains table or tags), render directly. Otherwise Markdown. */}
+                                                {(group.passage.includes("<table") || group.passage.includes("<p>")) ? (
+                                                    <div dangerouslySetInnerHTML={{ __html: group.passage }} />
+                                                ) : (
+                                                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                                        {group.passage}
+                                                    </ReactMarkdown>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Render Passage Table (Separate Field - If Exists) */}
+                                        {group.passageTable && (
+                                            <div className="mt-4 text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-blue-100 overflow-x-auto [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                                                <div dangerouslySetInnerHTML={{ __html: group.passageTable }} />
+                                            </div>
+                                        )}
+
                                         {group.passageTranslation && (
                                             <div className="mt-4 pt-4 border-t border-blue-200">
                                                 <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
@@ -582,37 +648,74 @@ export default function AssignmentEditorPage() {
                         <h3 className="text-lg font-bold mb-4">{editingQuestionId ? "Sửa câu hỏi" : "Thêm câu hỏi mới"}</h3>
                         <div className="space-y-4">
                             <div>
+                                <label className="block text-sm font-medium mb-1">Loại câu hỏi</label>
+                                <select
+                                    value={newQuestion.type}
+                                    onChange={(e) => setNewQuestion({ ...newQuestion, type: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg bg-white"
+                                >
+                                    <option value="MCQ">Trắc nghiệm (MCQ)</option>
+                                    <option value="GAP_FILL">Điền vào chỗ trống (Gap Fill)</option>
+                                </select>
+                            </div>
+                            <div>
                                 <label className="block text-sm font-medium mb-1">Nội dung câu hỏi</label>
                                 <Textarea
                                     value={newQuestion.text}
                                     onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
+                                    className="min-h-[100px]"
                                 />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                {newQuestion.options.map((opt, idx) => (
-                                    <div key={idx}>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="text-xs font-medium">Đáp án {String.fromCharCode(65 + idx)}</label>
-                                            <input
-                                                type="radio"
-                                                name="correctAnswer"
-                                                checked={newQuestion.correctAnswerIndex === idx}
-                                                onChange={() => setNewQuestion({ ...newQuestion, correctAnswerIndex: idx })}
-                                            />
-                                        </div>
+                                {newQuestion.type === "GAP_FILL" && (
+                                    <div className="mt-4">
+                                        <p className="text-xs text-slate-500 mb-2">
+                                            * Nhập nội dung chứa chỗ trống (dùng ...). Nhập đáp án đúng vào ô bên dưới.
+                                        </p>
+                                        <label className="block text-sm font-medium mb-1">Đáp án đúng</label>
                                         <input
                                             type="text"
-                                            value={opt}
-                                            onChange={(e) => {
-                                                const newOpts = [...newQuestion.options];
-                                                newOpts[idx] = e.target.value;
-                                                setNewQuestion({ ...newQuestion, options: newOpts });
-                                            }}
-                                            className="w-full px-3 py-2 border rounded-lg text-sm"
+                                            value={newQuestion.correctAnswerText}
+                                            onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswerText: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-lg"
+                                            placeholder="Ví dụ: apples"
                                         />
                                     </div>
-                                ))}
+                                )}
                             </div>
+
+                            {/* Only show Options inputs for MCQ */}
+                            {newQuestion.type === "MCQ" && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {newQuestion.options.map((opt, idx) => (
+                                        <div key={idx}>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-xs font-medium">Đáp án {String.fromCharCode(65 + idx)}</label>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newQuestion.correctAnswerIndexes.includes(idx)}
+                                                    onChange={() => {
+                                                        const current = newQuestion.correctAnswerIndexes;
+                                                        const newIndexes = current.includes(idx)
+                                                            ? current.filter(i => i !== idx)
+                                                            : [...current, idx];
+                                                        setNewQuestion({ ...newQuestion, correctAnswerIndexes: newIndexes });
+                                                    }}
+                                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={opt}
+                                                onChange={(e) => {
+                                                    const newOpts = [...newQuestion.options];
+                                                    newOpts[idx] = e.target.value;
+                                                    setNewQuestion({ ...newQuestion, options: newOpts });
+                                                }}
+                                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <div className="flex justify-end gap-3 mt-4">
                                 <button onClick={() => setIsAddingQuestion(false)} className="px-4 py-2 text-slate-500">Hủy</button>
                                 <button onClick={onSaveQuestion} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Lưu</button>
@@ -649,33 +752,69 @@ export default function AssignmentEditorPage() {
                                 />
                             </div>
 
-                            {/* Passage Editor - URL: changed to Textarea to preserve HTML Table structure */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Đoạn văn chung (Có hỗ trợ HTML Table)</label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Preview Column */}
-                                    <div className="space-y-2">
-                                        <span className="text-xs font-semibold text-indigo-600">Xem trước (Preview):</span>
-                                        <div className="h-64 overflow-y-auto w-full p-3 border rounded-lg bg-slate-50 text-sm [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-100 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
-                                            <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                                {editingSection.passage || "_(Chưa có nội dung)_"}
-                                            </ReactMarkdown>
-                                        </div>
-                                    </div>
+                            {/* Passage Editor - Hybrid Mode */}
+                            {/* Conditional Editor Logic: Table Mode vs Rich Text Mode */}
+                            {(() => {
+                                // Combine content if needed (for legacy split data)
+                                const combinedContent = (editingSection.passage || "") + (editingSection.passageTable ? "\n" + editingSection.passageTable : "");
+                                const hasTable = combinedContent.includes("<table") || (editingSection.passageTable && editingSection.passageTable.includes("<table"));
 
-                                    {/* Editor Column */}
-                                    <div className="space-y-2">
-                                        <span className="text-xs font-semibold text-slate-500">Mã nguồn (HTML/Markdown):</span>
-                                        <Textarea
-                                            value={editingSection.passage}
-                                            onChange={(e) => setEditingSection({ ...editingSection, passage: e.target.value })}
-                                            className="h-64 font-mono text-xs"
-                                            placeholder="Nhập nội dung hoặc mã HTML bảng..."
-                                        />
+                                return (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <label className="block text-sm font-medium">Nội dung đoạn văn</label>
+                                            <span className={`text-xs px-2 py-1 rounded-full ${hasTable ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700"}`}>
+                                                {hasTable ? "📄 Chế độ Mã nguồn (Do có Bảng)" : "📝 Chế độ Soạn thảo (Văn bản)"}
+                                            </span>
+                                        </div>
+
+                                        {hasTable ? (
+                                            /* HTML Source Mode (For Tables) */
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <span className="text-xs font-semibold text-slate-500">Mã nguồn HTML (Chứa bảng):</span>
+                                                    <Textarea
+                                                        value={editingSection.passageTable || editingSection.passage} // Prefer table field if mostly table, or passage if mixed. Actually let's use a local state? 
+                                                        // Better: We are editing 'passage' as the main storage now.
+                                                        // But wait, existing state has split fields.
+                                                        // Let's edit 'passageTable' if it exists, or 'passage' if it has table?
+                                                        // User wants MERGED view. 
+                                                        // Let's edit 'passage' and clear 'passageTable' on save.
+                                                        // For now, display combined, edit 'passage'.
+                                                        defaultValue={combinedContent}
+                                                        onChange={(e) => setEditingSection({ ...editingSection, passage: e.target.value, passageTable: "" })}
+                                                        className="h-64 font-mono text-xs"
+                                                        placeholder='<table border="1">...</table>'
+                                                    />
+                                                    <p className="text-[10px] text-slate-400">* Hệ thống phát hiện có Bảng, chuyển sang chế độ mã nguồn để tránh lỗi cấu trúc.</p>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <span className="text-xs font-semibold text-indigo-600">Xem trước:</span>
+                                                    <div className="h-64 overflow-y-auto w-full p-3 border rounded-lg bg-slate-50 text-sm [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-100 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2 prose prose-sm max-w-none">
+                                                        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                                                            {combinedContent}
+                                                        </ReactMarkdown>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            /* Rich Text Mode (Normal Text) */
+                                            <div className="space-y-1">
+                                                {/* Markdown Fix: Convert Markdown to HTML for Editor */}
+                                                <Editor
+                                                    value={editingSection.passage
+                                                        .replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>') // Bold
+                                                        .replace(/__([\s\S]*?)__/g, '<u>$1</u>')             // Underline
+                                                        .replace(/\*([\s\S]*?)\*/g, '<em>$1</em>')           // Italic
+                                                    }
+                                                    onChange={(val) => setEditingSection({ ...editingSection, passage: val })}
+                                                />
+                                                <p className="text-[10px] text-slate-400">* Soạn thảo văn bản bình thường (Đậm, nghiêng...).</p>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                                <p className="text-[10px] text-slate-400 mt-1">* Khuyên dùng: Không sửa trực tiếp code Table nếu không rành. Chỉ nên sửa text.</p>
-                            </div>
+                                );
+                            })()}
 
                             {/* Translation Editor */}
                             <div>

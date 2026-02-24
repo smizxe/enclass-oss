@@ -14,6 +14,22 @@ const EXTRACTION_PROMPT = `You are an expert at analyzing English exam papers, e
 
 Analyze the following exam content and extract ALL questions in a structured JSON format.
 
+🔴 CRITICAL RULE #1 - TABLE SEPARATION (MUST FOLLOW):
+   IF a section contains BOTH intro text AND a table/form:
+   ✅ CORRECT: Put intro text in "passage" field, put ONLY the <table>...</table> HTML code in "passageTable" field
+   ❌ WRONG: Do NOT put the table HTML inside "passage" field
+   
+   Example CORRECT output:
+   {
+     "passage": "Complete the form below. Write ONE WORD AND/OR A NUMBER for each answer.",
+     "passageTable": "<table border='1'><tr><th>Name</th><td>______</td></tr></table>"
+   }
+   
+   Example WRONG output (DO NOT DO THIS):
+   {
+     "passage": "Complete the form below...<table border='1'>...</table>"
+   }
+
 IMPORTANT RULES:
 1. Identify sections/parts (e.g., "Part 1", "Section 1", "Questions 1-5").
 2. For each question, determine the type:
@@ -28,7 +44,7 @@ FORMATTING RULES FOR TEXT CONTENT:
    - Bold text: **text**
    - Italic text: *text*
    - Underline text: __text__
-   - **Tables / Gap Fills in Tables**: MUST use **HTML Table** format ('<table border="1" style="border-collapse: collapse; width: 100%;">...</table>'). DO NOT use Markdown tables.
+   - **Tables / Gap Fills in Tables**: ALWAYS extract tables separately into "passageTable" field. Use HTML Table format ('<table border="1" style="border-collapse: collapse; width: 100%;">...</table>'). DO NOT use Markdown tables.
    - Preserve paragraph breaks with double newlines.
 
 **QUESTION TYPES:**
@@ -39,38 +55,36 @@ FORMATTING RULES FOR TEXT CONTENT:
 
 2. **READING / GAP_FILL**:
    - Group questions sharing a passage.
-   - **passage**: Full text with **bold** formatting preserved. If the passage is a form/table, use HTML '<table>'.
+   - **passage**: Intro text / Context description (WITHOUT the table).
+   - **passageTable**: The COMPLETE HTML Table code (\`<table...>...</table>\`) if present. ALWAYS separate tables from text.
 
 3. **MCQ**: Standard multiple choice.
-   - **passage**: Full text with **bold** formatting preserved. If the passage is a form/table, use HTML '<table>'.
+   - **passage**: Intro text only.
+   - **passageTable**: HTML Table (if any) goes HERE, NOT in "passage".
 
 OUTPUT FORMAT (JSON array):
 [
-  {
-    "sectionTitle": "Part 1: Personal Information",
-    "sectionType": "LISTENING",
-    "passage": "Audio transcript or context description if any...",
-    "questions": [
-      {
-        "type": "MCQ",
-        "text": "What is the speaker's name?",
-        "options": ["A. John", "B. Jane", "C. Jack", "D. Jill"],
-        "correctAnswer": "A",
-        "points": 1
-      },
-      {
-        "type": "GAP_FILL",
-        "text": "The meeting is scheduled for _______ o'clock.",
-                                    "correctAnswer": "10",
-                                    "points": 1
-                                }
-                            ]
-}
+    {
+        "sectionTitle": "Part 1: Personal Information",
+        "sectionType": "LISTENING",
+        "passage": "Complete the form below. Write ONE WORD AND/OR A NUMBER for each answer.",
+        "passageTable": "<table border='1' style='border-collapse: collapse; width: 100%;'><tr><th>Field</th><th>Answer</th></tr><tr><td>Name</td><td>_____</td></tr></table>",
+        "questions": [
+            {
+                "type": "GAP_FILL",
+                "text": "Question 1: Name",
+                "correctAnswer": "",
+                "points": 1
+            }
+        ]
+    }
 ]
 
 If you cannot determine the correct answer, use an empty string "".
 For GAP_FILL, the correctAnswer should be the expected text to fill in.
-For MCQ, the correctAnswer should be the letter(A, B, C, or D).
+For MCQ, the correctAnswer should be the letter (A, B, C, or D).
+
+⚠️ REMEMBER: If you see a table/form, you MUST put it in "passageTable" field, NOT in "passage" field.
 
 Here is the exam content to analyze:
 
@@ -193,6 +207,24 @@ export async function POST(
             return new NextResponse("No questions extracted from the file", { status: 400 });
         }
 
+        // 🔧 POST-PROCESSING: Auto-extract tables from passage if AI missed it
+        for (const section of sections) {
+            if (section.passage && !section.passageTable) {
+                // Check if passage contains table HTML
+                const tableMatch = section.passage.match(/<table[\s\S]*?<\/table>/i);
+
+                if (tableMatch) {
+                    // Extract table HTML
+                    section.passageTable = tableMatch[0];
+
+                    // Remove table from passage
+                    section.passage = section.passage.replace(/<table[\s\S]*?<\/table>/i, '').trim();
+
+                    console.log(`[POST-PROCESSING] Extracted table from passage in section: ${section.sectionTitle}`);
+                }
+            }
+        }
+
         // Create questions in database
         const questionsToCreate = [];
 
@@ -200,6 +232,7 @@ export async function POST(
             const sectionTitle = section.sectionTitle || "Imported Questions";
             const sectionType = section.sectionType || "STANDALONE";
             const passage = section.passage || "";
+            const passageTable = section.passageTable || "";
 
             for (const q of section.questions || []) {
                 // Build content JSON
@@ -210,6 +243,7 @@ export async function POST(
                     sectionTitle: sectionTitle,
                     sectionType: sectionType,
                     passage: passage,
+                    passageTable: passageTable,
                     passageTranslation: ""
                 };
 
