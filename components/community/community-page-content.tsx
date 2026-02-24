@@ -23,22 +23,44 @@ interface Post {
     classId: string | null;
 }
 
-export default function CommunityPage() {
+export function CommunityPageContent() {
     const { data: session } = useSession();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("global");
+    const [classes, setClasses] = useState<any[]>([]);
 
-    // In a real app, we would fetch the user's classes to populate tabs
-    // For now, we'll just have Global and a generic "My Classes" view or fetch from an endpoint
-    // To support "Community các lớp của mình", we might need to fetch *all* posts from user's classes
-    // or provide a selector for classes.
-    // Let's implement Global first.
+    useEffect(() => {
+        const fetchClasses = async () => {
+            if (!session?.user?.role) return;
+            try {
+                // If teacher, fetch managed classes. If student, fetch enrolled classes.
+                // Assuming endpoints: /api/teacher/classes for teacher
+                // /api/student/classes/available (or similar) for student... wait, student classes endpoint needs verification
+                // Let's assume /api/teacher/classes returns list for teacher.
+                // For student, we might need a different endpoint.
+                // Given the user request is specifically about TEACHER ("admin o day la teacher"), let's prioritize teacher classes.
+
+                if (session.user.role === "TEACHER") {
+                    const response = await axios.get("/api/teacher/classes");
+                    setClasses(response.data);
+                } else if (session.user.role === "STUDENT") {
+                    // For student, we usually have /api/student/classes (enrolled)
+                    // Let's try that, or fallback to empty if separate endpoint exists
+                    const response = await axios.get("/api/student/classes");
+                    setClasses(response.data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch classes", error);
+            }
+        };
+        fetchClasses();
+    }, [session?.user?.role]);
 
     const fetchPosts = async (classId?: string) => {
         setLoading(true);
         try {
-            const url = classId
+            const url = classId && classId !== "global"
                 ? `/api/community/posts?classId=${classId}`
                 : `/api/community/posts`;
             const response = await axios.get(url);
@@ -51,15 +73,7 @@ export default function CommunityPage() {
     };
 
     useEffect(() => {
-        if (activeTab === "global") {
-            fetchPosts();
-        } else {
-            // Fetch for specific class if tab is a classId
-            // OR if tab is "classes", fetch aggregate?
-            // The request says: "bấm vào trang thì nó sẽ hiện ra community các lớp của mình"
-            // Maybe show a list of classes?
-            // Let's stick to Global for MVP step, and assume we can add class tabs if we fetch user classes.
-        }
+        fetchPosts(activeTab === "global" ? undefined : activeTab);
     }, [activeTab]);
 
     return (
@@ -74,19 +88,27 @@ export default function CommunityPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="global" className="w-full" onValueChange={setActiveTab}>
-                <TabsList className="mb-6 w-full justify-start h-auto p-1 bg-slate-100 rounded-xl overflow-x-auto">
+            <Tabs value={activeTab} className="w-full" onValueChange={setActiveTab}>
+                <TabsList className="mb-6 w-full justify-start h-auto p-1 bg-slate-100 rounded-xl overflow-x-auto no-scrollbar">
                     <TabsTrigger value="global" className="flex items-center gap-2 px-4 py-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                         <Globe className="w-4 h-4" />
                         Cộng đồng chung
                     </TabsTrigger>
-                    {/* Placeholder for dynamic class tabs */}
-                    {/* We would map through user.enrolledClasses here */}
+                    {classes.map((cls) => (
+                        <TabsTrigger key={cls.id} value={cls.id} className="flex items-center gap-2 px-4 py-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm whitespace-nowrap">
+                            <Users className="w-4 h-4" />
+                            {cls.title}
+                        </TabsTrigger>
+                    ))}
                 </TabsList>
 
-                <TabsContent value="global" className="space-y-6">
-                    {/* Post Editor */}
-                    <PostEditor onSuccess={() => fetchPosts()} />
+                <TabsContent value={activeTab} className="space-y-6">
+                    {/* Post Editor - only show if global or specific class selected */}
+                    <PostEditor
+                        classId={activeTab === "global" ? undefined : activeTab}
+                        classTitle={activeTab === "global" ? "Cộng đồng chung" : classes.find(c => c.id === activeTab)?.title}
+                        onSuccess={() => fetchPosts(activeTab === "global" ? undefined : activeTab)}
+                    />
 
                     {/* Posts Feed */}
                     <div className="space-y-6">
@@ -121,7 +143,7 @@ export default function CommunityPage() {
                                     onDelete={async (id) => {
                                         if (!confirm("Bạn có chắc muốn xóa?")) return;
                                         await axios.delete(`/api/community/posts/${id}`);
-                                        fetchPosts();
+                                        fetchPosts(activeTab === "global" ? undefined : activeTab);
                                     }}
                                 />
                             ))
