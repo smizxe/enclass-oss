@@ -26,6 +26,10 @@ model User {
   dataset       Submission[]
   posts         Post[]
   comments      Comment[]
+
+  @@index([role])
+  @@index([createdById])
+  @@index([createdAt])
 }
 
 model Class {
@@ -44,6 +48,8 @@ model Class {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([teacherId])
 }
 
 model Assignment {
@@ -67,6 +73,10 @@ model Assignment {
   
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
+  @@index([classId])
+  @@index([groupId])
+  @@index([type])
 }
 
 model AssignmentGroup {
@@ -107,6 +117,8 @@ model ClassMember {
   joinedAt  DateTime @default(now())
 
   @@unique([userId, classId])
+  @@index([userId])
+  @@index([classId])
 }
 
 model AssignmentProgress {
@@ -123,6 +135,9 @@ model AssignmentProgress {
   updatedAt     DateTime @updatedAt
 
   @@unique([userId, assignmentId])
+  @@index([userId])
+  @@index([assignmentId])
+  @@index([status])
 }
 
 model Submission {
@@ -140,6 +155,11 @@ model Submission {
   gradedAt             DateTime?
   gradedById           String?
   submittedAt          DateTime @default(now())
+
+  @@index([userId])
+  @@index([assignmentProgressId])
+  @@index([gradedAt])
+  @@index([submittedAt])
 }
 
 model Post {
@@ -167,6 +187,11 @@ model Post {
   pinned      Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([authorId])
+  @@index([classId])
+  @@index([category])
+  @@index([createdAt])
 }
 
 
@@ -182,4 +207,6 @@ model Comment {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([postId])
 }

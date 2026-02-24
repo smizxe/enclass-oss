@@ -64,7 +64,7 @@ export function CommunityPageContent() {
                 ? `/api/community/posts?classId=${classId}`
                 : `/api/community/posts`;
             const response = await axios.get(url);
-            setPosts(response.data);
+            setPosts(response.data?.data || response.data);
         } catch (error) {
             console.error(error);
         } finally {

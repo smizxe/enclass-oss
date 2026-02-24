@@ -22,21 +22,20 @@ export async function GET() {
                     published: true
                 }
             }),
-            prisma.classMember.findMany({
+            prisma.classMember.groupBy({
+                by: ['userId'],
                 where: {
                     class: {
                         teacherId
                     }
-                },
-                distinct: ['userId'],
-                select: { userId: true }
-            })
+                }
+            }).then(groups => groups.length)
         ]);
 
         return NextResponse.json({
             totalClasses: classesCount,
             activeClasses: activeClassesCount,
-            totalStudents: uniqueStudents.length
+            totalStudents: uniqueStudents
         });
     } catch (error) {
         console.error("[TEACHER_STATS_GET]", error);

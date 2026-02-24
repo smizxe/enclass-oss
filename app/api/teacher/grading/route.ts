@@ -12,6 +12,8 @@ export async function GET(req: Request) {
 
         const { searchParams } = new URL(req.url);
         const assignmentId = searchParams.get("assignmentId");
+        const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+        const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
 
         // Get all classes owned by this teacher
         const teacherClasses = await prisma.class.findMany({
@@ -34,10 +36,8 @@ export async function GET(req: Request) {
             whereClause.assignmentProgress.assignment.id = assignmentId;
         } else {
             // Default view: Show only pending manual grading tasks (Essay/Speaking/Writing)
-            // But user might want to see Speaking/Writing too, not just Essay
             whereClause.gradedAt = null;
-            whereClause.assignmentProgress.assignment.type = { in: ["ESSAY", "LECTURE", "QUIZ", "TEST"] }; // Just filter generally or maybe restrict types?
-            // Actually, best to just show "pending" items if no assignment selected.
+            whereClause.assignmentProgress.assignment.type = { in: ["ESSAY", "LECTURE", "QUIZ", "TEST"] };
             whereClause.assignmentProgress.assignment.questions = {
                 some: {
                     type: { in: ["ESSAY", "WRITING", "SPEAKING"] }
@@ -45,32 +45,45 @@ export async function GET(req: Request) {
             };
         }
 
-        const submissions = await prisma.submission.findMany({
-            where: whereClause,
-            select: {
-                id: true,
-                submittedAt: true,
-                attemptNumber: true,  // Include attempt number
-                answers: true,
-                score: true,
-                feedback: true,
-                gradedAt: true,
-                gradedById: true,
-                user: {
-                    select: { id: true, name: true, email: true }
-                },
-                assignmentProgress: {
-                    select: {
-                        assignment: {
-                            select: { id: true, title: true, classId: true }
+        const [totalCount, submissions] = await Promise.all([
+            prisma.submission.count({ where: whereClause }),
+            prisma.submission.findMany({
+                where: whereClause,
+                select: {
+                    id: true,
+                    submittedAt: true,
+                    attemptNumber: true,
+                    answers: true,
+                    score: true,
+                    feedback: true,
+                    gradedAt: true,
+                    gradedById: true,
+                    user: {
+                        select: { id: true, name: true, email: true }
+                    },
+                    assignmentProgress: {
+                        select: {
+                            assignment: {
+                                select: { id: true, title: true, classId: true }
+                            }
                         }
                     }
-                }
-            },
-            orderBy: { submittedAt: "desc" }
-        });
+                },
+                orderBy: { submittedAt: "desc" },
+                skip: (page - 1) * limit,
+                take: limit
+            })
+        ]);
 
-        return NextResponse.json(submissions);
+        return NextResponse.json({
+            data: submissions,
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit)
+            }
+        });
     } catch (error) {
         console.error("[GRADING_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });

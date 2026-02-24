@@ -56,52 +56,101 @@ export async function POST(req: Request) {
     }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
         const session = await getServerSession(authOptions);
         if (!session || session.user.role !== "TEACHER") {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const students = await prisma.user.findMany({
-            where: {
-                role: "STUDENT",
-                OR: [
-                    { createdById: session.user.id },
-                    {
-                        classMembers: {
-                            some: {
-                                class: {
-                                    teacherId: session.user.id
-                                }
-                            }
-                        }
-                    }
-                ]
-            },
-            orderBy: {
-                createdAt: "desc",
-            },
-            distinct: ["id"],
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                createdAt: true,
-                classMembers: {
-                    include: {
-                        class: {
-                            select: {
-                                title: true
+        const { searchParams } = new URL(req.url);
+        const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+        const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+        const search = searchParams.get("search") || "";
+        const classId = searchParams.get("classId") || "";
+
+        // Build where clause
+        const baseWhere: any = {
+            role: "STUDENT",
+            OR: [
+                { createdById: session.user.id },
+                {
+                    classMembers: {
+                        some: {
+                            class: {
+                                teacherId: session.user.id
                             }
                         }
                     }
                 }
-                // Do not return password
+            ]
+        };
+
+        // Add search filter
+        if (search) {
+            baseWhere.AND = [
+                {
+                    OR: [
+                        { name: { contains: search, mode: "insensitive" } },
+                        { email: { contains: search, mode: "insensitive" } }
+                    ]
+                }
+            ];
+        }
+
+        // Add class filter
+        if (classId) {
+            const classFilter = {
+                classMembers: {
+                    some: { classId }
+                }
+            };
+            if (baseWhere.AND) {
+                baseWhere.AND.push(classFilter);
+            } else {
+                baseWhere.AND = [classFilter];
+            }
+        }
+
+        // Run count and query in parallel
+        const [totalCount, students] = await Promise.all([
+            prisma.user.count({ where: baseWhere }),
+            prisma.user.findMany({
+                where: baseWhere,
+                orderBy: {
+                    createdAt: "desc",
+                },
+                skip: (page - 1) * limit,
+                take: limit,
+                distinct: ["id"],
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    createdAt: true,
+                    classMembers: {
+                        include: {
+                            class: {
+                                select: {
+                                    title: true
+                                }
+                            }
+                        }
+                    }
+                    // Do not return password
+                }
+            })
+        ]);
+
+        return NextResponse.json({
+            data: students,
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit)
             }
         });
-
-        return NextResponse.json(students);
     } catch (error) {
         console.error("[STUDENTS_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });

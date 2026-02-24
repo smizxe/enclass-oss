@@ -3,33 +3,52 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// GET: Fetch all blog posts by the teacher
-export async function GET() {
+// GET: Fetch blog posts by the teacher with pagination
+export async function GET(req: Request) {
     try {
         const session = await getServerSession(authOptions);
         if (!session || session.user.role !== "TEACHER") {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const posts = await prisma.post.findMany({
-            where: {
-                authorId: session.user.id,
-                category: "BLOG",
-            },
-            orderBy: { createdAt: "desc" },
-            select: {
-                id: true,
-                title: true,
-                excerpt: true,
-                bannerUrl: true,
-                bannerType: true,
-                published: true,
-                createdAt: true,
-                updatedAt: true,
-            },
-        });
+        const { searchParams } = new URL(req.url);
+        const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+        const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "10")));
 
-        return NextResponse.json(posts);
+        const where = {
+            authorId: session.user.id,
+            category: "BLOG" as const,
+        };
+
+        const [totalCount, posts] = await Promise.all([
+            prisma.post.count({ where }),
+            prisma.post.findMany({
+                where,
+                orderBy: { createdAt: "desc" },
+                skip: (page - 1) * limit,
+                take: limit,
+                select: {
+                    id: true,
+                    title: true,
+                    excerpt: true,
+                    bannerUrl: true,
+                    bannerType: true,
+                    published: true,
+                    createdAt: true,
+                    updatedAt: true,
+                },
+            })
+        ]);
+
+        return NextResponse.json({
+            data: posts,
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit)
+            }
+        });
     } catch (error) {
         console.error("[BLOG_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });

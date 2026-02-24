@@ -90,8 +90,8 @@ export default function GradingPageClient({ initialClasses }: GradingPageClientP
         try {
             const response = await fetch(`/api/teacher/grading?assignmentId=${assignment.id}`);
             if (response.ok) {
-                const data = await response.json();
-                setSubmissions(data);
+                const result = await response.json();
+                setSubmissions(result.data || result);
                 setView("SUBMISSIONS");
             }
         } catch (error) {

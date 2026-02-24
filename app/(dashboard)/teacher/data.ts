@@ -45,17 +45,14 @@ export const getTeacherDashboardData = (teacherId: string) =>
                         published: true
                     }
                 }),
-                prisma.classMember.findMany({
+                prisma.classMember.groupBy({
+                    by: ['userId'],
                     where: {
                         class: {
                             teacherId
                         }
-                    },
-                    distinct: ["userId"],
-                    select: {
-                        userId: true
                     }
-                })
+                }).then(groups => groups.length)
             ]);
 
             return {
@@ -63,7 +60,7 @@ export const getTeacherDashboardData = (teacherId: string) =>
                 stats: {
                     totalClasses,
                     activeClasses,
-                    totalStudents: uniqueStudents.length
+                    totalStudents: uniqueStudents
                 }
             };
         },
@@ -107,6 +104,18 @@ export const getTeacherStudentsData = (teacherId: string) =>
         async () => prisma.user.findMany({
             where: {
                 role: "STUDENT",
+                OR: [
+                    { createdById: teacherId },
+                    {
+                        classMembers: {
+                            some: {
+                                class: {
+                                    teacherId
+                                }
+                            }
+                        }
+                    }
+                ]
             },
             orderBy: {
                 createdAt: "desc",

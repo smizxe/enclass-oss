@@ -20,8 +20,10 @@ interface BlogPost {
 export default function BlogListPage() {
     const router = useRouter();
 
+    const fetcher = (url: string) => axios.get(url).then(r => r.data?.data || r.data);
     const { data: posts = [], isLoading: loading, mutate } = useSWR<BlogPost[]>(
-        "/api/teacher/blog"
+        "/api/teacher/blog",
+        fetcher
     );
 
     const handleDelete = async (id: string) => {

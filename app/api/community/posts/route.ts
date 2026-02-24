@@ -14,26 +14,42 @@ export async function GET(req: Request) {
 
         const { searchParams } = new URL(req.url);
         const classId = searchParams.get("classId"); // If null, fetch global
+        const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+        const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "10")));
 
-        const posts = await prisma.post.findMany({
-            where: {
-                classId: classId || null // Explicitly null for global
-            },
-            include: {
-                author: {
-                    select: {
-                        name: true,
-                        // Add avatar if available
+        const where = {
+            classId: classId || null // Explicitly null for global
+        };
+
+        const [totalCount, posts] = await Promise.all([
+            prisma.post.count({ where }),
+            prisma.post.findMany({
+                where,
+                include: {
+                    author: {
+                        select: {
+                            name: true,
+                        }
                     }
-                }
-            },
-            orderBy: [
-                { pinned: 'desc' },
-                { createdAt: 'desc' }
-            ]
-        });
+                },
+                orderBy: [
+                    { pinned: 'desc' },
+                    { createdAt: 'desc' }
+                ],
+                skip: (page - 1) * limit,
+                take: limit
+            })
+        ]);
 
-        return NextResponse.json(posts);
+        return NextResponse.json({
+            data: posts,
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages: Math.ceil(totalCount / limit)
+            }
+        });
     } catch (error) {
         console.error("[POSTS_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });
