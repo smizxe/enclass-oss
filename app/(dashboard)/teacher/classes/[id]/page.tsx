@@ -15,6 +15,7 @@ import { AssignmentsList } from "./_components/assignments-list";
 import { ClassInfoCard } from "./_components/class-info-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProgressDashboard } from "./_components/progress-dashboard";
+import { DeleteClassModal } from "./_components/delete-class-modal";
 
 export default async function ClassIdPage({
     params
@@ -143,6 +144,11 @@ export default async function ClassIdPage({
                             <ProgressDashboard classId={classItem.id} />
                         </TabsContent>
                     </Tabs>
+
+                    {/* Danger Zone */}
+                    <div className="mt-8">
+                        <DeleteClassModal classId={classItem.id} classTitle={classItem.title} />
+                    </div>
                 </div>
             </div>
         </div>
