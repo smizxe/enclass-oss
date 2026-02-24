@@ -11,15 +11,22 @@ import {
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
-// extractTextFromPDF removed - using Multimodal input
-
 // The prompt for Gemini to extract questions intelligently
 const EXTRACTION_PROMPT = `You are an expert at analyzing English exam papers, especially IELTS Listening and Reading tests.
+
+🔴🔴🔴 ABSOLUTE RULE - COMPLETE DOCUMENT EXTRACTION (HIGHEST PRIORITY) 🔴🔴🔴
+You MUST read and process the ENTIRE document from the VERY FIRST line/page to the VERY LAST line/page.
+- Do NOT skip any content at the BEGINNING of the document (page 1, headers, titles, instructions).
+- Do NOT skip any content at the END of the document (last pages, answer keys, appendices).
+- Do NOT truncate or summarize. Extract EVERY SINGLE question, passage, and section.
+- Process ALL pages: page 1, page 2, page 3... until the very last page.
+- If the document has 50 questions, output ALL 50. If it has 100, output ALL 100.
+- Count your extracted questions and compare with question numbers in the document to ensure NOTHING is missing.
 
 Analyze the following exam content and extract ALL questions in a structured JSON format.
 
 🔴 CRITICAL RULE #1 - ANSWER KEY DETECTION (VERY IMPORTANT):
-   1. FIRST, look for a section named "Answer Key", "Đáp án", "KEY", "Answers", "Lời giải" or similar.
+   1. FIRST, scan the ENTIRE document (especially the LAST pages) for a section named "Answer Key", "Đáp án", "KEY", "Answers", "Lời giải", "ĐÁP ÁN", "ANSWER KEY" or similar.
    2. If found, use those answers to populate "correctAnswer" for each question.
    3. If NOT found anywhere in the document, you MUST predict the most likely answer based on:
       - Context clues in the passage
@@ -27,7 +34,14 @@ Analyze the following exam content and extract ALL questions in a structured JSO
       - Logical reasoning
    4. Add "predictedAnswer": true to each question where you predicted (not found in answer key).
 
-🔴 CRITICAL RULE #2 - TABLE SEPARATION (MUST FOLLOW):
+🔴 CRITICAL RULE #2 - GAP_FILL ANSWER EXTRACTION:
+   For GAP_FILL questions (fill-in-the-blank):
+   1. The correctAnswer should be the EXACT word(s) that fill the blank.
+   2. Look in the Answer Key section for the gap fill answers.
+   3. If the answer key shows "1. information" or "1. TRUE" etc., use that exact text.
+   4. Do NOT leave correctAnswer empty for gap fill questions.
+
+🔴 CRITICAL RULE #3 - TABLE SEPARATION (MUST FOLLOW):
    IF a section contains BOTH intro text AND a table/form:
    ✅ CORRECT: Put intro text in "passage" field, put ONLY the <table>...</table> HTML code in "passageTable" field
    ❌ WRONG: Do NOT put the table HTML inside "passage" field
@@ -63,7 +77,7 @@ FORMATTING RULES FOR TEXT CONTENT:
 
 2. **READING / GAP_FILL**:
    - Group questions sharing a passage.
-   - **passage**: Intro text / Context description (WITHOUT the table).
+   - **passage**: COMPLETE intro text / Context description (WITHOUT the table). Do NOT shorten.
    - **passageTable**: The COMPLETE HTML Table code (\`<table...>...</table>\`) if present. ALWAYS separate tables from text.
 
 3. **MCQ**: Standard multiple choice.
@@ -72,13 +86,13 @@ FORMATTING RULES FOR TEXT CONTENT:
 
 OUTPUT FORMAT (JSON):
 {
-    "hasAnswerKey": true/false,  // true if Answer Key section was found in document
+    "hasAnswerKey": true/false,
     "sections": [
         {
             "sectionTitle": "Part 1: Personal Information",
             "sectionType": "LISTENING",
             "passage": "Complete the form below. Write ONE WORD AND/OR A NUMBER for each answer.",
-        "passageTable": "<table border='1' style='border-collapse: collapse; width: 100%;'><tr><th>Field</th><th>Answer</th></tr><tr><td>Name</td><td>_____</td></tr></table>",
+            "passageTable": "<table border='1' style='border-collapse: collapse; width: 100%;'><tr><th>Field</th><th>Answer</th></tr><tr><td>Name</td><td>_____</td></tr></table>",
             "questions": [
                 {
                     "type": "MCQ",
@@ -97,10 +111,14 @@ For MCQ, the correctAnswer should be the letter (A, B, C, or D).
 For GAP_FILL, the correctAnswer should be the expected text to fill in.
 For ORDERING, the correctAnswer should be the correct sequence (e.g., "B" if option B is correct).
 
-⚠️ REMEMBER: 
-- ALWAYS include "hasAnswerKey" field at the root level
-- Set "predictedAnswer": true if you predicted the answer (no answer key found)
-- If you see a table/form, you MUST put it in "passageTable" field, NOT in "passage" field.
+⚠️ FINAL CHECKLIST BEFORE OUTPUTTING:
+- Have I extracted content from the FIRST page? ✅
+- Have I extracted content from the LAST page? ✅
+- Did I count questions to match the document's numbering? ✅
+- ALWAYS include "hasAnswerKey" field at the root level ✅
+- Set "predictedAnswer": true if you predicted the answer ✅
+- Does EVERY question have a "correctAnswer" filled? ✅
+- If you see a table/form, is it in "passageTable" field, NOT in "passage" field? ✅
 
 Here is the exam content to analyze:
 
@@ -150,8 +168,6 @@ export async function POST(
         const mammoth = require("mammoth");
 
         let promptParts: any[] = [];
-        let promptText = dynamicPrompt;
-
         const fileName = file.name.toLowerCase();
 
         if (fileName.endsWith(".pdf")) {
@@ -189,7 +205,6 @@ export async function POST(
         }
 
         // Call Gemini AI
-        // Using gemini-2.5-flash which supports PDF input and has better rate limits
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const result = await model.generateContent(promptParts);

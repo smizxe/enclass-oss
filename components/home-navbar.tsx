@@ -20,9 +20,10 @@ export const HomeNavbar = () => {
                 </div>
 
                 <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500">
-                    <a href="#benefits" className="hover:text-indigo-600 transition-colors">Lợi ích</a>
-                    <a href="#system" className="hover:text-indigo-600 transition-colors">Hệ thống</a>
-                    <a href="#results" className="hover:text-indigo-600 transition-colors">Thành tích HV</a>
+                    <Link href="/blog" className="hover:text-indigo-600 transition-colors">Bài viết</Link>
+                    <a href="/#benefits" className="hover:text-indigo-600 transition-colors">Lợi ích</a>
+                    <a href="/#system" className="hover:text-indigo-600 transition-colors">Hệ thống</a>
+                    <a href="/#results" className="hover:text-indigo-600 transition-colors">Thành tích HV</a>
                 </div>
 
                 <div className="flex items-center gap-4">

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
     try {
         const session = await getServerSession(authOptions);
@@ -59,7 +61,8 @@ export async function POST(req: Request) {
                 images: images || [],
                 classId: classId || null,
                 pinned: pinned || false,
-                authorId: session.user.id
+                authorId: session.user.id,
+                published: true // Community posts are published by default
             }
         });
 

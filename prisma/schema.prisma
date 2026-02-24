@@ -148,6 +148,13 @@ model Post {
   content     String    @db.Text
   images      String[]  // URLs or paths
   
+  // Blog fields
+  category    String    @default("COMMUNITY") // BLOG or COMMUNITY
+  bannerUrl   String?   // Banner image or video URL
+  bannerType  String?   // IMAGE or VIDEO
+  published   Boolean   @default(false)
+  excerpt     String?   // Short summary for hero display
+  
   authorId    String
   author      User      @relation(fields: [authorId], references: [id])
   
@@ -161,6 +168,7 @@ model Post {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
+
 
 model Comment {
   id        String   @id @default(cuid())

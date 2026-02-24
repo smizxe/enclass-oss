@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Send, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { registerStudent } from "@/app/actions/register";
 import { useEffect, useRef } from "react";
@@ -36,7 +37,7 @@ function SubmitButton() {
 }
 
 export const RegistrationForm = () => {
-    const [state, formAction] = useFormState(registerStudent, initialState);
+    const [state, formAction] = useActionState(registerStudent, initialState);
     const formRef = useRef<HTMLFormElement>(null);
 
     useEffect(() => {

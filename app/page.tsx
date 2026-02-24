@@ -2,24 +2,18 @@ import Link from "next/link";
 import Image from "next/image";
 import {
     GraduationCap,
-    User,
     ArrowRight,
     Monitor,
-    Flame,
-    Home,
-    BookOpen,
     Laptop,
-    BarChart3,
-    TrendingUp,
-    FileText,
-    CheckCircle,
-    ChevronRight,
     Trophy,
-    Send,
-    CheckCircle2
+    CheckCircle2,
+    TrendingUp,
+    BarChart3
 } from "lucide-react";
 import { HomeNavbar } from "@/components/home-navbar";
+import { HomeFooter } from "@/components/home-footer";
 import { RegistrationForm } from "@/components/home/registration-form";
+import { HeroBlogSection } from "@/components/home/hero-blog-section";
 
 export default function HomePage() {
     return (
@@ -60,121 +54,8 @@ export default function HomePage() {
                         </a>
                     </div>
 
-                    {/* UI Mockup: Student Dashboard View */}
-                    <div className="relative max-w-5xl mx-auto">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-2xl opacity-10 blur-xl"></div>
-                        <div className="relative bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col md:flex-row h-[450px] md:h-[550px]">
-                            {/* Sidebar Mockup */}
-                            <div className="w-16 md:w-60 border-r border-slate-100 bg-slate-50/50 p-4 flex-col gap-3 hidden md:flex">
-                                <div className="flex items-center gap-3 mb-6 px-2">
-                                    <div className="w-10 h-10 rounded-full bg-slate-200 border-2 border-white shadow-sm overflow-hidden">
-                                        <Image src="https://api.dicebear.com/7.x/notionists/svg?seed=Felix" alt="Avatar" width={40} height={40} className="w-full h-full object-cover" unoptimized />
-                                    </div>
-                                    <div>
-                                        <div className="text-xs font-bold text-slate-900">Nguyễn Văn A</div>
-                                        <div className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded inline-block">Lớp IELTS 6.5+</div>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="h-9 w-full bg-indigo-50 text-indigo-700 rounded-lg flex items-center px-3 gap-3 text-xs font-semibold border border-indigo-100/50">
-                                        <Home className="w-4 h-4" /> Tổng quan
-                                    </div>
-                                    <div className="h-9 w-full hover:bg-white hover:shadow-sm rounded-lg flex items-center px-3 gap-3 text-slate-600 text-xs font-medium transition cursor-pointer">
-                                        <BookOpen className="w-4 h-4" /> Bài tập về nhà <span className="ml-auto w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">2</span>
-                                    </div>
-                                    <div className="h-9 w-full hover:bg-white hover:shadow-sm rounded-lg flex items-center px-3 gap-3 text-slate-600 text-xs font-medium transition cursor-pointer">
-                                        <Laptop className="w-4 h-4" /> Thi thử Mocktest
-                                    </div>
-                                    <div className="h-9 w-full hover:bg-white hover:shadow-sm rounded-lg flex items-center px-3 gap-3 text-slate-600 text-xs font-medium transition cursor-pointer">
-                                        <BarChart3 className="w-4 h-4" /> Bảng thành tích
-                                    </div>
-                                </div>
-
-                                <div className="mt-auto bg-indigo-900 rounded-xl p-4 text-white relative overflow-hidden">
-                                    <div className="relative z-10">
-                                        <div className="text-xs opacity-80 mb-1">Dự đoán điểm</div>
-                                        <div className="text-2xl font-bold">7.5</div>
-                                        <div className="text-[10px] mt-2 flex items-center gap-1 opacity-80">
-                                            <TrendingUp className="w-3 h-3" /> Tăng 0.5 so với tháng trước
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Main Content Mockup */}
-                            <div className="flex-1 bg-white flex flex-col">
-                                {/* Top bar */}
-                                <div className="h-16 border-b border-slate-100 flex items-center justify-between px-8">
-                                    <div>
-                                        <h3 className="font-bold text-slate-900 text-sm">Chào Nguyễn Văn A! 👋</h3>
-                                        <p className="text-xs text-slate-500">Hôm nay bạn có 2 bài tập Reading cần hoàn thành.</p>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <div className="h-9 px-4 rounded-lg bg-slate-100 flex items-center text-xs font-medium text-slate-600">
-                                            <Flame className="w-4 h-4 text-orange-500 mr-1.5" /> 12 ngày liên tiếp
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Content area */}
-                                <div className="p-8 overflow-y-auto bg-slate-50/30 flex-1">
-                                    {/* Cards row */}
-                                    <div className="grid grid-cols-3 gap-4 mb-8">
-                                        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                                            <div className="text-xs text-slate-500 mb-2">Bài tập đã làm</div>
-                                            <div className="text-2xl font-bold text-slate-900">48</div>
-                                            <div className="w-full bg-slate-100 h-1.5 rounded-full mt-3">
-                                                <div className="w-3/4 bg-blue-500 h-1.5 rounded-full"></div>
-                                            </div>
-                                        </div>
-                                        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                                            <div className="text-xs text-slate-500 mb-2">Điểm trung bình</div>
-                                            <div className="text-2xl font-bold text-slate-900">8.0</div>
-                                            <div className="text-[10px] text-emerald-600 mt-1">Excellent!</div>
-                                        </div>
-                                        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                                            <div className="text-xs text-slate-500 mb-2">Thời gian luyện</div>
-                                            <div className="text-2xl font-bold text-slate-900">12h</div>
-                                            <div className="text-[10px] text-slate-400 mt-1">Tuần này</div>
-                                        </div>
-                                    </div>
-
-                                    <h4 className="text-sm font-bold text-slate-900 mb-4">Bài tập về nhà (Deadline: Tối nay)</h4>
-                                    <div className="space-y-3">
-                                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-indigo-300 transition cursor-pointer group">
-                                            <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition">
-                                                <FileText className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between mb-1">
-                                                    <span className="text-sm font-semibold text-slate-900">Cam 18 - Test 2 - Passage 1</span>
-                                                    <span className="text-xs text-red-500 font-medium bg-red-50 px-2 py-0.5 rounded">Chưa làm</span>
-                                                </div>
-                                                <div className="text-xs text-slate-500">Reading • 13 câu hỏi • 20 phút</div>
-                                            </div>
-                                            <div className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400">
-                                                <ChevronRight className="w-4 h-4" />
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-indigo-300 transition cursor-pointer group opacity-75">
-                                            <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                                                <CheckCircle className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between mb-1">
-                                                    <span className="text-sm font-semibold text-slate-900">Listening Practice - Section 2</span>
-                                                    <span className="text-xs text-emerald-600 font-bold">9.0</span>
-                                                </div>
-                                                <div className="text-xs text-slate-500">Đã hoàn thành lúc 14:30 hôm nay</div>
-                                            </div>
-                                            <div className="text-xs font-medium text-indigo-600 underline">Xem lại bài</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Blog Posts Section */}
+                    <HeroBlogSection />
                 </div>
             </section>
 
@@ -202,10 +83,10 @@ export default function HomePage() {
                         {/* Benefit 2 */}
                         <div className="p-8 bg-slate-50 rounded-2xl border border-slate-100 hover:shadow-lg transition duration-300 relative group overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
-                                <CheckCircle className="w-24 h-24 text-emerald-600" />
+                                <CheckCircle2 className="w-24 h-24 text-emerald-600" />
                             </div>
                             <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-emerald-600 mb-6 shadow-sm border border-emerald-50">
-                                <CheckCircle className="w-7 h-7" />
+                                <CheckCircle2 className="w-7 h-7" />
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-3">Chấm điểm &amp; Giải thích ngay</h3>
                             <p className="text-slate-600 leading-relaxed text-sm">Không cần đợi thầy chấm. Hệ thống trả điểm Reading/Listening ngay lập tức kèm giải thích chi tiết vì sao đúng/sai cho từng câu.</p>
@@ -416,29 +297,7 @@ export default function HomePage() {
             </section>
 
             {/* Footer */}
-            <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-8">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
-                                <GraduationCap className="w-5 h-5" />
-                            </div>
-                            <span className="text-xl font-bold text-slate-900">Thầy Điệp <span className="text-indigo-600">English</span></span>
-                        </div>
-
-                        <div className="flex gap-8 text-sm font-medium text-slate-500">
-                            <a href="#" className="hover:text-indigo-600">Về Thầy Điệp</a>
-                            <a href="#" className="hover:text-indigo-600">Lịch khai giảng</a>
-                            <a href="#" className="hover:text-indigo-600">Góc học viên</a>
-                        </div>
-                    </div>
-
-                    <div className="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
-                        <p>Địa chỉ: 123 Đường Cầu Giấy, Hà Nội | Hotline: 09xx.xxx.xxx</p>
-                        <p>© 2024 DiepClass LMS. Powered by PrepMaster.</p>
-                    </div>
-                </div>
-            </footer>
+            <HomeFooter />
         </div>
     );
 }

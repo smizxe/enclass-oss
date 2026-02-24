@@ -42,10 +42,20 @@ export async function POST(
 
     const promptBase = `
 ${promptIntro}
+
+🔴🔴🔴 ABSOLUTE RULE - COMPLETE DOCUMENT EXTRACTION (HIGHEST PRIORITY) 🔴🔴🔴
+You MUST read and process the ENTIRE document from the VERY FIRST line/page to the VERY LAST line/page.
+- Do NOT skip any content at the BEGINNING of the document (page 1, headers, titles, instructions).
+- Do NOT skip any content at the END of the document (last pages, answer keys, appendices).
+- Do NOT truncate or summarize. Extract EVERY SINGLE question, passage, and section.
+- Process ALL pages: page 1, page 2, page 3... until the very last page.
+- If the document has 50 questions, output ALL 50. If it has 100, output ALL 100.
+- Count your extracted questions and compare with question numbers in the document to ensure NOTHING is missing.
+
 Extract ALL questions into structured JSON sections.
 
 **🔴 CRITICAL RULE #1 - ANSWER KEY DETECTION (VERY IMPORTANT):**
-1. FIRST, look for a section named "Answer Key", "Đáp án", "KEY", "Answers", "Lời giải" or similar.
+1. FIRST, scan the ENTIRE document (especially the LAST pages) for a section named "Answer Key", "Đáp án", "KEY", "Answers", "Lời giải", "ĐÁP ÁN", "ANSWER KEY" or similar.
 2. If found, use those answers to populate "correctAnswer" for each question.
 3. If NOT found anywhere in the document, you MUST predict the most likely answer based on:
    - Context clues in the passage
@@ -53,9 +63,16 @@ Extract ALL questions into structured JSON sections.
    - Logical reasoning
 4. Add "predictedAnswer": true to each question where you predicted (not found in answer key).
 
+**🔴 CRITICAL RULE #2 - GAP_FILL ANSWER EXTRACTION:**
+For GAP_FILL questions (fill-in-the-blank):
+1. The correctAnswer should be the EXACT word(s) that fill the blank.
+2. Look in the Answer Key section for the gap fill answers.
+3. If the answer key shows "1. information" or "1. TRUE" etc., use that exact text.
+4. Do NOT leave correctAnswer empty for gap fill questions.
+
 **🔥 OTHER CRITICAL RULES 🔥**
 1. **NO LOOPS/DUPLICATES**: Each question appears ONCE.
-2. **SPEED**: Output ONLY valid JSON. No preamble.
+2. **SPEED**: Output ONLY valid JSON. No preamble, no explanation, no markdown fences.
 3. **FORMATTING**: Use **markdown** for formatting:
    - Bold text: **text**
    - Italic text: *text*
@@ -71,41 +88,45 @@ Extract ALL questions into structured JSON sections.
 
 2. **READING / GAP_FILL**:
    - Group questions sharing a passage.
-   - **passage**: Full text with **bold** formatting preserved. If the passage is a form/table, use HTML '<table>'.
+   - **passage**: COMPLETE full text with **bold** formatting preserved. Do NOT shorten the passage. If the passage is a form/table, use HTML '<table>'.
 
 3. **MCQ**: Standard multiple choice.
 
 **JSON STRUCTURE:**
 {
-  "hasAnswerKey": true,  // true if Answer Key section was found, false if AI predicted
+  "hasAnswerKey": true,
   "sections": [
     {
       "title": "Section Title",
       "type": "GAP_FILL | READING | STANDALONE | ORDERING",
-      "passage": "Full passage with **bold** and *italic* using markdown...",
-      "passageTranslation": "Vietnamese translation (optional)",
+      "passage": "Full passage text...",
+      "passageTranslation": "",
       "questions": [
         {
           "questionNumber": 1,
-          "type": "MCQ | ORDERING",
-          "content": "Question with **bold words**...",
-          "items": ["a. Item 1", "b. Item 2"],
+          "type": "MCQ | GAP_FILL | ORDERING",
+          "content": "Question text...",
+          "items": [],
           "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
           "correctAnswer": "A",
           "predictedAnswer": false,
-          "explanation": "Explanation..."
+          "explanation": ""
         }
       ]
     }
   ]
 }
 
-⚠️ REMEMBER:
-- ALWAYS include "hasAnswerKey" field at the root level
-- Set "predictedAnswer": true if you predicted the answer (no answer key found)
-- "correctAnswer" is REQUIRED for every question
+⚠️ FINAL CHECKLIST BEFORE OUTPUTTING:
+- Have I extracted content from the FIRST page? ✅
+- Have I extracted content from the LAST page? ✅
+- Have I checked for Answer Key at the END of the document? ✅
+- Is "hasAnswerKey" set correctly? ✅
+- Does EVERY question have a "correctAnswer"? ✅
+- Are GAP_FILL answers filled with actual words (not just letters)? ✅
+- Did I count questions to match the document's numbering? ✅
 
-**RETURN VALID JSON ONLY.**
+**RETURN VALID JSON ONLY. NO MARKDOWN FENCES. NO PREAMBLE.**
 `;
 
     // Prepare prompt parts based on file type

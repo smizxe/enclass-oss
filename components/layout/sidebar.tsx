@@ -11,7 +11,8 @@ import {
     GraduationCap,
     Settings,
     ClipboardCheck,
-    Globe
+    Globe,
+    PenSquare
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -35,6 +36,11 @@ const routes = [
         label: "Cộng đồng",
         icon: Globe,
         href: "/community",
+    },
+    {
+        label: "Blog",
+        icon: PenSquare,
+        href: "/teacher/blog",
     },
     {
         label: "Chấm điểm",

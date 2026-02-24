@@ -134,7 +134,7 @@ export const ClassSidebar = ({
 
     return (
         <div className={cn(
-            "hidden md:flex flex-col h-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] relative z-10",
+            "hidden md:flex flex-col h-full transition-all duration-500 ease-in-out relative z-10",
             // Glassmorphism Container
             "bg-gradient-to-b from-indigo-950 via-[#1e1b4b] to-indigo-950 border-r border-indigo-800/30 shadow-2xl",
             isCollapsed ? "w-24" : "w-80"
