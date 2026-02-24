@@ -91,19 +91,6 @@ const SectionContent = ({
     passageFontSize?: number,
     questionFontSize?: number
 }) => {
-    let questionCounter = startIndex;
-
-    // Detect if ALL questions in this section are GAP_FILL → use compact inline mode
-    // Extremely permissive check: handles "Gap Fill", "gap-fill", "GAP_FILL", "GapFilling", etc.
-    const allGapFill = group.questions
-        .filter(q => q.type !== "SECTION_HEADER")
-        .every(q => {
-            const type = (q.type || "").toUpperCase();
-            return type.includes("GAP") && type.includes("FILL");
-        });
-    // CompactGapFillSection handles its own fallback internally, so always delegate
-    const useCompactMode = allGapFill && !!group.passage;
-
     return (
         <div className="space-y-8 pb-10">
             <div className="space-y-4">
@@ -132,169 +119,217 @@ const SectionContent = ({
                 )}
 
                 {/* Compact GAP_FILL Mode: Inline inputs in passage */}
-                {useCompactMode ? (
-                    <CompactGapFillSection
-                        passage={group.passage!}
-                        questions={group.questions.filter(q => q.type !== "SECTION_HEADER")}
-                        answers={answers}
-                        onAnswerChange={onAnswerChange}
-                        disabled={!!submissionResult}
-                        results={submissionResult?.results}
-                        startIndex={startIndex}
-                        fontSize={questionFontSize}
-                    />
-                ) : (
-                    <>
-                        {/* Passage (Only if showPassage is true) */}
-                        {showPassage && group.passage && (
-                            <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-5 shadow-sm">
-                                <div className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-4">
-                                    <BookOpen className="w-4 h-4" />
-                                    <span>Đọc đoạn văn sau:</span>
-                                </div>
+                {/* Render questions: group contiguous GAP_FILL runs for compact display, standard cards for others */}
+                {(() => {
+                    // Helper: check if a question is GAP_FILL type (permissive)
+                    const isGapFill = (q: ParsedQuestion) => {
+                        const type = (q.type || "").toUpperCase();
+                        return type.includes("GAP") && type.includes("FILL");
+                    };
 
-                                {/* Render HTML/Markdown from Editor */}
-                                <div className="text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
-                                    style={{ fontSize: `${passageFontSize}px` }}>
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        rehypePlugins={[rehypeRaw]}
-                                    >
-                                        {group.passage || ""}
-                                    </ReactMarkdown>
-                                </div>
-                                {group.passageTranslation && (
-                                    <div className="mt-4 pt-4 border-t border-slate-200">
-                                        <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                        <div className="text-slate-600 italic leading-relaxed" style={{ fontSize: `${passageFontSize}px` }}>
-                                            <ReactMarkdown
-                                                remarkPlugins={[remarkGfm]}
-                                                rehypePlugins={[rehypeRaw]}
-                                            >
-                                                {group.passageTranslation || ""}
-                                            </ReactMarkdown>
-                                        </div>
+                    // Filter out SECTION_HEADER questions
+                    const realQuestions = group.questions.filter(q => q.type !== "SECTION_HEADER");
+
+                    // Group contiguous questions by render mode (gap_fill vs standard)
+                    type QuestionRun = {
+                        mode: "gap_fill" | "standard";
+                        questions: ParsedQuestion[];
+                        startIdx: number; // index relative to section start
+                    };
+
+                    const runs: QuestionRun[] = [];
+                    let currentRun: QuestionRun | null = null;
+
+                    realQuestions.forEach((q, idx) => {
+                        const mode = isGapFill(q) ? "gap_fill" : "standard";
+                        if (!currentRun || currentRun.mode !== mode) {
+                            currentRun = { mode, questions: [], startIdx: idx };
+                            runs.push(currentRun);
+                        }
+                        currentRun.questions.push(q);
+                    });
+
+                    // Track question counter across runs
+                    let runCounter = startIndex;
+
+                    return (
+                        <>
+                            {/* Passage (Only if showPassage is true AND we're NOT in all-compact mode) */}
+                            {showPassage && group.passage && (
+                                <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-5 shadow-sm">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-4">
+                                        <BookOpen className="w-4 h-4" />
+                                        <span>Đọc đoạn văn sau:</span>
                                     </div>
-                                )}
-                            </div>
-                        )}
 
-                        {/* Questions - Standard card layout */}
-                        <div className="space-y-4" style={{ fontSize: `${questionFontSize}px` }}>
-                            {group.questions.filter(q => q.type !== "SECTION_HEADER").map((q) => {
-                                const currentIndex = questionCounter++;
-                                const result = submissionResult?.results?.[q.id];
-                                let statusColor = "border-slate-200";
-                                let statusBg = "bg-white";
+                                    {/* Render HTML/Markdown from Editor */}
+                                    <div className="text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
+                                        style={{ fontSize: `${passageFontSize}px` }}>
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            rehypePlugins={[rehypeRaw]}
+                                        >
+                                            {group.passage || ""}
+                                        </ReactMarkdown>
+                                    </div>
+                                    {group.passageTranslation && (
+                                        <div className="mt-4 pt-4 border-t border-slate-200">
+                                            <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
+                                            <div className="text-slate-600 italic leading-relaxed" style={{ fontSize: `${passageFontSize}px` }}>
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    rehypePlugins={[rehypeRaw]}
+                                                >
+                                                    {group.passageTranslation || ""}
+                                                </ReactMarkdown>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
-                                if (result) {
-                                    if (result.isCorrect) {
-                                        statusColor = "border-emerald-200";
-                                        statusBg = "bg-emerald-50/30";
-                                    } else {
-                                        statusColor = "border-red-200";
-                                        statusBg = "bg-red-50/30";
-                                    }
-                                } else if (answers[q.id]) {
-                                    statusColor = "border-emerald-200";
+                            {/* Render each contiguous run */}
+                            {runs.map((run, runIdx) => {
+                                const runStart = runCounter;
+                                runCounter += run.questions.length;
+
+                                if (run.mode === "gap_fill" && group.passage) {
+                                    // Render GAP_FILL run using CompactGapFillSection
+                                    return (
+                                        <CompactGapFillSection
+                                            key={`run-${runIdx}`}
+                                            passage={group.passage!}
+                                            questions={run.questions}
+                                            answers={answers}
+                                            onAnswerChange={onAnswerChange}
+                                            disabled={!!submissionResult}
+                                            results={submissionResult?.results}
+                                            startIndex={runStart}
+                                            fontSize={questionFontSize}
+                                        />
+                                    );
                                 }
 
+                                // Standard card layout for MCQ/other questions
                                 return (
-                                    <div
-                                        key={q.id}
-                                        className={`rounded-xl border shadow-sm overflow-hidden transition ${statusColor} ${statusBg}`}
-                                    >
-                                        {/* Question Header */}
-                                        <div className={`px-5 py-3 flex items-center justify-between border-b ${result
-                                            ? (result.isCorrect ? "bg-emerald-100 border-emerald-200" : "bg-red-50 border-red-100")
-                                            : (answers[q.id] ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100")
-                                            }`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${result
-                                                    ? (result.isCorrect ? "bg-emerald-500 text-white" : "bg-red-500 text-white")
-                                                    : (answers[q.id] ? "bg-emerald-500 text-white" : "bg-white text-slate-600 border border-slate-200")
-                                                    }`}>
-                                                    {result ? (result.isCorrect ? <CheckCircle className="w-4 h-4" /> : <span className="font-bold">✕</span>) : (answers[q.id] ? <CheckCircle className="w-4 h-4" /> : currentIndex + 1)}
-                                                </div>
-                                                <span className="text-sm font-medium text-slate-700">
-                                                    Câu {currentIndex + 1}
-                                                </span>
-                                            </div>
-                                            <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-full border border-slate-200">
-                                                {q.points} điểm
-                                            </span>
-                                        </div>
+                                    <div key={`run-${runIdx}`} className="space-y-4" style={{ fontSize: `${questionFontSize}px` }}>
+                                        {run.questions.map((q, qIdx) => {
+                                            const currentIndex = runStart + qIdx;
+                                            const result = submissionResult?.results?.[q.id];
+                                            let statusColor = "border-slate-200";
+                                            let statusBg = "bg-white";
 
-                                        {/* Question Content */}
-                                        <div className="p-5">
-                                            {q.type === "MCQ" && (
-                                                <McqQuestionSimple
-                                                    question={q}
-                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                    value={answers[q.id] as string}
-                                                    onChange={(val) => onAnswerChange(q.id, val)}
-                                                    result={result}
-                                                    isMultiSelect={!!(q.correctAnswer && q.correctAnswer.includes(","))}
-                                                />
-                                            )}
-                                            {q.type === "GAP_FILL" && (
-                                                <GapFillQuestion
-                                                    question={q}
-                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                    value={answers[q.id] as Record<number, string> | string}
-                                                    onChange={(val) => onAnswerChange(q.id, val)}
-                                                    disabled={!!result}
-                                                    result={result}
-                                                />
-                                            )}
-                                            {q.type === "SORTABLE" && (
-                                                <SortableQuestion
-                                                    question={q}
-                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                    value={answers[q.id] as string[]}
-                                                    onChange={(val) => onAnswerChange(q.id, val)}
-                                                />
-                                            )}
-                                            {(q.type === "ESSAY" || q.type === "WRITING") && (
-                                                <EssayQuestion
-                                                    question={q}
-                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                    value={answers[q.id] as string}
-                                                    onChange={(val) => onAnswerChange(q.id, val)}
-                                                />
-                                            )}
-                                            {q.type === "SPEAKING" && (
-                                                <SpeakingQuestion
-                                                    question={q}
-                                                    value={answers[q.id] as string}
-                                                    onChange={(val) => onAnswerChange(q.id, val)}
-                                                />
-                                            )}
-                                            {q.type === "ORDERING" && (
-                                                <McqQuestionSimple
-                                                    question={q}
-                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                    value={answers[q.id] as string}
-                                                    onChange={(val) => onAnswerChange(q.id, val)}
-                                                    result={result}
-                                                />
-                                            )}
-                                            {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY", "ORDERING", "SPEAKING", "WRITING"].includes(q.type) && (
-                                                <McqQuestionSimple
-                                                    question={q}
-                                                    value={answers[q.id] as string}
-                                                    onChange={(val) => onAnswerChange(q.id, val)}
-                                                    result={result}
-                                                    isMultiSelect={!!(q.correctAnswer && q.correctAnswer.includes(","))}
-                                                />
-                                            )}
-                                        </div>
+                                            if (result) {
+                                                if (result.isCorrect) {
+                                                    statusColor = "border-emerald-200";
+                                                    statusBg = "bg-emerald-50/30";
+                                                } else {
+                                                    statusColor = "border-red-200";
+                                                    statusBg = "bg-red-50/30";
+                                                }
+                                            } else if (answers[q.id]) {
+                                                statusColor = "border-emerald-200";
+                                            }
+
+                                            return (
+                                                <div
+                                                    key={q.id}
+                                                    className={`rounded-xl border shadow-sm overflow-hidden transition ${statusColor} ${statusBg}`}
+                                                >
+                                                    {/* Question Header */}
+                                                    <div className={`px-5 py-3 flex items-center justify-between border-b ${result
+                                                        ? (result.isCorrect ? "bg-emerald-100 border-emerald-200" : "bg-red-50 border-red-100")
+                                                        : (answers[q.id] ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100")
+                                                        }`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${result
+                                                                ? (result.isCorrect ? "bg-emerald-500 text-white" : "bg-red-500 text-white")
+                                                                : (answers[q.id] ? "bg-emerald-500 text-white" : "bg-white text-slate-600 border border-slate-200")
+                                                                }`}>
+                                                                {result ? (result.isCorrect ? <CheckCircle className="w-4 h-4" /> : <span className="font-bold">✕</span>) : (answers[q.id] ? <CheckCircle className="w-4 h-4" /> : currentIndex + 1)}
+                                                            </div>
+                                                            <span className="text-sm font-medium text-slate-700">
+                                                                Câu {currentIndex + 1}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-full border border-slate-200">
+                                                            {q.points} điểm
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Question Content */}
+                                                    <div className="p-5">
+                                                        {q.type === "MCQ" && (
+                                                            <McqQuestionSimple
+                                                                question={q}
+                                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                                value={answers[q.id] as string}
+                                                                onChange={(val) => onAnswerChange(q.id, val)}
+                                                                result={result}
+                                                                isMultiSelect={!!(q.correctAnswer && q.correctAnswer.includes(","))}
+                                                            />
+                                                        )}
+                                                        {q.type === "GAP_FILL" && (
+                                                            <GapFillQuestion
+                                                                question={q}
+                                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                                value={answers[q.id] as Record<number, string> | string}
+                                                                onChange={(val) => onAnswerChange(q.id, val)}
+                                                                disabled={!!result}
+                                                                result={result}
+                                                            />
+                                                        )}
+                                                        {q.type === "SORTABLE" && (
+                                                            <SortableQuestion
+                                                                question={q}
+                                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                                value={answers[q.id] as string[]}
+                                                                onChange={(val) => onAnswerChange(q.id, val)}
+                                                            />
+                                                        )}
+                                                        {(q.type === "ESSAY" || q.type === "WRITING") && (
+                                                            <EssayQuestion
+                                                                question={q}
+                                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                                value={answers[q.id] as string}
+                                                                onChange={(val) => onAnswerChange(q.id, val)}
+                                                            />
+                                                        )}
+                                                        {q.type === "SPEAKING" && (
+                                                            <SpeakingQuestion
+                                                                question={q}
+                                                                value={answers[q.id] as string}
+                                                                onChange={(val) => onAnswerChange(q.id, val)}
+                                                            />
+                                                        )}
+                                                        {q.type === "ORDERING" && (
+                                                            <McqQuestionSimple
+                                                                question={q}
+                                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                                value={answers[q.id] as string}
+                                                                onChange={(val) => onAnswerChange(q.id, val)}
+                                                                result={result}
+                                                            />
+                                                        )}
+                                                        {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY", "ORDERING", "SPEAKING", "WRITING"].includes(q.type) && (
+                                                            <McqQuestionSimple
+                                                                question={q}
+                                                                value={answers[q.id] as string}
+                                                                onChange={(val) => onAnswerChange(q.id, val)}
+                                                                result={result}
+                                                                isMultiSelect={!!(q.correctAnswer && q.correctAnswer.includes(","))}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 );
                             })}
-                        </div>
-                    </>
-                )}
+                        </>
+                    );
+                })()}
             </div>
         </div>
     );
