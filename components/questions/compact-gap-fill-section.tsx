@@ -240,11 +240,7 @@ export const CompactGapFillSection = ({
             style={{ fontSize: `${fontSize}px` }}
         >
             {/* If Synthetic: Render Original Passage first, THEN the Reconstructed Note/Summary Block. */}
-            {isSynthetic && (
-                <div className="leading-8 prose prose-sm max-w-none mb-8 pb-8 border-b border-slate-200">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{passage}</ReactMarkdown>
-                </div>
-            )}
+            {/* If Synthetic: Render ONLY the Reconstructed Note/Summary Block. The Original Passage is already shown externally. */}
 
             <div className={`leading-9 text-slate-800 ${isSynthetic ? 'border border-slate-300 rounded-xl p-6 bg-slate-50/50' : 'prose prose-sm max-w-none prose-headings:mb-2 prose-headings:mt-4 prose-p:mb-1 prose-ul:my-1 prose-li:my-0 [&_strong]:font-bold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2'}`}>
                 {parts.map((part, index) => {
