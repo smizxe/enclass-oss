@@ -43,6 +43,7 @@ interface ParsedContent {
     sectionTitle?: string;
     sectionType?: string;
     sectionAudio?: string;
+    sectionVideo?: string;
     sectionImages?: string[];
 }
 
@@ -50,6 +51,7 @@ interface QuestionGroup {
     sectionTitle: string;
     sectionType: string;
     sectionAudio?: string;
+    sectionVideo?: string;
     sectionImages?: string[];
     passage?: string;
     passageTable?: string;
@@ -114,6 +116,7 @@ export default function AssignmentEditorPage() {
         questionIds: string[];
         sectionTitle: string;
         sectionAudio?: string;
+        sectionVideo?: string;
         sectionImages?: string[];
         passage: string;
         passageTable: string;
@@ -204,6 +207,7 @@ export default function AssignmentEditorPage() {
                     sectionTitle,
                     sectionType,
                     sectionAudio: parsed.sectionAudio,
+                    sectionVideo: parsed.sectionVideo,
                     sectionImages: parsed.sectionImages || [],
                     passage: parsed.passage,
                     passageTranslation: parsed.passageTranslation,
@@ -215,8 +219,9 @@ export default function AssignmentEditorPage() {
             // Usually the first question carries the passage info, or all of them do.
             if (parsed.passage && !currentGroup.passage) currentGroup.passage = parsed.passage;
             if (parsed.passageTranslation && !currentGroup.passageTranslation) currentGroup.passageTranslation = parsed.passageTranslation;
-            // Sync Audio
+            // Sync Audio & Video
             if (parsed.sectionAudio && !currentGroup.sectionAudio) currentGroup.sectionAudio = parsed.sectionAudio;
+            if (parsed.sectionVideo && !currentGroup.sectionVideo) currentGroup.sectionVideo = parsed.sectionVideo;
             // Sync Images (Merge if unique)
             if (parsed.sectionImages && parsed.sectionImages.length > 0) {
                 if (!currentGroup.sectionImages) currentGroup.sectionImages = [];
@@ -392,6 +397,7 @@ export default function AssignmentEditorPage() {
             questionIds,
             sectionTitle: group.sectionTitle,
             sectionAudio: group.sectionAudio,
+            sectionVideo: group.sectionVideo,
             sectionImages: group.sectionImages || [],
             passage: (() => {
                 const converter = new showdown.Converter();
@@ -1052,6 +1058,19 @@ export default function AssignmentEditorPage() {
                                         onUpdateSettings={(newSettings) => setEditingSection({ ...editingSection, sectionAudio: newSettings.audioUrl })}
                                         label="Cài đặt Audio"
                                     />
+                                </div>
+
+                                {/* Section Video */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Video URL (YouTube)</label>
+                                    <input
+                                        type="text"
+                                        value={editingSection.sectionVideo || ""}
+                                        onChange={(e) => setEditingSection({ ...editingSection, sectionVideo: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                        placeholder="https://www.youtube.com/watch?v=..."
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-1">Dán link YouTube đầy đủ hoặc ID video.</p>
                                 </div>
 
                                 {/* Section Images */}

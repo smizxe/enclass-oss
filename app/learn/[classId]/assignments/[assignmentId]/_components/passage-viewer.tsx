@@ -12,6 +12,7 @@ interface PassageViewerProps {
     passage?: string;
     passageTranslation?: string;
     sectionImages?: string[];
+    sectionVideo?: string;
     fontSize?: number;
 }
 
@@ -20,23 +21,49 @@ export const PassageViewer = ({
     passage,
     passageTranslation,
     sectionImages = [],
+    sectionVideo,
     fontSize = 16
 }: PassageViewerProps) => {
     const hasPassage = !!passage;
     const hasImages = sectionImages.length > 0;
+    const hasVideo = !!sectionVideo;
 
-    // Default to PASSAGE if available, otherwise IMAGES
-    const [activeTab, setActiveTab] = useState<"PASSAGE" | "IMAGES">(hasPassage ? "PASSAGE" : "IMAGES");
+    // Default Tab Logic
+    const [activeTab, setActiveTab] = useState<"PASSAGE" | "IMAGES" | "VIDEO">(() => {
+        if (hasPassage) return "PASSAGE";
+        if (hasVideo) return "VIDEO";
+        if (hasImages) return "IMAGES";
+        return "PASSAGE";
+    });
 
     // Lightbox State
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-    if (!hasPassage && !hasImages) {
+    // YouTube Embed Helper
+    const getYouTubeEmbedUrl = (url: string) => {
+        try {
+            let videoId = "";
+            if (url.includes("youtube.com/watch?v=")) {
+                videoId = url.split("v=")[1].split("&")[0];
+            } else if (url.includes("youtu.be/")) {
+                videoId = url.split("youtu.be/")[1].split("?")[0];
+            } else if (url.length === 11) {
+                videoId = url; // Assume it IS the ID
+            }
+
+            if (videoId) {
+                return `https://www.youtube.com/embed/${videoId}`;
+            }
+        } catch { }
+        return "";
+    };
+
+    if (!hasPassage && !hasImages && !hasVideo) {
         return (
             <div className="h-full flex items-center justify-center text-slate-400 italic">
                 <div className="text-center">
                     <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                    <p>Phần này không có bài đọc</p>
+                    <p>Phần này không có nội dung học liệu</p>
                 </div>
             </div>
         );
@@ -57,29 +84,48 @@ export const PassageViewer = ({
                     </div>
                 </div>
 
-                {/* Tabs - Only show if both exist */}
-                {hasPassage && hasImages && (
-                    <div className="flex p-1 bg-slate-100 rounded-lg w-fit">
-                        <button
-                            onClick={() => setActiveTab("PASSAGE")}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition flex items-center gap-2 ${activeTab === "PASSAGE"
-                                ? "bg-white text-indigo-600 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700"
-                                }`}
-                        >
-                            <BookOpen className="w-4 h-4" />
-                            Bài đọc
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("IMAGES")}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition flex items-center gap-2 ${activeTab === "IMAGES"
-                                ? "bg-white text-indigo-600 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700"
-                                }`}
-                        >
-                            <ImageIcon className="w-4 h-4" />
-                            Hình ảnh ({sectionImages.length})
-                        </button>
+                {/* Tabs - Show if more than 1 type exists OR force show if only 1 but we want consistent UI? 
+                    Actually, if only 1 type exists, we can hide tabs to save space, OR show for clarity.
+                    Let's show if total types > 1.
+                */}
+                {((hasPassage ? 1 : 0) + (hasImages ? 1 : 0) + (hasVideo ? 1 : 0)) > 1 && (
+                    <div className="flex p-1 bg-slate-100 rounded-lg w-fit overflow-x-auto max-w-full">
+                        {hasPassage && (
+                            <button
+                                onClick={() => setActiveTab("PASSAGE")}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition flex items-center gap-2 whitespace-nowrap ${activeTab === "PASSAGE"
+                                    ? "bg-white text-indigo-600 shadow-sm"
+                                    : "text-slate-500 hover:text-slate-700"
+                                    }`}
+                            >
+                                <BookOpen className="w-4 h-4" />
+                                Bài đọc
+                            </button>
+                        )}
+                        {hasVideo && (
+                            <button
+                                onClick={() => setActiveTab("VIDEO")}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition flex items-center gap-2 whitespace-nowrap ${activeTab === "VIDEO"
+                                    ? "bg-white text-indigo-600 shadow-sm"
+                                    : "text-slate-500 hover:text-slate-700"
+                                    }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                                Video
+                            </button>
+                        )}
+                        {hasImages && (
+                            <button
+                                onClick={() => setActiveTab("IMAGES")}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition flex items-center gap-2 whitespace-nowrap ${activeTab === "IMAGES"
+                                    ? "bg-white text-indigo-600 shadow-sm"
+                                    : "text-slate-500 hover:text-slate-700"
+                                    }`}
+                            >
+                                <ImageIcon className="w-4 h-4" />
+                                Hình ảnh ({sectionImages.length})
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
@@ -95,7 +141,6 @@ export const PassageViewer = ({
                             <span>Đọc đoạn văn</span>
                         </div>
 
-                        {/* THE FIX: Added break-words and min-w-0 to prevent overflow */}
                         <div
                             className="text-slate-700 leading-relaxed prose prose-sm max-w-none break-words min-w-0 [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
                             style={{ fontSize: `${fontSize}px` }}
@@ -127,7 +172,44 @@ export const PassageViewer = ({
                     </div>
                 )}
 
-                {/* 2. IMAGES VIEW */}
+                {/* 2. VIDEO VIEW */}
+                {activeTab === "VIDEO" && hasVideo && (
+                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm animate-in fade-in duration-300">
+                        {/* We can parse standard YouTube links */}
+                        {(() => {
+                            const embedUrl = getYouTubeEmbedUrl(sectionVideo);
+                            if (embedUrl) {
+                                return (
+                                    <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
+                                        <iframe
+                                            src={embedUrl}
+                                            className="w-full h-full"
+                                            title="Video Bài Giảng"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        ></iframe>
+                                    </div>
+                                );
+                            } else {
+                                return (
+                                    <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm text-center">
+                                        Không thể tải video. Vui lòng kiểm tra lại đường dẫn.
+                                        <br />
+                                        <a href={sectionVideo} target="_blank" rel="noopener noreferrer" className="underline mt-1 block">
+                                            Mở link gốc
+                                        </a>
+                                    </div>
+                                );
+                            }
+                        })()}
+
+                        <div className="mt-4 text-xs text-slate-400 text-center">
+                            Nguồn: {sectionVideo}
+                        </div>
+                    </div>
+                )}
+
+                {/* 3. IMAGES VIEW */}
                 {activeTab === "IMAGES" && hasImages && (
                     <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm animate-in fade-in duration-300">
                         <div className="flex flex-col gap-6">

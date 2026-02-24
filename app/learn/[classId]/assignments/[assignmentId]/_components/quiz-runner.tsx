@@ -52,6 +52,7 @@ interface ParsedQuestion {
         sectionTitle?: string;
         sectionType?: string;
         sectionImages?: string[];
+        sectionVideo?: string;
     };
 }
 
@@ -61,6 +62,7 @@ interface QuestionGroup {
     passage?: string;
     passageTranslation?: string;
     sectionAudio?: string;
+    sectionVideo?: string;
     sectionImages?: string[];
     questions: ParsedQuestion[];
 }
@@ -441,6 +443,7 @@ export const QuizRunner = ({
                     passage: parsed.passage,
                     passageTranslation: parsed.passageTranslation,
                     sectionAudio: parsed.sectionAudio,
+                    sectionVideo: parsed.sectionVideo,
                     sectionImages: parsed.sectionImages || [],
                     questions: []
                 };
@@ -452,6 +455,7 @@ export const QuizRunner = ({
             if (parsed.sectionImages && (!currentGroup.sectionImages || currentGroup.sectionImages.length === 0)) {
                 currentGroup.sectionImages = parsed.sectionImages;
             }
+            if (parsed.sectionVideo && !currentGroup.sectionVideo) currentGroup.sectionVideo = parsed.sectionVideo;
 
             // Shuffle options for MCQ in Test Mode
             let finalParsed = { ...parsed };
@@ -949,6 +953,7 @@ export const QuizRunner = ({
                                 passage={activeGroup.passage}
                                 passageTranslation={activeGroup.passageTranslation}
                                 sectionImages={activeGroup.sectionImages}
+                                sectionVideo={activeGroup.sectionVideo}
                                 fontSize={passageFontSize}
                             />
                         </div>
