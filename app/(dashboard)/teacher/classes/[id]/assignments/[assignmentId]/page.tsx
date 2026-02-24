@@ -129,6 +129,13 @@ export default function AssignmentEditorPage() {
     const [localMaxAttempts, setLocalMaxAttempts] = useState<number>(1);
     const [maxAttemptsChanged, setMaxAttemptsChanged] = useState(false);
 
+    // Time Limit & Deadline State
+    const [timeLimitHours, setTimeLimitHours] = useState(0);
+    const [timeLimitMinutes, setTimeLimitMinutes] = useState(0);
+    const [timeLimitChanged, setTimeLimitChanged] = useState(false);
+    const [deadline, setDeadline] = useState("");
+    const [deadlineChanged, setDeadlineChanged] = useState(false);
+
     const classId = id;
 
     const fetchQuestions = useCallback(async () => {
@@ -152,6 +159,17 @@ export default function AssignmentEditorPage() {
                 setAssignment(res.data);
                 // Sync local maxAttempts state
                 setLocalMaxAttempts(res.data.settings?.maxAttempts || 1);
+                // Sync time limit
+                const tlm = res.data.settings?.timeLimitMinutes || 0;
+                setTimeLimitHours(Math.floor(tlm / 60));
+                setTimeLimitMinutes(tlm % 60);
+                // Sync deadline
+                if (res.data.settings?.deadline) {
+                    // Convert ISO to datetime-local format
+                    const d = new Date(res.data.settings.deadline);
+                    const pad = (n: number) => n.toString().padStart(2, '0');
+                    setDeadline(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                }
                 if (res.data.type === "ESSAY" && res.data.description) {
                     setEssayPrompt(res.data.description);
                 }
@@ -610,6 +628,119 @@ export default function AssignmentEditorPage() {
                                 />
                                 <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                             </label>
+                        </div>
+                    </div>
+
+                    {/* Time Limit Card */}
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                            <div className="flex gap-3">
+                                <div className={`p-2.5 rounded-lg h-fit transition-colors ${(timeLimitHours > 0 || timeLimitMinutes > 0) ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-500"}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900">Thời gian làm bài</h3>
+                                    <p className="text-sm text-slate-500 mt-1 max-w-[280px]">
+                                        Giới hạn thời gian làm bài. Đếm ngược khi học sinh bắt đầu.
+                                    </p>
+                                    <p className={`text-xs font-medium mt-2 inline-block px-2 py-1 rounded ${(timeLimitHours > 0 || timeLimitMinutes > 0) ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-500"}`}>
+                                        {(timeLimitHours > 0 || timeLimitMinutes > 0)
+                                            ? `${timeLimitHours > 0 ? `${timeLimitHours} giờ ` : ""}${timeLimitMinutes > 0 ? `${timeLimitMinutes} phút` : ""}`
+                                            : "Không giới hạn"
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-2">
+                                <div className="flex items-center gap-2">
+                                    {/* Hours */}
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-[10px] text-slate-400 mb-1">Giờ</span>
+                                        <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+                                            <button onClick={() => { const v = Math.max(0, timeLimitHours - 1); setTimeLimitHours(v); setTimeLimitChanged(true); }} className="px-2 py-1.5 hover:bg-slate-100 text-slate-500 transition border-r border-slate-200 text-sm">-</button>
+                                            <input type="number" min={0} max={10} value={timeLimitHours} onChange={(e) => { setTimeLimitHours(Math.max(0, Math.min(10, parseInt(e.target.value) || 0))); setTimeLimitChanged(true); }} className="w-10 py-1.5 text-center text-slate-900 font-semibold bg-transparent focus:outline-none text-sm" />
+                                            <button onClick={() => { const v = Math.min(10, timeLimitHours + 1); setTimeLimitHours(v); setTimeLimitChanged(true); }} className="px-2 py-1.5 hover:bg-slate-100 text-slate-500 transition border-l border-slate-200 text-sm">+</button>
+                                        </div>
+                                    </div>
+                                    {/* Minutes */}
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-[10px] text-slate-400 mb-1">Phút</span>
+                                        <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+                                            <button onClick={() => { const v = Math.max(0, timeLimitMinutes - 5); setTimeLimitMinutes(v); setTimeLimitChanged(true); }} className="px-2 py-1.5 hover:bg-slate-100 text-slate-500 transition border-r border-slate-200 text-sm">-</button>
+                                            <input type="number" min={0} max={59} value={timeLimitMinutes} onChange={(e) => { setTimeLimitMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0))); setTimeLimitChanged(true); }} className="w-10 py-1.5 text-center text-slate-900 font-semibold bg-transparent focus:outline-none text-sm" />
+                                            <button onClick={() => { const v = Math.min(59, timeLimitMinutes + 5); setTimeLimitMinutes(v); setTimeLimitChanged(true); }} className="px-2 py-1.5 hover:bg-slate-100 text-slate-500 transition border-l border-slate-200 text-sm">+</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {timeLimitChanged && (
+                                    <button
+                                        onClick={() => {
+                                            const totalMinutes = timeLimitHours * 60 + timeLimitMinutes;
+                                            onUpdateSettings({
+                                                ...assignment?.settings,
+                                                timeLimitMinutes: totalMinutes > 0 ? totalMinutes : undefined
+                                            });
+                                            setTimeLimitChanged(false);
+                                        }}
+                                        className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition shadow-sm animate-in fade-in slide-in-from-top-1"
+                                    >
+                                        Lưu thay đổi
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Deadline Card */}
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                            <div className="flex gap-3">
+                                <div className={`p-2.5 rounded-lg h-fit transition-colors ${deadline ? "bg-red-50 text-red-500" : "bg-slate-100 text-slate-500"}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900">Hạn nộp bài</h3>
+                                    <p className="text-sm text-slate-500 mt-1 max-w-[280px]">
+                                        Học viên không thể nộp bài sau thời hạn này.
+                                    </p>
+                                    <p className={`text-xs font-medium mt-2 inline-block px-2 py-1 rounded ${deadline ? "bg-red-50 text-red-500" : "bg-slate-100 text-slate-500"}`}>
+                                        {deadline
+                                            ? `Hạn: ${new Date(deadline).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}`
+                                            : "Không có hạn nộp"
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-2">
+                                <input
+                                    type="datetime-local"
+                                    value={deadline}
+                                    onChange={(e) => { setDeadline(e.target.value); setDeadlineChanged(true); }}
+                                    className="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition bg-slate-50"
+                                />
+                                {deadline && (
+                                    <button onClick={() => { setDeadline(""); setDeadlineChanged(true); }} className="text-xs text-red-500 hover:text-red-700 transition">
+                                        Xoá hạn nộp
+                                    </button>
+                                )}
+                                {deadlineChanged && (
+                                    <button
+                                        onClick={() => {
+                                            onUpdateSettings({
+                                                ...assignment?.settings,
+                                                deadline: deadline ? new Date(deadline).toISOString() : undefined
+                                            });
+                                            setDeadlineChanged(false);
+                                        }}
+                                        className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition shadow-sm animate-in fade-in slide-in-from-top-1"
+                                    >
+                                        Lưu thay đổi
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
