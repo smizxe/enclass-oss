@@ -398,17 +398,20 @@ export default function AssignmentEditorPage() {
                                                 {/* Answer Options (for MCQ and ORDERING) */}
                                                 {parsed.options && parsed.options.length > 0 && (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                        {parsed.options.map((opt: string, i: number) => (
-                                                            <div
-                                                                key={i}
-                                                                className={`p-2 rounded-lg border text-sm ${opt === q.correctAnswer
-                                                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                                    : "border-slate-100 bg-slate-50 text-slate-600"
-                                                                    }`}
-                                                            >
-                                                                {opt}
-                                                            </div>
-                                                        ))}
+                                                        {parsed.options.map((opt: string, i: number) => {
+                                                            const isCorrect = opt === q.correctAnswer || q.correctAnswer === String.fromCharCode(65 + i);
+                                                            return (
+                                                                <div
+                                                                    key={i}
+                                                                    className={`p-2 rounded-lg border text-sm ${isCorrect
+                                                                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-medium"
+                                                                        : "border-slate-100 bg-slate-50 text-slate-600"
+                                                                        }`}
+                                                                >
+                                                                    {opt}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
                                                 <div className="mt-3 text-xs text-slate-400">

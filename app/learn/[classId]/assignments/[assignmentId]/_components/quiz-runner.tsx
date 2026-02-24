@@ -124,13 +124,13 @@ const SectionContent = ({
                             >
                                 {/* Question Header */}
                                 <div className={`px-5 py-3 flex items-center justify-between border-b ${result
-                                        ? (result.isCorrect ? "bg-emerald-100 border-emerald-200" : "bg-red-50 border-red-100")
-                                        : (answers[q.id] ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100")
+                                    ? (result.isCorrect ? "bg-emerald-100 border-emerald-200" : "bg-red-50 border-red-100")
+                                    : (answers[q.id] ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100")
                                     }`}>
                                     <div className="flex items-center gap-3">
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${result
-                                                ? (result.isCorrect ? "bg-emerald-500 text-white" : "bg-red-500 text-white")
-                                                : (answers[q.id] ? "bg-emerald-500 text-white" : "bg-white text-slate-600 border border-slate-200")
+                                            ? (result.isCorrect ? "bg-emerald-500 text-white" : "bg-red-500 text-white")
+                                            : (answers[q.id] ? "bg-emerald-500 text-white" : "bg-white text-slate-600 border border-slate-200")
                                             }`}>
                                             {result ? (result.isCorrect ? <CheckCircle className="w-4 h-4" /> : <span className="font-bold">✕</span>) : (answers[q.id] ? <CheckCircle className="w-4 h-4" /> : currentIndex + 1)}
                                         </div>
@@ -600,10 +600,14 @@ const McqQuestionSimple = ({
                         // Result Styling
                         let resultClass = "";
                         let disabled = false;
+                        let isCorrectAnswer = false;
 
                         if (result) {
                             disabled = true;
-                            if (optionValue === result.correctAnswer) {
+                            const optionLetter = String.fromCharCode(65 + index);
+                            isCorrectAnswer = (optionValue === result.correctAnswer || result.correctAnswer === optionLetter);
+
+                            if (isCorrectAnswer) {
                                 // Correct Answer (always highlighted)
                                 resultClass = "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-200 text-emerald-800";
                             } else if (isSelected && !result.isCorrect) {
@@ -625,18 +629,18 @@ const McqQuestionSimple = ({
                                 onClick={() => !disabled && onChange(optionValue)}
                                 disabled={disabled}
                                 className={`flex items-center space-x-3 border p-3 rounded-lg transition text-left ${resultClass
-                                        ? resultClass
-                                        : (isSelected
-                                            ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
-                                            : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-                                        )
+                                    ? resultClass
+                                    : (isSelected
+                                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
+                                        : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                                    )
                                     }`}
                             >
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${result
-                                        ? (optionValue === result.correctAnswer ? "border-emerald-500 bg-emerald-500" : (isSelected ? "border-red-500 bg-red-500" : "border-slate-300"))
-                                        : (isSelected ? "border-indigo-500 bg-indigo-500" : "border-slate-300")
+                                    ? (optionValue === result.correctAnswer ? "border-emerald-500 bg-emerald-500" : (isSelected ? "border-red-500 bg-red-500" : "border-slate-300"))
+                                    : (isSelected ? "border-indigo-500 bg-indigo-500" : "border-slate-300")
                                     }`}>
-                                    {((isSelected && !result) || (result && (optionValue === result.correctAnswer || isSelected))) && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                                    {((isSelected && !result) || (result && (isCorrectAnswer || isSelected))) && <div className="w-2 h-2 rounded-full bg-white"></div>}
                                 </div>
                                 <span className={`flex-1 text-sm ${isSelected && !result ? "text-indigo-700 font-medium" : "text-slate-700"}`}>
                                     {optionValue}
