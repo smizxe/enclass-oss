@@ -7,6 +7,7 @@ interface Question {
     questionNumber?: number;
     type: string;
     content: string;
+    items?: string[];  // For ORDERING questions
     options?: string[];
     correctAnswer?: string;
     explanation?: string | null;
@@ -73,26 +74,40 @@ export async function POST(
 
         for (const section of sections) {
             for (const q of section.questions) {
-                // Build content JSON including passage if this section has one
+                // Build content JSON including all relevant data
                 const contentData: {
                     text: string;
+                    items?: string[];      // For ORDERING questions
                     options?: string[];
                     passage?: string;
+                    passageTranslation?: string;
                     sectionTitle?: string;
+                    sectionType?: string;
                 } = {
                     text: q.content || "",
                 };
+
+                // Store items for ORDERING questions
+                if (q.items && q.items.length > 0) {
+                    contentData.items = q.items;
+                }
 
                 if (q.options && q.options.length > 0) {
                     contentData.options = q.options;
                 }
 
-                // Include passage reference from section
+                // Include passage from section
                 if (section.passage) {
                     contentData.passage = section.passage;
                 }
 
+                // Include passage translation if available
+                if (section.passageTranslation) {
+                    contentData.passageTranslation = section.passageTranslation;
+                }
+
                 contentData.sectionTitle = section.title;
+                contentData.sectionType = section.type;
 
                 flatQuestions.push({
                     type: q.type || "MCQ",
