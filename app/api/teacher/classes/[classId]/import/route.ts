@@ -51,11 +51,18 @@ export async function POST(
       return new NextResponse("Empty file content", { status: 400 });
     }
 
+    const importType = formData.get("importType") as string || "MCQ";
+
     // --- GEMINI PROMPT with Markdown Formatting ---
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+    let promptIntro = "You are an expert AI for digitizing Vietnamese English exams (TNPT format).";
+    if (importType === "LISTENING") {
+      promptIntro = "You are an expert at analyzing English exam papers, specifically IELTS LISTENING tests. The output MUST be grouped by Parts (Part 1, Part 2, etc.)";
+    }
+
     const prompt = `
-You are an expert AI for digitizing Vietnamese English exams (TNPT format).
+${promptIntro}
 Extract ALL questions into structured JSON sections.
 
 **🔥 CRITICAL RULES 🔥**

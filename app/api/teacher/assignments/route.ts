@@ -7,7 +7,7 @@ import { z } from "zod";
 const assignmentSchema = z.object({
     title: z.string().min(1),
     classId: z.string().min(1),
-    type: z.enum(["LECTURE", "QUIZ", "TEST", "ESSAY"]).default("LECTURE"),
+    type: z.enum(["LECTURE", "QUIZ", "TEST", "ESSAY", "LISTENING"]).default("LECTURE"),
     orderIndex: z.number().int().default(0),
     content: z.string().optional(),
 });

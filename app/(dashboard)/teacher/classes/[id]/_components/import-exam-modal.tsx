@@ -26,11 +26,12 @@ interface Section {
 
 interface ImportExamModalProps {
     classId: string;
+    importType?: "MCQ" | "LISTENING";
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModalProps) => {
+export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSuccess }: ImportExamModalProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [sections, setSections] = useState<Section[]>([]);
@@ -62,6 +63,7 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
 
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("importType", importType);
 
         try {
             const response = await axios.post(`/api/teacher/classes/${classId}/import`, formData, {
@@ -158,7 +160,7 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b">
                     <h2 className="text-xl font-bold text-slate-900">
-                        {step === "upload" && "Import đề thi từ file Word"}
+                        {step === "upload" && (importType === "LISTENING" ? "Import đề thi Listening (AI)" : "Import câu hỏi MCQ (AI)")}
                         {step === "preview" && "Xem trước và chỉnh sửa"}
                         {step === "saving" && "Đang lưu..."}
                     </h2>
