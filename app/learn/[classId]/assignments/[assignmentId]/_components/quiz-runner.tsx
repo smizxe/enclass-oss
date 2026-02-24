@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History } from "lucide-react";
+import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History, ClipboardList, FileText, Clock } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -70,7 +70,8 @@ const SectionContent = ({
     onAnswerChange,
     showPassage = true,
     startIndex,
-    submissionResult
+    submissionResult,
+    fontSize = 16
 }: {
     group: QuestionGroup,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,11 +81,12 @@ const SectionContent = ({
     showPassage?: boolean,
     startIndex: number,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    submissionResult?: any
+    submissionResult?: any,
+    fontSize?: number
 }) => {
     let questionCounter = startIndex;
     return (
-        <div className="space-y-8 pb-10">
+        <div className="space-y-8 pb-10" style={{ fontSize: `${fontSize}px` }}>
             <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 uppercase tracking-wide">
                     <div className="h-px flex-1 bg-slate-200"></div>
@@ -124,7 +126,8 @@ const SectionContent = ({
                         // ... imports ...
 
                         {/* Render HTML/Markdown from Editor */}
-                        <div className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                        <div className="text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
+                            style={{ fontSize: `${fontSize}px` }}>
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 rehypePlugins={[rehypeRaw]}
@@ -135,7 +138,7 @@ const SectionContent = ({
                         {group.passageTranslation && (
                             <div className="mt-4 pt-4 border-t border-slate-200">
                                 <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                <div className="text-sm text-slate-600 italic leading-relaxed">
+                                <div className="text-slate-600 italic leading-relaxed" style={{ fontSize: `${fontSize}px` }}>
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
                                         rehypePlugins={[rehypeRaw]}
@@ -281,6 +284,7 @@ export const QuizRunner = ({
     const [submissionResult, setSubmissionResult] = useState<any>(null);
     const [viewingAttempt, setViewingAttempt] = useState<number | null>(null); // null = latest/current
     const [isStartingNewAttempt, setIsStartingNewAttempt] = useState(false);
+    const [fontSize, setFontSize] = useState(16);
 
     const canRetry = currentAttemptCount < maxAttempts;
     const remainingAttempts = maxAttempts - currentAttemptCount;
@@ -555,6 +559,28 @@ export const QuizRunner = ({
     );
 
 
+    const FontSizeControl = () => (
+        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 mr-2 shadow-sm">
+            <button
+                onClick={() => setFontSize(prev => Math.max(12, prev - 1))}
+                className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-600 font-medium text-xs transition"
+                title="Giảm kích thước chữ"
+            >
+                A-
+            </button>
+            <span className="w-6 text-center text-xs font-semibold text-slate-700 select-none">
+                {fontSize}
+            </span>
+            <button
+                onClick={() => setFontSize(prev => Math.min(24, prev + 1))}
+                className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-100 text-slate-600 font-medium text-sm transition"
+                title="Tăng kích thước chữ"
+            >
+                A+
+            </button>
+        </div>
+    );
+
     if (isSubmitted && submissionResult) {
         return (
             <div className="max-w-4xl mx-auto py-8 px-4">
@@ -570,8 +596,8 @@ export const QuizRunner = ({
                                 key={sub.id}
                                 onClick={() => handleViewAttempt(idx)}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${viewingAttempt === idx || (viewingAttempt === null && idx === allSubmissions.length - 1)
-                                        ? "bg-indigo-600 text-white"
-                                        : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    ? "bg-indigo-600 text-white"
+                                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
                                 Lần {sub.attemptNumber || idx + 1}
@@ -634,8 +660,54 @@ export const QuizRunner = ({
         );
     }
 
+    const isQuiz = assignment.type !== "LECTURE"; // Should be true for QuizRunner usually, but good to check
+
     return (
-        <div className="h-[calc(100vh-80px)] flex flex-col bg-slate-50 -my-6 -mx-6 md:-my-8 md:-mx-8">
+        <div className="flex flex-col h-full bg-slate-50">
+            {/* Title Card (Moved from page.tsx) */}
+            <div className="bg-white border-b border-slate-200 px-6 py-4 shrink-0 z-20">
+                <div className="max-w-[1800px] mx-auto w-full">
+                    <div className="flex items-start gap-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isQuiz ? "bg-orange-50" : "bg-indigo-50"
+                            }`}>
+                            {isQuiz ? <ClipboardList className="w-6 h-6 text-orange-600" /> : <FileText className="w-6 h-6 text-indigo-600" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isQuiz
+                                    ? "bg-orange-50 text-orange-700"
+                                    : "bg-indigo-50 text-indigo-700"
+                                    }`}>
+                                    {isQuiz ? "Bài tập" : "Bài giảng"}
+                                </span>
+                                {isQuiz && (
+                                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                                        <Clock className="w-3 h-3" />
+                                        {assignment.questions.length} câu hỏi
+                                    </span>
+                                )}
+                                {/* Max Attempts Badge */}
+                                {isQuiz && maxAttempts > 1 && (
+                                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                        <RefreshCw className="w-3 h-3" />
+                                        Được làm {maxAttempts} lần
+                                    </span>
+                                )}
+                                {/* Current Attempt Info */}
+                                {isQuiz && currentAttemptCount > 0 && (
+                                    <span className="text-xs text-slate-500">
+                                        • Đã làm {currentAttemptCount}/{maxAttempts} lần
+                                    </span>
+                                )}
+                            </div>
+                            <h1 className="text-xl font-bold text-slate-900 break-words">
+                                {assignment.title}
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Header / Progress Bar */}
             <div className="bg-white border-b border-slate-200 px-6 py-3 shrink-0 z-20 shadow-sm relative">
                 <div className="max-w-[1800px] mx-auto w-full">
@@ -655,22 +727,26 @@ export const QuizRunner = ({
                             </span>
                         </div>
 
-                        {/* Submit Button (Header - always visible on desktop) */}
-                        {!isSubmitted ? (
-                            <button
-                                onClick={onSubmit}
-                                disabled={isSubmitting}
-                                className="hidden md:flex bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition items-center gap-2 disabled:opacity-50"
-                            >
-                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                Nộp bài
-                            </button>
-                        ) : (
-                            <div className="hidden md:flex px-4 py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 items-center gap-2">
-                                <CheckCircle className="w-4 h-4" />
-                                Đã nộp bài - Điểm: {submissionResult?.score ?? 0}/{submissionResult?.totalScore ?? 0}
-                            </div>
-                        )}
+                        <div className="flex items-center gap-3">
+                            <FontSizeControl />
+
+                            {/* Submit Button (Header - always visible on desktop) */}
+                            {!isSubmitted ? (
+                                <button
+                                    onClick={onSubmit}
+                                    disabled={isSubmitting}
+                                    className="hidden md:flex bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition items-center gap-2 disabled:opacity-50"
+                                >
+                                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    Nộp bài
+                                </button>
+                            ) : (
+                                <div className="hidden md:flex px-4 py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 items-center gap-2">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Đã nộp bài - Điểm: {submissionResult?.score ?? 0}/{submissionResult?.totalScore ?? 0}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Section Selector */}
@@ -689,6 +765,7 @@ export const QuizRunner = ({
                                 passage={activeGroup.passage}
                                 passageTranslation={activeGroup.passageTranslation}
                                 sectionImages={activeGroup.sectionImages}
+                                fontSize={fontSize}
                             />
                         </div>
                     }
@@ -703,6 +780,7 @@ export const QuizRunner = ({
                                     showPassage={false} // Don't show passage on right side in Split View
                                     startIndex={currentSectionStartIndex}
                                     submissionResult={submissionResult}
+                                    fontSize={fontSize}
                                 />
                             </div>
 
@@ -723,6 +801,7 @@ export const QuizRunner = ({
                         showPassage={true}
                         startIndex={currentSectionStartIndex}
                         submissionResult={submissionResult}
+                        fontSize={fontSize}
                     />
                 </div>
 
@@ -784,7 +863,7 @@ const McqQuestionSimple = ({
         <div className="space-y-4">
             {/* Question Text */}
             {displayData.text && (
-                <div className="text-base font-medium text-slate-900 [&>p]:inline [&>strong]:font-bold [&>em]:italic">
+                <div className="font-medium text-slate-900 [&>p]:inline [&>strong]:font-bold [&>em]:italic">
                     <ReactMarkdown>{displayData.text}</ReactMarkdown>
                 </div>
             )}

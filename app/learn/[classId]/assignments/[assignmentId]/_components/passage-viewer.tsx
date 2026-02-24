@@ -12,13 +12,15 @@ interface PassageViewerProps {
     passage?: string;
     passageTranslation?: string;
     sectionImages?: string[];
+    fontSize?: number;
 }
 
 export const PassageViewer = ({
     sectionTitle,
     passage,
     passageTranslation,
-    sectionImages = []
+    sectionImages = [],
+    fontSize = 16
 }: PassageViewerProps) => {
     const hasPassage = !!passage;
     const hasImages = sectionImages.length > 0;
@@ -94,7 +96,10 @@ export const PassageViewer = ({
                         </div>
 
                         {/* THE FIX: Added break-words and min-w-0 to prevent overflow */}
-                        <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none break-words min-w-0 [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                        <div
+                            className="text-slate-700 leading-relaxed prose prose-sm max-w-none break-words min-w-0 [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
+                            style={{ fontSize: `${fontSize}px` }}
+                        >
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 rehypePlugins={[rehypeRaw]}
@@ -106,7 +111,10 @@ export const PassageViewer = ({
                         {passageTranslation && (
                             <div className="mt-4 pt-4 border-t border-slate-200">
                                 <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                <div className="text-sm text-slate-600 italic leading-relaxed break-words min-w-0">
+                                <div
+                                    className="text-slate-600 italic leading-relaxed break-words min-w-0"
+                                    style={{ fontSize: `${fontSize}px` }}
+                                >
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
                                         rehypePlugins={[rehypeRaw]}
