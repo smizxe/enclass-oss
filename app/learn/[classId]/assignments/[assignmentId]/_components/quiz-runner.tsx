@@ -61,6 +61,7 @@ interface QuestionGroup {
     sectionTitle: string;
     sectionType: string;
     passage?: string;
+    notePassage?: string;
     passageTranslation?: string;
     sectionAudio?: string;
     sectionVideo?: string;
@@ -194,11 +195,13 @@ const SectionContent = ({
                                 runCounter += run.questions.length;
 
                                 if (run.mode === "gap_fill" && group.passage) {
-                                    // Render GAP_FILL run using CompactGapFillSection
+                                    // For GAP_FILL: use notePassage (note structure with {N}) if available,
+                                    // otherwise fall back to passage (backward compat for old imports)
+                                    const gapFillPassage = group.notePassage || group.passage;
                                     return (
                                         <CompactGapFillSection
                                             key={`run-${runIdx}`}
-                                            passage={group.passage!}
+                                            passage={gapFillPassage}
                                             questions={run.questions}
                                             answers={answers}
                                             onAnswerChange={onAnswerChange}
@@ -516,6 +519,7 @@ export const QuizRunner = ({
                     sectionTitle,
                     sectionType,
                     passage: parsed.passage,
+                    notePassage: parsed.notePassage,
                     passageTranslation: parsed.passageTranslation,
                     sectionAudio: parsed.sectionAudio,
                     sectionVideo: parsed.sectionVideo,

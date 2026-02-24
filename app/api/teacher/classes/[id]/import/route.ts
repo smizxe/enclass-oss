@@ -47,16 +47,19 @@ RULES:
 2. Count extracted questions to match the document's numbering — ensure NOTHING is missing.
 3. Scan the document (especially last pages) for "Answer Key", "Đáp án", "KEY", "Answers", "ĐÁP ÁN". If found, use those answers. If NOT found, predict answers and set "predictedAnswer": true.
 4. For GAP_FILL: correctAnswer = the EXACT word(s) that fill the blank. Never leave it empty.
-5. EVERY section with reading questions MUST include the FULL reading passage in "passage". If multiple question groups share one passage, DUPLICATE the full passage into each group.
-6. Preserve ALL task instructions ("Choose TWO letters", "Write NO MORE THAN TWO WORDS", etc.) in "passage" or the first question's "content".
+5. EVERY section with reading questions MUST include the FULL reading passage in "passage". The "passage" field must contain ONLY the reading passage text — do NOT include task instructions, note structures, or question text in "passage". If multiple question groups share one passage, DUPLICATE the full passage into each group.
+6. Preserve ALL task instructions ("Choose TWO letters", "Write NO MORE THAN TWO WORDS", etc.) in the first question's "content" field.
 7. Each question's "content" must be COMPLETE — include all text, bullet points, mini-passages. Use \\n for line breaks. Never truncate.
 8. If a section has BOTH text AND a table/form: text → "passage", HTML table → "passageTable".
 9. No duplicate questions. Each question appears ONCE.
-10. **GAP_FILL INLINE MARKERS (CRITICAL):** For note completion, table completion, summary completion, diagram labeling, or ANY section where blanks appear inside structured text:
-    - In "passage", embed markers {N} at the EXACT position of each blank (N = question number).
-    - Example: if question 7's blank is after "various parts of a tree and", write: "various parts of a tree and {7}"
+10. **GAP_FILL NOTE/SUMMARY COMPLETION (CRITICAL):** For note completion, table completion, summary completion, diagram labeling, or ANY section where blanks appear inside structured text:
+    - Put the READING PASSAGE in "passage" (as normal, no markers).
+    - Put the NOTE/SUMMARY/DIAGRAM structure (with blanks) in a SEPARATE field called "notePassage".
+    - In "notePassage", embed markers {N} at the EXACT position of each blank (N = question number).
+    - Use \\n for line breaks between bullet points/items in "notePassage" to preserve the original layout.
+    - Example notePassage: "**New Zealand's kākāpō**\\nA type of parrot:\\n• diet consists of fern fronds, various parts of a tree and {7}\\n• nests are created {8} in where eggs are laid."
     - The "content" field for each GAP_FILL question should still contain the surrounding context text.
-    - This preserves the original exam layout so students see the structured notes with blanks in context.
+    - This separates the reading passage (shown on the left) from the note form (shown on the right).
 
 FORMATTING:
 - Bold: **text**, Italic: *text*, Underline: __text__
@@ -76,7 +79,8 @@ OUTPUT JSON:
     {
       "title": "Part 1: Questions 1-7",
       "type": "READING",
-      "passage": "[FULL reading passage text]\\n\\n**Choose the correct letter A, B, C or D.**",
+      "passage": "[FULL reading passage text ONLY — no instructions or note structures]",
+      "notePassage": "[For GAP_FILL note/summary/diagram completion sections ONLY: the note structure with {N} markers. Use \\n for line breaks. Leave empty string for MCQ/other sections]",
       "passageTable": "",
       "passageTranslation": "",
       "questions": [

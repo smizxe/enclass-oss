@@ -21,6 +21,7 @@ interface Section {
     title: string;
     type: string;
     passage?: string | null;
+    notePassage?: string | null;
     passageTable?: string | null;
     passageTranslation?: string | null;
     questions: Question[];
@@ -86,6 +87,7 @@ export async function POST(
                     items?: string[];      // For ORDERING questions
                     options?: string[];
                     passage?: string;
+                    notePassage?: string;
                     passageTable?: string;
                     passageTranslation?: string;
                     sectionTitle?: string;
@@ -106,6 +108,11 @@ export async function POST(
                 // Include passage from section
                 if (section.passage) {
                     contentData.passage = section.passage;
+                }
+
+                // Include notePassage for GAP_FILL note/summary completion
+                if (section.notePassage) {
+                    contentData.notePassage = section.notePassage;
                 }
 
                 // Include passage table from section
