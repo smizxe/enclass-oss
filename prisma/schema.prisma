@@ -105,6 +105,9 @@ model Submission {
   assignmentProgress   AssignmentProgress @relation(fields: [assignmentProgressId], references: [id])
   
   answers              String
-  score                Int
+  score                Int?
+  feedback             String?
+  gradedAt             DateTime?
+  gradedById           String?
   submittedAt          DateTime @default(now())
 }

@@ -9,7 +9,8 @@ import {
     Users,
     LogOut,
     GraduationCap,
-    Settings
+    Settings,
+    ClipboardCheck
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -28,6 +29,11 @@ const routes = [
         label: "Học viên",
         icon: Users,
         href: "/teacher/students",
+    },
+    {
+        label: "Chấm điểm",
+        icon: ClipboardCheck,
+        href: "/teacher/grading",
     },
 ];
 

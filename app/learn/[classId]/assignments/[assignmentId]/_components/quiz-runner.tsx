@@ -35,12 +35,30 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
 
     const onSubmit = async () => {
         setIsSubmitting(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log("Submitting answers:", answers);
-        toast.success("Bài làm đã được nộp thành công!");
-        setIsSubmitted(true);
-        setIsSubmitting(false);
+        try {
+            const response = await fetch(`/api/student/assignments/${assignment.id}/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ answers })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.status === "PENDING_GRADING") {
+                    toast.success("Bài làm đã được nộp! Đang chờ giáo viên chấm điểm.");
+                } else {
+                    toast.success("Bài làm đã được nộp thành công!");
+                }
+                setIsSubmitted(true);
+            } else {
+                toast.error("Có lỗi xảy ra khi nộp bài");
+            }
+        } catch (error) {
+            console.error("Submit error:", error);
+            toast.error("Có lỗi xảy ra");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const answeredCount = Object.keys(answers).length;
