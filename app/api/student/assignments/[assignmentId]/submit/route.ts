@@ -37,6 +37,19 @@ export async function POST(
         let earnedScore = 0;
         const results: Record<string, { isCorrect: boolean; correctAnswer: any }> = {};
 
+        // Build Section Context Map (SectionTitle -> Passage)
+        const sectionPassageMap = new Map<string, string>();
+        assignment.questions.forEach(q => {
+            if (q.type === "SECTION_HEADER") {
+                try {
+                    const parsed = JSON.parse(q.content);
+                    if (parsed.sectionTitle && parsed.passage) {
+                        sectionPassageMap.set(parsed.sectionTitle, parsed.passage);
+                    }
+                } catch { }
+            }
+        });
+
         assignment.questions.forEach(q => {
             totalScore += q.points;
             const userAnswer = answers[q.id];
@@ -83,8 +96,12 @@ export async function POST(
                     isCorrect = true;
                 }
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
+            } else if (q.type === "SPEAKING" || q.type === "WRITING" || q.type === "ESSAY") {
+                // AI Grading Placeholder - Will be handled below (async) or marked pending
+                // Ideally we want to await this, or put it in a background job.
+                // For MVP, we await it here (might be slow).
+                // We'll process these after this loop to use Promise.all
             } else {
-                // Essay or other types: Pending Grading
                 results[q.id] = { isCorrect: false, correctAnswer: null };
             }
 
@@ -92,6 +109,47 @@ export async function POST(
                 earnedScore += q.points;
             }
         });
+
+        // Part 2: Process AI Grading
+        const aiPromises = assignment.questions.filter(q =>
+            q.type === "SPEAKING" || q.type === "WRITING" || q.type === "ESSAY"
+        ).map(async (q) => {
+            const userAnswer = answers[q.id];
+            if (!userAnswer) return;
+
+            let parsedContent;
+            try { parsedContent = JSON.parse(q.content); } catch { parsedContent = { text: q.content }; }
+
+            const rubric = parsedContent.aiRubric || "";
+            const sectionTitle = parsedContent.sectionTitle || "";
+            const contextPassage = sectionPassageMap.get(sectionTitle) || "";
+
+            // Only grade if we have an answer
+            if (userAnswer) {
+                const { gradeSubmission } = await import("@/lib/ai-grading");
+                const aiResult = await gradeSubmission(
+                    q.type,
+                    parsedContent.text,
+                    userAnswer,
+                    rubric,
+                    q.points,
+                    contextPassage
+                );
+
+                earnedScore += aiResult.score;
+                // Store feedback - where? 
+                // We will add it to a results map that we save in Submission.feedback (Stringified JSON)
+                if (!results[q.id]) results[q.id] = { isCorrect: false, correctAnswer: null };
+
+                // Add extended info to results
+                // Type assertion hack for flexible object
+                (results[q.id] as any).feedback = aiResult.feedback;
+                (results[q.id] as any).score = aiResult.score;
+                (results[q.id] as any).isCorrect = aiResult.score >= (q.points / 2); // Roughly pass if >= 50%
+            }
+        });
+
+        await Promise.all(aiPromises);
 
         // Get or create assignment progress
         let progress = await prisma.assignmentProgress.findUnique({
@@ -108,7 +166,9 @@ export async function POST(
             progress = await prisma.assignmentProgress.create({
                 data: {
                     userId: session.user.id,
-                    assignmentId,
+                    assignment: {
+                        connect: { id: assignmentId }
+                    },
                     status: "IN_PROGRESS"
                 },
                 include: { assignment: true }
@@ -117,7 +177,10 @@ export async function POST(
 
         // Check assignment type to determine status
         const isEssay = progress.assignment.type === "ESSAY";
-        const newStatus = isEssay ? "PENDING_GRADING" : "COMPLETED";
+        // Since AI grades immediately, we can mark as COMPLETED even for ESSAY/WRITING
+        // Or keep PENDING_GRADING if we want manual review?
+        // User asked for "AI chấm bài". So COMPLETED is better.
+        const newStatus = "COMPLETED";
 
         // Create submission
         const submission = await prisma.submission.create({
@@ -125,7 +188,8 @@ export async function POST(
                 userId: session.user.id,
                 assignmentProgressId: progress.id,
                 answers: JSON.stringify(answers),
-                score: earnedScore
+                score: earnedScore,
+                feedback: JSON.stringify(results) // Save detailed results including AI feedback
             }
         });
 

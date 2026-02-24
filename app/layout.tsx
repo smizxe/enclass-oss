@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 import { ToastProvider } from "@/components/providers/toaster-provider";
+import { NextAuthSessionProvider } from "@/components/providers/session-provider";
 
 export default function RootLayout({
     children,
@@ -19,8 +20,10 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body className={font.className}>
-                <ToastProvider />
-                {children}
+                <NextAuthSessionProvider>
+                    <ToastProvider />
+                    {children}
+                </NextAuthSessionProvider>
             </body>
         </html>
     );

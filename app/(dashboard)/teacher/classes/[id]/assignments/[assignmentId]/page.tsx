@@ -85,6 +85,7 @@ export default function AssignmentEditorPage() {
         correctAnswerText: string;
         points: number;
         sectionTitle: string;
+        aiRubric?: string; // Added for AI Grading
     }>({
         type: "MCQ",
         text: "",
@@ -92,7 +93,8 @@ export default function AssignmentEditorPage() {
         correctAnswerIndexes: [],
         correctAnswerText: "",
         points: 1,
-        sectionTitle: ""
+        sectionTitle: "",
+        aiRubric: ""
     });
 
     // Essay Prompt State
@@ -300,7 +302,8 @@ export default function AssignmentEditorPage() {
             correctAnswerIndexes: indexes,
             correctAnswerText: answerText,
             points: q.points,
-            sectionTitle: existingSectionTitle
+            sectionTitle: existingSectionTitle,
+            aiRubric: (parsed as any).aiRubric || ""
         });
         setIsAddingQuestion(true);
     };
@@ -313,7 +316,8 @@ export default function AssignmentEditorPage() {
         const contentObj = {
             text: newQuestion.text,
             options: newQuestion.options,
-            sectionTitle: newQuestion.sectionTitle || "General"
+            sectionTitle: newQuestion.sectionTitle || "General",
+            aiRubric: newQuestion.aiRubric // Save AI Rubric
         };
 
         let correctAnswerChar = "";
@@ -361,7 +365,8 @@ export default function AssignmentEditorPage() {
                 correctAnswerIndexes: [],
                 correctAnswerText: "",
                 points: 1,
-                sectionTitle: ""
+                sectionTitle: "",
+                aiRubric: ""
             });
             setEssayPrompt("");
             fetchQuestions();
@@ -649,8 +654,8 @@ export default function AssignmentEditorPage() {
                                                     </div>
                                                 )}
 
-                                                {/* Answer Options (for MCQ and ORDERING) */}
-                                                {parsed.options && parsed.options.length > 0 && (
+                                                {/* Answer Options (for MCQ and ORDERING only - not for SPEAKING/WRITING) */}
+                                                {parsed.options && parsed.options.length > 0 && !["SPEAKING", "WRITING", "ESSAY"].includes(q.type) && (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                                         {parsed.options.map((opt: string, i: number) => {
                                                             const optionLetter = String.fromCharCode(65 + i);
@@ -804,6 +809,8 @@ export default function AssignmentEditorPage() {
                                     >
                                         <option value="MCQ">Trắc nghiệm (MCQ)</option>
                                         <option value="GAP_FILL">Điền vào chỗ trống (Gap Fill)</option>
+                                        <option value="SPEAKING">Luyện nói (AI Speaking)</option>
+                                        <option value="WRITING">Luyện viết (AI Writing/Essay)</option>
                                     </select>
                                 </div>
                                 <div>
@@ -829,6 +836,23 @@ export default function AssignmentEditorPage() {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* AI Grading Settings (for SPEAKING & WRITING) */}
+                                {(newQuestion.type === "SPEAKING" || newQuestion.type === "WRITING") && (
+                                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                        <p className="text-sm font-bold text-indigo-800 mb-2">🤖 Cấu hình AI Chấm điểm</p>
+                                        <label className="block text-sm font-medium mb-1">Hướng dẫn chấm (Rubric)</label>
+                                        <p className="text-xs text-slate-500 mb-2">
+                                            Nhập tiêu chí chấm điểm cho AI. Ví dụ: "Chấm theo thang 10. Chú trọng phát âm và trôi chảy..."
+                                        </p>
+                                        <Textarea
+                                            value={newQuestion.aiRubric || ""}
+                                            onChange={(e) => setNewQuestion({ ...newQuestion, aiRubric: e.target.value })}
+                                            placeholder="Nhập tiêu chí chấm điểm..."
+                                            className="min-h-[100px] bg-white"
+                                        />
+                                    </div>
+                                )}
 
                                 {/* Only show Options inputs for MCQ */}
                                 {newQuestion.type === "MCQ" && (

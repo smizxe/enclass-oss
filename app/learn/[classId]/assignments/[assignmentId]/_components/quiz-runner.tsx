@@ -7,11 +7,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import { ResizableSplitPane } from "@/components/ui/resizable-split-pane";
+import { AssignmentResult } from "./assignment-result";
 
 import { McqQuestion } from "@/components/questions/mcq-question";
 import { GapFillQuestion } from "@/components/questions/gap-fill-question";
 import { SortableQuestion } from "@/components/questions/sortable-question";
 import { EssayQuestion } from "@/components/questions/essay-question";
+import { SpeakingQuestion } from "@/components/questions/speaking-question";
 import { StickyAudioPlayer } from "@/components/sticky-audio-player";
 import { PassageViewer } from "./passage-viewer";
 
@@ -24,6 +26,8 @@ interface QuizRunnerProps {
         questions: any[];
         settings?: any;
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    initialSubmission?: any;
 }
 
 interface ParsedQuestion {
@@ -215,10 +219,17 @@ const SectionContent = ({
                                             onChange={(val) => onAnswerChange(q.id, val)}
                                         />
                                     )}
-                                    {q.type === "ESSAY" && (
+                                    {(q.type === "ESSAY" || q.type === "WRITING") && (
                                         <EssayQuestion
                                             question={q}
                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            value={answers[q.id] as string}
+                                            onChange={(val) => onAnswerChange(q.id, val)}
+                                        />
+                                    )}
+                                    {q.type === "SPEAKING" && (
+                                        <SpeakingQuestion
+                                            question={q}
                                             value={answers[q.id] as string}
                                             onChange={(val) => onAnswerChange(q.id, val)}
                                         />
@@ -232,7 +243,7 @@ const SectionContent = ({
                                             result={result}
                                         />
                                     )}
-                                    {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY", "ORDERING"].includes(q.type) && (
+                                    {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY", "ORDERING", "SPEAKING", "WRITING"].includes(q.type) && (
                                         <div className="bg-slate-50 p-4 rounded-lg">
                                             <p className="text-slate-600">{q.content}</p>
                                             <p className="mt-2 text-xs text-slate-400">[Loại câu hỏi chưa hỗ trợ: {q.type}]</p>
@@ -248,7 +259,7 @@ const SectionContent = ({
     );
 };
 
-export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
+export const QuizRunner = ({ assignment, initialSubmission }: QuizRunnerProps) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -256,6 +267,29 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
     const [activeSectionIndex, setActiveSectionIndex] = useState(0);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [submissionResult, setSubmissionResult] = useState<any>(null);
+
+    // Initialize from existing submission
+    useEffect(() => {
+        if (initialSubmission) {
+            try {
+                const parsedAnswers = JSON.parse(initialSubmission.answers);
+                let parsedFeedback = {};
+                try {
+                    parsedFeedback = initialSubmission.feedback ? JSON.parse(initialSubmission.feedback) : {};
+                } catch { }
+
+                setAnswers(parsedAnswers);
+                setIsSubmitted(true);
+                setSubmissionResult({
+                    score: initialSubmission.score,
+                    totalScore: assignment.questions.reduce((acc, q) => acc + q.points, 0),
+                    results: parsedFeedback
+                });
+            } catch (e) {
+                console.error("Error parsing submission", e);
+            }
+        }
+    }, [initialSubmission, assignment.questions]);
 
     // Parse questions and group by section
     const groupedQuestions = useMemo(() => {
@@ -358,6 +392,9 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
 
     const answeredCount = Object.keys(answers).length;
     const totalQuestions = assignment.questions.length;
+    // Count "correct" only for auto-graded questions (exclude Speaking/Writing/Essay)
+    // Actually, simpler approach: Use the result from server if available (submissionResult.score)
+    // For Header display during exam, we rely on answeredCount.
 
     // Auto-scroll to top when section changes
     useEffect(() => {
@@ -455,6 +492,27 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
             ))}
         </div>
     );
+
+
+    if (isSubmitted && submissionResult) {
+        return (
+            <div className="max-w-4xl mx-auto py-8 px-4">
+                <AssignmentResult
+                    submissionResult={submissionResult}
+                    questions={assignment.questions}
+                />
+
+                <div className="mt-8 flex justify-center">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-2 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 font-medium text-slate-600 transition"
+                    >
+                        Làm lại bài (Reload)
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-[calc(100vh-80px)] flex flex-col bg-slate-50 -my-6 -mx-6 md:-my-8 md:-mx-8">

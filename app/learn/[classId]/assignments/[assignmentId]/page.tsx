@@ -37,6 +37,24 @@ export default async function AssignmentIdPage({
         return redirect("/");
     }
 
+    // Check if user has already submitted
+    const progress = await prisma.assignmentProgress.findUnique({
+        where: {
+            userId_assignmentId: {
+                userId: session.user.id,
+                assignmentId
+            }
+        },
+        include: {
+            submissions: {
+                orderBy: { submittedAt: 'desc' },
+                take: 1
+            }
+        }
+    });
+
+    const existingSubmission = progress?.submissions[0] || null;
+
     const isQuiz = assignment.type !== "LECTURE";
     const Icon = isQuiz ? ClipboardList : FileText;
 
@@ -76,7 +94,7 @@ export default async function AssignmentIdPage({
                 {assignment.type === "LECTURE" ? (
                     <LectureViewer content={assignment.content} />
                 ) : (
-                    <QuizRunner assignment={assignment} />
+                    <QuizRunner assignment={assignment} initialSubmission={existingSubmission} />
                 )}
             </div>
         </div>

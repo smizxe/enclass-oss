@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, FileText, ClipboardList, PenTool, Loader2, Upload } from "lucide-react";
+import { PlusCircle, Loader2, Sparkles } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
@@ -11,7 +11,6 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-    DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { ImportExamModal } from "./import-exam-modal";
 
@@ -24,17 +23,13 @@ export const CreateAssignmentButton = ({ classId }: CreateAssignmentButtonProps)
     const [isLoading, setIsLoading] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
 
-    const [importType, setImportType] = useState<"MCQ" | "LISTENING">("MCQ");
-
-    const onClick = async (type: "LECTURE" | "QUIZ" | "ESSAY" | "LISTENING") => {
+    const onCreate = async () => {
         try {
             setIsLoading(true);
-            const title = type === "LECTURE" ? "Bài giảng mới" : type === "QUIZ" ? "Bài tập trắc nghiệm" : type === "LISTENING" ? "Bài nghe mới" : "Bài viết mới";
-
             const response = await axios.post("/api/teacher/assignments", {
-                title,
+                title: "Bài tập mới",
                 classId,
-                type
+                type: "QUIZ" // Default type, questions can be any type inside
             });
 
             toast.success("Đã tạo bài tập mới");
@@ -61,30 +56,13 @@ export const CreateAssignmentButton = ({ classId }: CreateAssignmentButtonProps)
                     </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => onClick("LECTURE")} className="cursor-pointer">
-                        <FileText className="w-4 h-4 mr-2" />
-                        Bài giảng (Lecture)
+                    <DropdownMenuItem onClick={onCreate} className="cursor-pointer">
+                        <PlusCircle className="w-4 h-4 mr-2" />
+                        Thêm bài tập
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onClick("QUIZ")} className="cursor-pointer">
-                        <ClipboardList className="w-4 h-4 mr-2" />
-                        Trắc nghiệm (Quiz)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onClick("ESSAY")} className="cursor-pointer">
-                        <PenTool className="w-4 h-4 mr-2" />
-                        Bài viết (Essay)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onClick("LISTENING")} className="cursor-pointer">
-                        <FileText className="w-4 h-4 mr-2" />
-                        Bài tập Listening
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => { setImportType("MCQ"); setShowImportModal(true); }} className="cursor-pointer text-blue-600">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Import MCQ / Word
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setImportType("LISTENING"); setShowImportModal(true); }} className="cursor-pointer text-indigo-600">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Import Listening (AI)
+                    <DropdownMenuItem onClick={() => setShowImportModal(true)} className="cursor-pointer text-indigo-600">
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Import bằng AI
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -92,7 +70,7 @@ export const CreateAssignmentButton = ({ classId }: CreateAssignmentButtonProps)
             {showImportModal && (
                 <ImportExamModal
                     classId={classId}
-                    importType={importType}
+                    importType="MCQ"
                     onClose={() => setShowImportModal(false)}
                     onSuccess={() => router.refresh()}
                 />
