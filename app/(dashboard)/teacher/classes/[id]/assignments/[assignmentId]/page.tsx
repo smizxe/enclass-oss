@@ -16,7 +16,8 @@ import {
     Pencil,
     Upload,
     ArrowUp,
-    ArrowDown
+    ArrowDown,
+    X
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { AudioManager } from "@/components/audio-manager";
@@ -115,6 +116,8 @@ export default function AssignmentEditorPage() {
         passageTable: string;
         passageTranslation: string;
     } | null>(null);
+
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
     const classId = id;
 
@@ -903,15 +906,21 @@ export default function AssignmentEditorPage() {
                                     <div className="space-y-3">
                                         <div className="flex flex-wrap gap-3">
                                             {editingSection.sectionImages?.map((url, idx) => (
-                                                <div key={idx} className="relative w-24 h-24 border rounded-lg overflow-hidden group">
+                                                <div key={idx} className="relative w-24 h-24 border rounded-lg overflow-hidden group cursor-zoom-in">
                                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img src={url} alt="Section" className="w-full h-full object-cover" />
+                                                    <img
+                                                        src={url}
+                                                        alt="Section"
+                                                        className="w-full h-full object-cover"
+                                                        onClick={() => setLightboxImage(url)}
+                                                    />
                                                     <button
-                                                        onClick={() => {
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
                                                             const newImages = editingSection.sectionImages?.filter((_, i) => i !== idx);
                                                             setEditingSection({ ...editingSection, sectionImages: newImages });
                                                         }}
-                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
                                                         title="Xóa ảnh"
                                                     >
                                                         <Trash2 className="w-3 h-3" />
@@ -1085,6 +1094,27 @@ export default function AssignmentEditorPage() {
                     </div>
                 )}
             </div>
+            {/* Lightbox Modal */}
+            {lightboxImage && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <button
+                        onClick={() => setLightboxImage(null)}
+                        className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src={lightboxImage}
+                        alt="Preview"
+                        className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 }
