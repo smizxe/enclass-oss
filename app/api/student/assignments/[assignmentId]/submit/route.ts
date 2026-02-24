@@ -51,9 +51,22 @@ export async function POST(
             }
 
             if (q.type === "MCQ") {
+                // Robust checking for MCQ
+                // 1. Direct match (Text == Text) or (Letter == Letter)
                 if (userAnswer === q.correctAnswer) {
                     isCorrect = true;
                 }
+                // 2. Check if correctAnswer is a Letter Key (A, B, C...) and userAnswer is the corresponding text
+                else if (parsedContent.options && Array.isArray(parsedContent.options)) {
+                    const correctIndex = q.correctAnswer.charCodeAt(0) - 65; // 'A' -> 0, 'B' -> 1
+                    if (correctIndex >= 0 && correctIndex < parsedContent.options.length) {
+                        const correctOptionText = parsedContent.options[correctIndex];
+                        if (userAnswer === correctOptionText) {
+                            isCorrect = true;
+                        }
+                    }
+                }
+
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
             } else if (q.type === "ORDERING") {
                 // For ordering, usually checked against exact string match or specific logic. 
