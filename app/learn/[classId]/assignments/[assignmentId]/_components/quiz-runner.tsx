@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
-import { CheckCircle, Send, Loader2, BookOpen } from "lucide-react";
+import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, Menu } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { ResizableSplitPane } from "@/components/ui/resizable-split-pane";
 
@@ -45,142 +45,140 @@ interface QuestionGroup {
     questions: ParsedQuestion[];
 }
 
-// Helper component for rendering questions list
+// Helper component for rendering questions list for a SINGLE section
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const QuestionsList = ({
-    groups,
+const SectionContent = ({
+    group,
     answers,
     onAnswerChange,
     showPassage = true,
-    initialQuestionIndex = 0
+    startIndex
 }: {
-    groups: QuestionGroup[],
+    group: QuestionGroup,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     answers: any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onAnswerChange: any,
     showPassage?: boolean,
-    initialQuestionIndex?: number
+    startIndex: number
 }) => {
-    let questionCounter = initialQuestionIndex;
+    let questionCounter = startIndex;
     return (
-        <div className="space-y-8 pb-20">
-            {groups.map((group, groupIndex) => (
-                <div key={groupIndex} className="space-y-4">
-                    {/* Section Header */}
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 uppercase tracking-wide">
-                        <div className="h-px flex-1 bg-slate-200"></div>
-                        <span className="px-3">{group.sectionTitle}</span>
-                        <div className="h-px flex-1 bg-slate-200"></div>
-                    </div>
+        <div className="space-y-8 pb-10">
+            <div className="space-y-4">
+                {/* Section Header */}
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 uppercase tracking-wide">
+                    <div className="h-px flex-1 bg-slate-200"></div>
+                    <span className="px-3">{group.sectionTitle}</span>
+                    <div className="h-px flex-1 bg-slate-200"></div>
+                </div>
 
-                    {/* Passage (Only if showPassage is true) */}
-                    {showPassage && group.passage && (
-                        <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-5 shadow-sm">
-                            <div className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-4">
-                                <BookOpen className="w-4 h-4" />
-                                <span>Đọc đoạn văn sau:</span>
-                            </div>
-                            <div className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2">
-                                <ReactMarkdown>{group.passage || ''}</ReactMarkdown>
-                            </div>
-                            {group.passageTranslation && (
-                                <div className="mt-4 pt-4 border-t border-slate-200">
-                                    <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                    <div className="text-sm text-slate-600 italic leading-relaxed">
-                                        {group.passageTranslation}
-                                    </div>
-                                </div>
-                            )}
+                {/* Passage (Only if showPassage is true) */}
+                {showPassage && group.passage && (
+                    <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-5 shadow-sm">
+                        <div className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-4">
+                            <BookOpen className="w-4 h-4" />
+                            <span>Đọc đoạn văn sau:</span>
                         </div>
-                    )}
+                        <div className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2">
+                            <ReactMarkdown>{group.passage || ''}</ReactMarkdown>
+                        </div>
+                        {group.passageTranslation && (
+                            <div className="mt-4 pt-4 border-t border-slate-200">
+                                <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
+                                <div className="text-sm text-slate-600 italic leading-relaxed">
+                                    {group.passageTranslation}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
-                    {/* Questions */}
-                    <div className="space-y-4">
-                        {group.questions.map((q) => {
-                            const currentIndex = questionCounter++;
-                            return (
-                                <div
-                                    key={q.id}
-                                    className={`bg-white rounded-xl border shadow-sm overflow-hidden transition ${answers[q.id]
-                                        ? "border-emerald-200"
-                                        : "border-slate-200"
-                                        }`}
-                                >
-                                    {/* Question Header */}
-                                    <div className={`px-5 py-3 flex items-center justify-between border-b ${answers[q.id] ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100"
-                                        }`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${answers[q.id]
-                                                ? "bg-emerald-500 text-white"
-                                                : "bg-white text-slate-600 border border-slate-200"
-                                                }`}>
-                                                {answers[q.id] ? <CheckCircle className="w-4 h-4" /> : currentIndex + 1}
-                                            </div>
-                                            <span className="text-sm font-medium text-slate-700">
-                                                Câu {currentIndex + 1}
-                                            </span>
+                {/* Questions */}
+                <div className="space-y-4">
+                    {group.questions.map((q) => {
+                        const currentIndex = questionCounter++;
+                        return (
+                            <div
+                                key={q.id}
+                                className={`bg-white rounded-xl border shadow-sm overflow-hidden transition ${answers[q.id]
+                                    ? "border-emerald-200"
+                                    : "border-slate-200"
+                                    }`}
+                            >
+                                {/* Question Header */}
+                                <div className={`px-5 py-3 flex items-center justify-between border-b ${answers[q.id] ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100"
+                                    }`}>
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${answers[q.id]
+                                            ? "bg-emerald-500 text-white"
+                                            : "bg-white text-slate-600 border border-slate-200"
+                                            }`}>
+                                            {answers[q.id] ? <CheckCircle className="w-4 h-4" /> : currentIndex + 1}
                                         </div>
-                                        <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-full border border-slate-200">
-                                            {q.points} điểm
+                                        <span className="text-sm font-medium text-slate-700">
+                                            Câu {currentIndex + 1}
                                         </span>
                                     </div>
-
-                                    {/* Question Content */}
-                                    <div className="p-5">
-                                        {q.type === "MCQ" && (
-                                            <McqQuestionSimple
-                                                question={q}
-                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                value={answers[q.id] as string}
-                                                onChange={(val) => onAnswerChange(q.id, val)}
-                                            />
-                                        )}
-                                        {q.type === "GAP_FILL" && (
-                                            <GapFillQuestion
-                                                question={q}
-                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                value={answers[q.id] as Record<number, string>}
-                                                onChange={(val) => onAnswerChange(q.id, val)}
-                                            />
-                                        )}
-                                        {q.type === "SORTABLE" && (
-                                            <SortableQuestion
-                                                question={q}
-                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                value={answers[q.id] as string[]}
-                                                onChange={(val) => onAnswerChange(q.id, val)}
-                                            />
-                                        )}
-                                        {q.type === "ESSAY" && (
-                                            <EssayQuestion
-                                                question={q}
-                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                value={answers[q.id] as string}
-                                                onChange={(val) => onAnswerChange(q.id, val)}
-                                            />
-                                        )}
-                                        {q.type === "ORDERING" && (
-                                            <McqQuestionSimple
-                                                question={q}
-                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                value={answers[q.id] as string}
-                                                onChange={(val) => onAnswerChange(q.id, val)}
-                                            />
-                                        )}
-                                        {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY", "ORDERING"].includes(q.type) && (
-                                            <div className="bg-slate-50 p-4 rounded-lg">
-                                                <p className="text-slate-600">{q.content}</p>
-                                                <p className="mt-2 text-xs text-slate-400">[Loại câu hỏi chưa hỗ trợ: {q.type}]</p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-full border border-slate-200">
+                                        {q.points} điểm
+                                    </span>
                                 </div>
-                            );
-                        })}
-                    </div>
+
+                                {/* Question Content */}
+                                <div className="p-5">
+                                    {q.type === "MCQ" && (
+                                        <McqQuestionSimple
+                                            question={q}
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            value={answers[q.id] as string}
+                                            onChange={(val) => onAnswerChange(q.id, val)}
+                                        />
+                                    )}
+                                    {q.type === "GAP_FILL" && (
+                                        <GapFillQuestion
+                                            question={q}
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            value={answers[q.id] as Record<number, string>}
+                                            onChange={(val) => onAnswerChange(q.id, val)}
+                                        />
+                                    )}
+                                    {q.type === "SORTABLE" && (
+                                        <SortableQuestion
+                                            question={q}
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            value={answers[q.id] as string[]}
+                                            onChange={(val) => onAnswerChange(q.id, val)}
+                                        />
+                                    )}
+                                    {q.type === "ESSAY" && (
+                                        <EssayQuestion
+                                            question={q}
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            value={answers[q.id] as string}
+                                            onChange={(val) => onAnswerChange(q.id, val)}
+                                        />
+                                    )}
+                                    {q.type === "ORDERING" && (
+                                        <McqQuestionSimple
+                                            question={q}
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            value={answers[q.id] as string}
+                                            onChange={(val) => onAnswerChange(q.id, val)}
+                                        />
+                                    )}
+                                    {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY", "ORDERING"].includes(q.type) && (
+                                        <div className="bg-slate-50 p-4 rounded-lg">
+                                            <p className="text-slate-600">{q.content}</p>
+                                            <p className="mt-2 text-xs text-slate-400">[Loại câu hỏi chưa hỗ trợ: {q.type}]</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-            ))}
+            </div>
         </div>
     );
 };
@@ -190,6 +188,7 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [activeSectionIndex, setActiveSectionIndex] = useState(0);
 
     // Parse questions and group by section
     const groupedQuestions = useMemo(() => {
@@ -233,6 +232,15 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
         return groups;
     }, [assignment.questions]);
 
+    // Calculate start index for questions in current section
+    const currentSectionStartIndex = useMemo(() => {
+        let count = 0;
+        for (let i = 0; i < activeSectionIndex; i++) {
+            count += groupedQuestions[i].questions.length;
+        }
+        return count;
+    }, [activeSectionIndex, groupedQuestions]);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onAnswerChange = (questionId: string, value: any) => {
         setAnswers(prev => ({
@@ -271,7 +279,17 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
 
     const answeredCount = Object.keys(answers).length;
     const totalQuestions = assignment.questions.length;
-    const canSubmit = answeredCount >= totalQuestions && !isSubmitted;
+
+    // Auto-scroll to top when section changes
+    useEffect(() => {
+        const splitLeft = document.getElementById('split-left');
+        const splitRight = document.getElementById('split-right');
+        const mobileContainer = document.getElementById('mobile-container');
+
+        if (splitLeft) splitLeft.scrollTop = 0;
+        if (splitRight) splitRight.scrollTop = 0;
+        if (mobileContainer) mobileContainer.scrollTop = 0;
+    }, [activeSectionIndex]);
 
     if (assignment.questions.length === 0) {
         return (
@@ -284,6 +302,10 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
             </div>
         );
     }
+
+    const activeGroup = groupedQuestions[activeSectionIndex];
+    const isFirstSection = activeSectionIndex === 0;
+    const isLastSection = activeSectionIndex === groupedQuestions.length - 1;
 
     const SubmitButton = ({ className }: { className?: string }) => (
         <button
@@ -305,103 +327,162 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
         </button>
     );
 
+    const NavigationControls = () => (
+        <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200 mt-4">
+            <button
+                onClick={() => setActiveSectionIndex(prev => Math.max(0, prev - 1))}
+                disabled={isFirstSection}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 text-slate-600"
+            >
+                <ChevronLeft className="w-4 h-4" />
+                Phần trước
+            </button>
+            <div className="text-sm font-medium text-slate-600 hidden sm:block">
+                Phần {activeSectionIndex + 1} / {groupedQuestions.length}
+            </div>
+            {isLastSection ? (
+                <SubmitButton className="px-6 py-2 rounded-lg text-sm" />
+            ) : (
+                <button
+                    onClick={() => setActiveSectionIndex(prev => Math.min(groupedQuestions.length - 1, prev + 1))}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white border border-slate-200 hover:bg-slate-50 text-indigo-600 transition shadow-sm"
+                >
+                    Tiếp theo
+                    <ChevronRight className="w-4 h-4" />
+                </button>
+            )}
+        </div>
+    );
+
+    // Section Selector Dropdown/Tabs
+    const SectionSelector = () => (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar mb-2">
+            {groupedQuestions.map((group, idx) => (
+                <button
+                    key={idx}
+                    onClick={() => setActiveSectionIndex(idx)}
+                    className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition border ${activeSectionIndex === idx
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200"
+                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                        }`}
+                >
+                    {group.sectionType === "READING" ? "📖 " : "📝 "}
+                    {group.sectionTitle.length > 20 ? group.sectionTitle.substring(0, 20) + "..." : group.sectionTitle}
+                </button>
+            ))}
+        </div>
+    );
+
     return (
         <div className="h-[calc(100vh-80px)] flex flex-col bg-slate-50 -my-6 -mx-6 md:-my-8 md:-mx-8">
             {/* Header / Progress Bar */}
-            <div className="bg-white border-b border-slate-200 px-6 py-3 shrink-0 z-20">
-                <div className="max-w-7xl mx-auto w-full">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-slate-700">Tiến độ làm bài</span>
+            <div className="bg-white border-b border-slate-200 px-6 py-3 shrink-0 z-20 shadow-sm relative">
+                <div className="max-w-[1800px] mx-auto w-full">
+                    <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
-                            <span className="text-sm text-indigo-600 font-semibold">
-                                {answeredCount}/{totalQuestions} câu
+                            <span className="text-sm font-medium text-slate-700 hidden md:inline">Tiến độ làm bài</span>
+
+                            {/* Simple Progress Bar */}
+                            <div className="w-32 md:w-48 bg-slate-100 h-2 rounded-full">
+                                <div
+                                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
+                                ></div>
+                            </div>
+                            <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+                                {answeredCount}/{totalQuestions}
                             </span>
-                            <button
-                                onClick={onSubmit}
-                                disabled={isSubmitting}
-                                className="hidden md:flex bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition items-center gap-2 disabled:opacity-50"
-                            >
-                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                Nộp bài
-                            </button>
                         </div>
+
+                        {/* Submit Button (Header - always visible on desktop) */}
+                        <button
+                            onClick={onSubmit}
+                            disabled={isSubmitting}
+                            className="hidden md:flex bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition items-center gap-2 disabled:opacity-50"
+                        >
+                            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            Nộp bài
+                        </button>
                     </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full">
-                        <div
-                            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
-                        ></div>
-                    </div>
+
+                    {/* Section Selector */}
+                    <SectionSelector />
                 </div>
             </div>
 
             {/* Desktop Split View */}
             <div className="flex-1 hidden lg:block overflow-hidden relative">
                 <ResizableSplitPane
+                    // Passage Pane (Left)
                     left={
-                        <div className="p-6 space-y-8 pb-20">
-                            {/* Only render passages here */}
-                            {groupedQuestions.map((group, i) => (
-                                group.passage ? (
-                                    <div key={i} className="scroll-mt-4">
-                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
-                                            <span>{group.sectionTitle}</span>
-                                        </div>
-                                        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                                            <div className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-3 border-b border-slate-100 pb-2">
-                                                <BookOpen className="w-4 h-4" />
-                                                <span>Đọc đoạn văn</span>
-                                            </div>
-                                            <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2">
-                                                <ReactMarkdown>{group.passage || ''}</ReactMarkdown>
-                                            </div>
-                                            {group.passageTranslation && (
-                                                <div className="mt-4 pt-4 border-t border-slate-200">
-                                                    <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                                    <div className="text-sm text-slate-600 italic leading-relaxed">
-                                                        {group.passageTranslation}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                        <div id="split-left" className="h-full overflow-y-auto p-6 space-y-8 pb-20 scroll-smooth">
+                            {activeGroup.passage ? (
+                                <div className="scroll-mt-4 animate-in fade-in duration-500">
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
+                                        <span>{activeGroup.sectionTitle}</span>
                                     </div>
-                                ) : null
-                            ))}
-                            {/* Instruction if no passages */}
-                            {!groupedQuestions.some(g => g.passage) && (
-                                <div className="text-center text-slate-400 py-10 italic">
-                                    Không có bài đọc cho phần này.
+                                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                                        <div className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-3 border-b border-slate-100 pb-2">
+                                            <BookOpen className="w-4 h-4" />
+                                            <span>Đọc đoạn văn</span>
+                                        </div>
+                                        <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2">
+                                            <ReactMarkdown>{activeGroup.passage || ''}</ReactMarkdown>
+                                        </div>
+                                        {activeGroup.passageTranslation && (
+                                            <div className="mt-4 pt-4 border-t border-slate-200">
+                                                <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
+                                                <div className="text-sm text-slate-600 italic leading-relaxed">
+                                                    {activeGroup.passageTranslation}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-slate-400 italic">
+                                    <div className="text-center">
+                                        <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                        <p>Phần này không có bài đọc</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
                     }
+                    // Questions Pane (Right)
                     right={
-                        <div className="p-6">
-                            <QuestionsList
-                                groups={groupedQuestions}
-                                answers={answers}
-                                onAnswerChange={onAnswerChange}
-                                showPassage={false} // Don't show passage on right side in Split View
-                            />
-                            {/* Submit Button (Bottom Right) */}
-                            <div className="flex justify-end pt-4 pb-10">
-                                <SubmitButton className="px-6 py-2.5 rounded-xl" />
+                        <div id="split-right" className="h-full overflow-y-auto w-full p-6 flex flex-col scroll-smooth">
+                            <div className="flex-1 animate-in slide-in-from-right-4 duration-300">
+                                <SectionContent
+                                    group={activeGroup}
+                                    answers={answers}
+                                    onAnswerChange={onAnswerChange}
+                                    showPassage={false} // Don't show passage on right side in Split View
+                                    startIndex={currentSectionStartIndex}
+                                />
                             </div>
+
+                            {/* Navigation Footer */}
+                            <NavigationControls />
                         </div>
                     }
                 />
             </div>
 
-            {/* Mobile Stacked View (Original Layout) */}
-            <div className="flex-1 lg:hidden overflow-y-auto bg-slate-50 p-4">
-                <QuestionsList
-                    groups={groupedQuestions}
-                    answers={answers}
-                    onAnswerChange={onAnswerChange}
-                    showPassage={true}
-                />
-                <div className="sticky bottom-4 left-0 right-0 mt-4 px-4 pb-4 bg-gradient-to-t from-slate-50 to-transparent">
-                    <SubmitButton className="w-full px-6 py-3 rounded-xl" />
+            {/* Mobile Stacked View */}
+            <div id="mobile-container" className="flex-1 lg:hidden overflow-y-auto bg-slate-50 p-4 scroll-smooth">
+                <div className="animate-in slide-in-from-right-4 duration-300">
+                    <SectionContent
+                        group={activeGroup}
+                        answers={answers}
+                        onAnswerChange={onAnswerChange}
+                        showPassage={true}
+                        startIndex={currentSectionStartIndex}
+                    />
+                </div>
+
+                <div className="mt-6 pb-20">
+                    <NavigationControls />
                 </div>
             </div>
         </div>

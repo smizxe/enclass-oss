@@ -42,7 +42,7 @@ export default async function AssignmentIdPage({
 
     return (
         <div className="h-full bg-slate-50">
-            <div className="max-w-4xl mx-auto p-6">
+            <div className="max-w-[1800px] mx-auto p-4 md:p-6">
                 {/* Assignment Header */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
                     <div className="flex items-start gap-4">
