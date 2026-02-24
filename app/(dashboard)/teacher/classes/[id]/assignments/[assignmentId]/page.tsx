@@ -503,7 +503,10 @@ export default function AssignmentEditorPage() {
                                                     newOptions[i] = e.target.value;
                                                     setNewQuestion({ ...newQuestion, options: newOptions });
                                                 }}
-                                                className="flex-1 px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                                className={`flex-1 px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition ${newQuestion.correctAnswerIndex === i
+                                                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-medium"
+                                                    : "border-slate-200"
+                                                    }`}
                                                 placeholder={`Lựa chọn ${i + 1}`}
                                                 required
                                             />

@@ -22,6 +22,62 @@ export async function POST(
             return new NextResponse("Invalid answers format", { status: 400 });
         }
 
+        // Fetch assignment with questions to grade
+        const assignment = await prisma.assignment.findUnique({
+            where: { id: assignmentId },
+            include: { questions: true }
+        });
+
+        if (!assignment) {
+            return new NextResponse("Assignment not found", { status: 404 });
+        }
+
+        // Calculate Score & Grade
+        let totalScore = 0;
+        let earnedScore = 0;
+        const results: Record<string, { isCorrect: boolean; correctAnswer: any }> = {};
+
+        assignment.questions.forEach(q => {
+            totalScore += q.points;
+            const userAnswer = answers[q.id];
+            let isCorrect = false;
+
+            // Manual parsing of content
+            let parsedContent;
+            try {
+                parsedContent = JSON.parse(q.content);
+            } catch {
+                parsedContent = { text: q.content };
+            }
+
+            if (q.type === "MCQ") {
+                if (userAnswer === q.correctAnswer) {
+                    isCorrect = true;
+                }
+                results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
+            } else if (q.type === "ORDERING") {
+                // For ordering, usually checked against exact string match or specific logic. 
+                // Assuming Simple exact match for now as per current schema behavior
+                if (userAnswer === q.correctAnswer) {
+                    isCorrect = true;
+                }
+                results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
+            } else if (q.type === "GAP_FILL") {
+                // Gap fill logic would be complex. For MVP, assuming exact match roughly
+                // This might need refinement based on exact gap fill storage format
+                // For now, let's assume manual grading for GapFill or simple match if structured
+                if (userAnswer === q.correctAnswer) isCorrect = true;
+                results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
+            } else {
+                // Essay or other types: Pending Grading
+                results[q.id] = { isCorrect: false, correctAnswer: null };
+            }
+
+            if (isCorrect) {
+                earnedScore += q.points;
+            }
+        });
+
         // Get or create assignment progress
         let progress = await prisma.assignmentProgress.findUnique({
             where: {
@@ -30,9 +86,7 @@ export async function POST(
                     assignmentId
                 }
             },
-            include: {
-                assignment: true
-            }
+            include: { assignment: true }
         });
 
         if (!progress) {
@@ -42,9 +96,7 @@ export async function POST(
                     assignmentId,
                     status: "IN_PROGRESS"
                 },
-                include: {
-                    assignment: true
-                }
+                include: { assignment: true }
             });
         }
 
@@ -57,9 +109,8 @@ export async function POST(
             data: {
                 userId: session.user.id,
                 assignmentProgressId: progress.id,
-                answers: JSON.stringify(answers)
-                // score is optional and will be set when graded (for essays)
-                // or could be auto-calculated here for MCQ/other types
+                answers: JSON.stringify(answers),
+                score: earnedScore
             }
         });
 
@@ -72,7 +123,10 @@ export async function POST(
         return NextResponse.json({
             success: true,
             submissionId: submission.id,
-            status: newStatus
+            status: newStatus,
+            score: earnedScore,
+            totalScore: totalScore,
+            results: results
         });
     } catch (error) {
         console.error("[SUBMIT_POST]", error);

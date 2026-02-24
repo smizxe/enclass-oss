@@ -52,7 +52,8 @@ const SectionContent = ({
     answers,
     onAnswerChange,
     showPassage = true,
-    startIndex
+    startIndex,
+    submissionResult
 }: {
     group: QuestionGroup,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,7 +61,9 @@ const SectionContent = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onAnswerChange: any,
     showPassage?: boolean,
-    startIndex: number
+    startIndex: number,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    submissionResult?: any
 }) => {
     let questionCounter = startIndex;
     return (
@@ -98,23 +101,38 @@ const SectionContent = ({
                 <div className="space-y-4">
                     {group.questions.map((q) => {
                         const currentIndex = questionCounter++;
+                        const result = submissionResult?.results?.[q.id];
+                        let statusColor = "border-slate-200";
+                        let statusBg = "bg-white";
+
+                        if (result) {
+                            if (result.isCorrect) {
+                                statusColor = "border-emerald-200";
+                                statusBg = "bg-emerald-50/30";
+                            } else {
+                                statusColor = "border-red-200";
+                                statusBg = "bg-red-50/30";
+                            }
+                        } else if (answers[q.id]) {
+                            statusColor = "border-emerald-200";
+                        }
+
                         return (
                             <div
                                 key={q.id}
-                                className={`bg-white rounded-xl border shadow-sm overflow-hidden transition ${answers[q.id]
-                                    ? "border-emerald-200"
-                                    : "border-slate-200"
-                                    }`}
+                                className={`rounded-xl border shadow-sm overflow-hidden transition ${statusColor} ${statusBg}`}
                             >
                                 {/* Question Header */}
-                                <div className={`px-5 py-3 flex items-center justify-between border-b ${answers[q.id] ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100"
+                                <div className={`px-5 py-3 flex items-center justify-between border-b ${result
+                                        ? (result.isCorrect ? "bg-emerald-100 border-emerald-200" : "bg-red-50 border-red-100")
+                                        : (answers[q.id] ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100")
                                     }`}>
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${answers[q.id]
-                                            ? "bg-emerald-500 text-white"
-                                            : "bg-white text-slate-600 border border-slate-200"
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${result
+                                                ? (result.isCorrect ? "bg-emerald-500 text-white" : "bg-red-500 text-white")
+                                                : (answers[q.id] ? "bg-emerald-500 text-white" : "bg-white text-slate-600 border border-slate-200")
                                             }`}>
-                                            {answers[q.id] ? <CheckCircle className="w-4 h-4" /> : currentIndex + 1}
+                                            {result ? (result.isCorrect ? <CheckCircle className="w-4 h-4" /> : <span className="font-bold">✕</span>) : (answers[q.id] ? <CheckCircle className="w-4 h-4" /> : currentIndex + 1)}
                                         </div>
                                         <span className="text-sm font-medium text-slate-700">
                                             Câu {currentIndex + 1}
@@ -133,6 +151,7 @@ const SectionContent = ({
                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                             value={answers[q.id] as string}
                                             onChange={(val) => onAnswerChange(q.id, val)}
+                                            result={result}
                                         />
                                     )}
                                     {q.type === "GAP_FILL" && (
@@ -165,6 +184,7 @@ const SectionContent = ({
                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                             value={answers[q.id] as string}
                                             onChange={(val) => onAnswerChange(q.id, val)}
+                                            result={result}
                                         />
                                     )}
                                     {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY", "ORDERING"].includes(q.type) && (
@@ -189,6 +209,8 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [submissionResult, setSubmissionResult] = useState<any>(null);
 
     // Parse questions and group by section
     const groupedQuestions = useMemo(() => {
@@ -243,6 +265,7 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onAnswerChange = (questionId: string, value: any) => {
+        if (isSubmitted) return; // Prevent changes after submission
         setAnswers(prev => ({
             ...prev,
             [questionId]: value
@@ -250,6 +273,7 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
     }
 
     const onSubmit = async () => {
+        if (!confirm("Bạn có chắc chắn muốn nộp bài?")) return;
         setIsSubmitting(true);
         try {
             const response = await fetch(`/api/student/assignments/${assignment.id}/submit`, {
@@ -260,10 +284,11 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
 
             if (response.ok) {
                 const result = await response.json();
+                setSubmissionResult(result);
                 if (result.status === "PENDING_GRADING") {
                     toast.success("Bài làm đã được nộp! Đang chờ giáo viên chấm điểm.");
                 } else {
-                    toast.success("Bài làm đã được nộp thành công!");
+                    toast.success(`Nộp bài thành công! Điểm số: ${result.score}/${result.totalScore}`);
                 }
                 setIsSubmitted(true);
             } else {
@@ -307,25 +332,29 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
     const isFirstSection = activeSectionIndex === 0;
     const isLastSection = activeSectionIndex === groupedQuestions.length - 1;
 
-    const SubmitButton = ({ className }: { className?: string }) => (
-        <button
-            onClick={onSubmit}
-            disabled={isSubmitting}
-            className={`bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-indigo-200 ${className}`}
-        >
-            {isSubmitting ? (
-                <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Đang nộp bài...
-                </>
-            ) : (
-                <>
-                    <Send className="w-5 h-5" />
-                    Nộp bài
-                </>
-            )}
-        </button>
-    );
+    const SubmitButton = ({ className }: { className?: string }) => {
+        if (isSubmitted) return null;
+
+        return (
+            <button
+                onClick={onSubmit}
+                disabled={isSubmitting}
+                className={`bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-indigo-200 ${className}`}
+            >
+                {isSubmitting ? (
+                    <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Đang nộp bài...
+                    </>
+                ) : (
+                    <>
+                        <Send className="w-5 h-5" />
+                        Nộp bài
+                    </>
+                )}
+            </button>
+        );
+    }
 
     const NavigationControls = () => (
         <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200 mt-4">
@@ -395,14 +424,21 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                         </div>
 
                         {/* Submit Button (Header - always visible on desktop) */}
-                        <button
-                            onClick={onSubmit}
-                            disabled={isSubmitting}
-                            className="hidden md:flex bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition items-center gap-2 disabled:opacity-50"
-                        >
-                            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            Nộp bài
-                        </button>
+                        {!isSubmitted ? (
+                            <button
+                                onClick={onSubmit}
+                                disabled={isSubmitting}
+                                className="hidden md:flex bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition items-center gap-2 disabled:opacity-50"
+                            >
+                                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                Nộp bài
+                            </button>
+                        ) : (
+                            <div className="hidden md:flex px-4 py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 items-center gap-2">
+                                <CheckCircle className="w-4 h-4" />
+                                Đã nộp bài - Điểm: {submissionResult?.score ?? 0}/{submissionResult?.totalScore ?? 0}
+                            </div>
+                        )}
                     </div>
 
                     {/* Section Selector */}
@@ -459,6 +495,7 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                                     onAnswerChange={onAnswerChange}
                                     showPassage={false} // Don't show passage on right side in Split View
                                     startIndex={currentSectionStartIndex}
+                                    submissionResult={submissionResult}
                                 />
                             </div>
 
@@ -478,6 +515,7 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                         onAnswerChange={onAnswerChange}
                         showPassage={true}
                         startIndex={currentSectionStartIndex}
+                        submissionResult={submissionResult}
                     />
                 </div>
 
@@ -493,11 +531,14 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
 const McqQuestionSimple = ({
     question,
     value,
-    onChange
+    onChange,
+    result
 }: {
     question: ParsedQuestion;
     value: string | undefined;
     onChange: (val: string) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    result?: any
 }) => {
     const { parsed } = question;
 
@@ -556,26 +597,63 @@ const McqQuestionSimple = ({
                         const optionValue = typeof option === 'string' ? option : option;
                         const isSelected = value === optionValue;
 
+                        // Result Styling
+                        let resultClass = "";
+                        let disabled = false;
+
+                        if (result) {
+                            disabled = true;
+                            if (optionValue === result.correctAnswer) {
+                                // Correct Answer (always highlighted)
+                                resultClass = "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-200 text-emerald-800";
+                            } else if (isSelected && !result.isCorrect) {
+                                // Selected but Wrong
+                                resultClass = "border-red-500 bg-red-100 ring-2 ring-red-200 text-red-800";
+                            } else if (isSelected && result.isCorrect) {
+                                // Selected and Correct (already handled by first case, but valid for clarity)
+                                resultClass = "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-200 text-emerald-800";
+                            } else {
+                                // Not selected, plain
+                                resultClass = "opacity-60";
+                            }
+                        }
+
                         return (
                             <button
                                 key={index}
                                 type="button"
-                                onClick={() => onChange(optionValue)}
-                                className={`flex items-center space-x-3 border p-3 rounded-lg transition text-left ${isSelected
-                                    ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
-                                    : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                                onClick={() => !disabled && onChange(optionValue)}
+                                disabled={disabled}
+                                className={`flex items-center space-x-3 border p-3 rounded-lg transition text-left ${resultClass
+                                        ? resultClass
+                                        : (isSelected
+                                            ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
+                                            : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                                        )
                                     }`}
                             >
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? "border-indigo-500 bg-indigo-500" : "border-slate-300"
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${result
+                                        ? (optionValue === result.correctAnswer ? "border-emerald-500 bg-emerald-500" : (isSelected ? "border-red-500 bg-red-500" : "border-slate-300"))
+                                        : (isSelected ? "border-indigo-500 bg-indigo-500" : "border-slate-300")
                                     }`}>
-                                    {isSelected && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                                    {((isSelected && !result) || (result && (optionValue === result.correctAnswer || isSelected))) && <div className="w-2 h-2 rounded-full bg-white"></div>}
                                 </div>
-                                <span className={`flex-1 text-sm ${isSelected ? "text-indigo-700 font-medium" : "text-slate-700"}`}>
+                                <span className={`flex-1 text-sm ${isSelected && !result ? "text-indigo-700 font-medium" : "text-slate-700"}`}>
                                     {optionValue}
                                 </span>
                             </button>
                         )
                     })}
+                </div>
+            )}
+
+            {/* Explanation / Result Text */}
+            {result && (
+                <div className={`mt-3 text-sm p-3 rounded-lg ${result.isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                    <span className="font-bold">{result.isCorrect ? "Chính xác!" : "Chưa chính xác!"}</span>
+                    {!result.isCorrect && (
+                        <span className="ml-2">Đáp án đúng: <strong>{result.correctAnswer}</strong></span>
+                    )}
                 </div>
             )}
         </div>
