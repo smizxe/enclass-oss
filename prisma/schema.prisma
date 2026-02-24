@@ -25,6 +25,7 @@ model User {
   classMembers  ClassMember[]
   dataset       Submission[]
   posts         Post[]
+  comments      Comment[]
 }
 
 model Class {
@@ -153,7 +154,23 @@ model Post {
   classId     String?
   class       Class?    @relation(fields: [classId], references: [id])
   
+  comments    Comment[]
+  
   pinned      Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

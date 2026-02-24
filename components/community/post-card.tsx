@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CommentList } from "./comment-list";
 
 interface Post {
     id: string;
@@ -34,6 +35,7 @@ interface PostCardProps {
 }
 
 export const PostCard = ({ post, isTeacher, onDelete, onEdit }: PostCardProps) => {
+    const [showComments, setShowComments] = useState(false);
     return (
         <div className={`bg-white rounded-xl border p-5 shadow-sm space-y-4 ${post.pinned ? 'border-indigo-200 bg-indigo-50/30' : 'border-slate-200'}`}>
             {/* Header */}
@@ -92,8 +94,8 @@ export const PostCard = ({ post, isTeacher, onDelete, onEdit }: PostCardProps) =
                 {/* Images Grid */}
                 {post.images && post.images.length > 0 && (
                     <div className={`grid gap-2 mt-3 ${post.images.length === 1 ? 'grid-cols-1' :
-                            post.images.length === 2 ? 'grid-cols-2' :
-                                'grid-cols-2 md:grid-cols-3'
+                        post.images.length === 2 ? 'grid-cols-2' :
+                            'grid-cols-2 md:grid-cols-3'
                         }`}>
                         {post.images.map((img, idx) => (
                             <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-slate-100 bg-slate-50 group">
@@ -109,13 +111,23 @@ export const PostCard = ({ post, isTeacher, onDelete, onEdit }: PostCardProps) =
                 )}
             </div>
 
-            {/* Footer Actions (Comment placeholder) */}
+            {/* Footer Actions */}
             <div className="pt-3 border-t border-slate-100 flex items-center gap-4">
-                <button className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 transition">
+                <button
+                    onClick={() => setShowComments(!showComments)}
+                    className={`flex items-center gap-2 text-sm transition ${showComments ? 'text-indigo-600 font-medium' : 'text-slate-500 hover:text-indigo-600'}`}
+                >
                     <MessageCircle className="w-4 h-4" />
                     Bình luận
                 </button>
             </div>
+
+            {/* Comments Section */}
+            {showComments && (
+                <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                    <CommentList postId={post.id} />
+                </div>
+            )}
         </div>
     );
 }
