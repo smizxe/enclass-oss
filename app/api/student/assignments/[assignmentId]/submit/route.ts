@@ -76,10 +76,12 @@ export async function POST(
                 }
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
             } else if (q.type === "GAP_FILL") {
-                // Gap fill logic would be complex. For MVP, assuming exact match roughly
-                // This might need refinement based on exact gap fill storage format
-                // For now, let's assume manual grading for GapFill or simple match if structured
-                if (userAnswer === q.correctAnswer) isCorrect = true;
+                // Gap fill - compare typed answer (case-insensitive, trimmed)
+                const userTyped = typeof userAnswer === 'string' ? userAnswer.trim().toLowerCase() : '';
+                const correctTyped = q.correctAnswer.trim().toLowerCase();
+                if (userTyped === correctTyped) {
+                    isCorrect = true;
+                }
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
             } else {
                 // Essay or other types: Pending Grading

@@ -158,8 +158,10 @@ const SectionContent = ({
                                         <GapFillQuestion
                                             question={q}
                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                            value={answers[q.id] as Record<number, string>}
+                                            value={answers[q.id] as Record<number, string> | string}
                                             onChange={(val) => onAnswerChange(q.id, val)}
+                                            disabled={!!result}
+                                            result={result}
                                         />
                                     )}
                                     {q.type === "SORTABLE" && (
