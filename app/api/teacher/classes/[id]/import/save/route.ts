@@ -28,7 +28,7 @@ interface ImportPayload {
 
 export async function POST(
     req: Request,
-    { params }: { params: Promise<{ classId: string }> }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -36,7 +36,7 @@ export async function POST(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const { classId } = await params;
+        const { id } = await params;
         const { title, sections } = await req.json() as ImportPayload;
 
         if (!title || !sections || sections.length === 0) {
@@ -46,7 +46,7 @@ export async function POST(
         // Verify class ownership
         const classData = await prisma.class.findFirst({
             where: {
-                id: classId,
+                id: id,
                 teacherId: session.user.id,
             },
         });
@@ -57,7 +57,7 @@ export async function POST(
 
         // Get max orderIndex
         const lastAssignment = await prisma.assignment.findFirst({
-            where: { classId },
+            where: { classId: id },
             orderBy: { orderIndex: "desc" },
         });
 
@@ -129,7 +129,7 @@ export async function POST(
         const assignment = await prisma.assignment.create({
             data: {
                 title,
-                classId,
+                classId: id,
                 orderIndex: nextOrderIndex,
                 type: assignmentType,
                 questions: {

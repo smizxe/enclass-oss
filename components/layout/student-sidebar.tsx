@@ -10,7 +10,8 @@ import {
     LogOut,
     GraduationCap,
     Trophy,
-    User
+    User,
+    Users
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 
@@ -36,6 +37,11 @@ const routes = [
         label: "Bảng xếp hạng",
         icon: Trophy,
         href: "/student/leaderboard",
+    },
+    {
+        label: "Cộng đồng",
+        icon: Users,
+        href: "/student/community",
     },
 ];
 

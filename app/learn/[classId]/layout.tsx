@@ -37,6 +37,25 @@ export default async function ClassLayout({
                     }
                 }
             },
+            assignmentGroups: {
+                orderBy: {
+                    orderIndex: "asc",
+                },
+                include: {
+                    assignments: {
+                        orderBy: {
+                            orderIndex: "asc",
+                        },
+                        include: {
+                            progress: {
+                                where: {
+                                    userId: session.user.id
+                                }
+                            }
+                        }
+                    }
+                }
+            },
         },
     });
 
@@ -47,11 +66,9 @@ export default async function ClassLayout({
     return (
         <div className="h-screen bg-slate-50 flex">
             {/* Sidebar */}
-            <div className="hidden md:flex w-80 flex-col border-r border-slate-200 bg-white">
-                <ClassSidebar
-                    classItem={classItem}
-                />
-            </div>
+            <ClassSidebar
+                classItem={classItem}
+            />
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">

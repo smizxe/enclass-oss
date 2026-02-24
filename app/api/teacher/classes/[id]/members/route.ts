@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(
     req: Request,
-    { params }: { params: Promise<{ classId: string }> }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -13,13 +13,13 @@ export async function POST(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const { classId } = await params;
+        const { id } = await params;
         const { email } = await req.json();
 
         // Check if class belongs to teacher
         const classItem = await prisma.class.findUnique({
             where: {
-                id: classId,
+                id: id,
                 teacherId: session.user.id
             }
         });
@@ -40,7 +40,7 @@ export async function POST(
         // Add to class
         await prisma.classMember.create({
             data: {
-                classId,
+                classId: id,
                 userId: student.id
             }
         });
@@ -54,7 +54,7 @@ export async function POST(
 
 export async function GET(
     req: Request,
-    { params }: { params: Promise<{ classId: string }> }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -62,12 +62,12 @@ export async function GET(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const { classId } = await params;
+        const { id } = await params;
 
         // Verify class ownership
         const classItem = await prisma.class.findUnique({
             where: {
-                id: classId,
+                id: id,
                 teacherId: session.user.id
             }
         });
@@ -78,7 +78,7 @@ export async function GET(
 
         const classMembers = await prisma.classMember.findMany({
             where: {
-                classId
+                classId: id
             },
             include: {
                 user: {

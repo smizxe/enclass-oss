@@ -12,11 +12,11 @@ const classSchema = z.object({
 
 export async function PATCH(
     req: Request,
-    { params }: { params: Promise<{ classId: string }> }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
-        const { classId } = await params;
+        const { id } = await params;
         const values = await req.json();
 
         if (!session || session.user.role !== "TEACHER") {
@@ -27,7 +27,7 @@ export async function PATCH(
 
         const classObj = await prisma.class.update({
             where: {
-                id: classId,
+                id: id,
             },
             data: {
                 ...parsedValues,
@@ -43,13 +43,13 @@ export async function PATCH(
 
 export async function GET(
     req: Request,
-    { params }: { params: Promise<{ classId: string }> }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { classId } = await params;
+        const { id } = await params;
         const classObj = await prisma.class.findUnique({
             where: {
-                id: classId,
+                id: id,
             },
             include: {
                 assignments: {

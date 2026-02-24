@@ -12,6 +12,8 @@ import { PublishActions } from "./_components/publish-actions";
 import { CreateAssignmentButton } from "./_components/create-assignment-button";
 import { AssignmentsList } from "./_components/assignments-list";
 import { ClassInfoCard } from "./_components/class-info-card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProgressDashboard } from "./_components/progress-dashboard";
 
 export default async function ClassIdPage({
     params
@@ -33,6 +35,18 @@ export default async function ClassIdPage({
             assignments: {
                 orderBy: {
                     orderIndex: "asc"
+                }
+            },
+            assignmentGroups: {
+                orderBy: {
+                    orderIndex: "asc"
+                },
+                include: {
+                    assignments: {
+                        orderBy: {
+                            orderIndex: "asc"
+                        }
+                    }
                 }
             }
         }
@@ -109,17 +123,31 @@ export default async function ClassIdPage({
                     />
                 </div>
 
-                {/* Assignments List */}
+                {/* Main Content with Tabs */}
                 <div className="lg:col-span-2">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="font-medium text-slate-700">Nội dung lớp học</h2>
-                        <CreateAssignmentButton classId={classItem.id} />
-                    </div>
+                    <Tabs defaultValue="assignments" className="w-full">
+                        <TabsList className="mb-4">
+                            <TabsTrigger value="assignments">Nội dung lớp học</TabsTrigger>
+                            <TabsTrigger value="progress">Tiến độ học viên</TabsTrigger>
+                        </TabsList>
 
-                    <AssignmentsList
-                        classId={classItem.id}
-                        initialAssignments={classItem.assignments}
-                    />
+                        <TabsContent value="assignments" className="mt-0">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="font-medium text-slate-700">Danh sách bài tập</h2>
+                                <CreateAssignmentButton classId={classItem.id} />
+                            </div>
+
+                            <AssignmentsList
+                                classId={classItem.id}
+                                initialAssignments={classItem.assignments}
+                                initialGroups={classItem.assignmentGroups}
+                            />
+                        </TabsContent>
+
+                        <TabsContent value="progress" className="mt-0">
+                            <ProgressDashboard classId={classItem.id} />
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </div>
         </div>

@@ -24,6 +24,7 @@ model User {
   classesOwned  Class[]   @relation("TeacherClasses")
   classMembers  ClassMember[]
   dataset       Submission[]
+  posts         Post[]
 }
 
 model Class {
@@ -37,6 +38,8 @@ model Class {
   
   members     ClassMember[]
   assignments Assignment[]
+  assignmentGroups AssignmentGroup[]
+  posts       Post[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -57,10 +60,26 @@ model Assignment {
   progress      AssignmentProgress[]
   settings      Json?       // For storing metadata like audioUrl, timeLimit, etc.
   
+  groupId     String?
+  group       AssignmentGroup? @relation(fields: [groupId], references: [id])
   
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
+
+model AssignmentGroup {
+  id          String       @id @default(cuid())
+  title       String
+  orderIndex  Int
+  classId     String
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  
+  assignments Assignment[]
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
 
 model Question {
   id            String       @id @default(cuid())
@@ -119,4 +138,22 @@ model Submission {
   gradedAt             DateTime?
   gradedById           String?
   submittedAt          DateTime @default(now())
+}
+
+model Post {
+  id          String    @id @default(cuid())
+  title       String
+  content     String    @db.Text
+  images      String[]  // URLs or paths
+  
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id])
+  
+  // Scope: NULL = Global, classId = Class-specific
+  classId     String?
+  class       Class?    @relation(fields: [classId], references: [id])
+  
+  pinned      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
