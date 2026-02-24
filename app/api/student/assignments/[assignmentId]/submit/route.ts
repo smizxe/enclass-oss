@@ -141,8 +141,7 @@ export async function POST(
 
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
             } else if (q.type === "ORDERING") {
-                // For ordering, usually checked against exact string match or specific logic. 
-                // Assuming Simple exact match for now as per current schema behavior
+                // For ordering, exact string match
                 if (userAnswer === q.correctAnswer) {
                     isCorrect = true;
                 }
@@ -155,13 +154,31 @@ export async function POST(
                     isCorrect = true;
                 }
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
+            } else if (
+                q.type === "TRUE_FALSE_NOT_GIVEN" ||
+                q.type === "YES_NO_NOT_GIVEN" ||
+                q.type === "MATCHING_INFORMATION" ||
+                q.type === "MATCHING_NAMES" ||
+                q.type === "SENTENCE_COMPLETION"
+            ) {
+                // IELTS-style types: simple case-insensitive string comparison
+                // Answers are values like "TRUE", "FALSE", "NOT GIVEN", "A", "B", "C", etc.
+                const userStr = typeof userAnswer === 'string' ? userAnswer.trim().toUpperCase() : '';
+                const correctStr = q.correctAnswer.trim().toUpperCase();
+                if (userStr === correctStr) {
+                    isCorrect = true;
+                }
+                results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
             } else if (q.type === "SPEAKING" || q.type === "WRITING" || q.type === "ESSAY") {
-                // AI Grading Placeholder - Will be handled below (async) or marked pending
-                // Ideally we want to await this, or put it in a background job.
-                // For MVP, we await it here (might be slow).
-                // We'll process these after this loop to use Promise.all
+                // AI Grading - handled in Part 2 below via Promise.all
             } else {
-                results[q.id] = { isCorrect: false, correctAnswer: null };
+                // Unknown type fallback - try simple string comparison
+                const userStr = typeof userAnswer === 'string' ? userAnswer.trim().toUpperCase() : '';
+                const correctStr = q.correctAnswer ? q.correctAnswer.trim().toUpperCase() : '';
+                if (userStr && correctStr && userStr === correctStr) {
+                    isCorrect = true;
+                }
+                results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
             }
 
             if (isCorrect) {
