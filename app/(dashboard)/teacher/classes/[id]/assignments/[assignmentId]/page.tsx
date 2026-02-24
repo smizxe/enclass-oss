@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 import {
     ArrowLeft,
     PlusCircle,
@@ -13,10 +15,12 @@ import {
     BookOpen,
     Pencil,
     Upload,
-    Sparkles
+    Sparkles,
+    FileText
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { AudioManager } from "@/components/audio-manager";
+import { Editor } from "@/components/editor";
 
 interface Question {
     id: string;
@@ -34,11 +38,13 @@ interface ParsedContent {
     passageTranslation?: string;
     sectionTitle?: string;
     sectionType?: string;
+    sectionAudio?: string;
 }
 
 interface QuestionGroup {
     sectionTitle: string;
     sectionType: string;
+    sectionAudio?: string;
     passage?: string;
     passageTranslation?: string;
     questions: (Question & { parsed: ParsedContent })[];
@@ -47,85 +53,97 @@ interface QuestionGroup {
 interface Assignment {
     id: string;
     title: string;
-    type: string;
-    content: string | null; // For Lecture content
-    settings?: any;
+    description: string | null;
+    type: "MCQ" | "ESSAY" | "MIXED";
+    settings: any;
 }
 
 export default function AssignmentEditorPage() {
     const params = useParams();
-    // const router = useRouter();
+    const id = params?.id as string; // classId
+    const assignmentId = params?.assignmentId as string;
+
     const [assignment, setAssignment] = useState<Assignment | null>(null);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Edit Question Modal State
     const [isAddingQuestion, setIsAddingQuestion] = useState(false);
     const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
-    const [editingSection, setEditingSection] = useState<{
-        questionIds: string[];
-        sectionTitle: string;
-        passage: string;
-        passageTranslation: string;
-    } | null>(null);
     const [newQuestion, setNewQuestion] = useState<{
         text: string;
         options: string[];
         correctAnswerIndex: number | null;
+        points: number;
     }>({
         text: "",
         options: ["", "", "", ""],
-        correctAnswerIndex: null
+        correctAnswerIndex: null,
+        points: 1
     });
+
+    // Essay Prompt State
     const [essayPrompt, setEssayPrompt] = useState("");
 
-    // AI Import state
-    // AI Import state
-    const [isAIImportOpen, setIsAIImportOpen] = useState(false);
-    const [importType, setImportType] = useState<"MCQ" | "LISTENING">("MCQ");
-    const [aiImportFile, setAIImportFile] = useState<File | null>(null);
-    const [isAIImporting, setIsAIImporting] = useState(false);
+    // Section Management State
+    const [isAddingSection, setIsAddingSection] = useState(false);
+    const [newSectionTitle, setNewSectionTitle] = useState("");
+    const [newSectionType, setNewSectionType] = useState("MCQ");
 
-    const classId = params.id as string;
-    const assignmentId = params.assignmentId as string;
+    // Edit Section Modal State (For Passage/Translation)
+    const [editingSection, setEditingSection] = useState<{
+        questionIds: string[];
+        sectionTitle: string;
+        sectionAudio?: string;
+        passage: string;
+        passageTranslation: string;
+    } | null>(null);
 
-    const fetchAssignment = useCallback(async () => {
-        try {
-            const res = await axios.get(`/api/teacher/assignments/${assignmentId}`);
-            setAssignment(res.data);
-        } catch {
-            toast.error("Không thể tải thông tin bài tập");
-        }
-    }, [assignmentId]);
+    const classId = id;
 
     const fetchQuestions = useCallback(async () => {
         try {
-            const questionsRes = await axios.get(`/api/teacher/assignments/${assignmentId}/questions`);
-            setQuestions(questionsRes.data);
-        } catch {
-            setLoading(false);
-        } finally {
-            setLoading(false);
+            const res = await axios.get(`/api/teacher/assignments/${assignmentId}/questions`);
+            setQuestions(res.data);
+
+            // Check for essay prompt (usually stored as a single question or in settings)
+            // For MVP: If type is ESSAY, we might store prompt in description or a specific question
+            // Here we assume standard questions fetch
+        } catch (error) {
+            console.error(error);
+            toast.error("Lỗi tải câu hỏi");
         }
     }, [assignmentId]);
 
     useEffect(() => {
+        const fetchAssignment = async () => {
+            try {
+                const res = await axios.get(`/api/teacher/assignments/${assignmentId}`);
+                setAssignment(res.data);
+                if (res.data.type === "ESSAY" && res.data.description) {
+                    setEssayPrompt(res.data.description);
+                }
+            } catch (error) {
+                console.error(error);
+                toast.error("Lỗi tải thông tin bài tập");
+            } finally {
+                setLoading(false);
+            }
+        };
+
         fetchAssignment();
         fetchQuestions();
-    }, [fetchAssignment, fetchQuestions]);
+    }, [assignmentId, fetchQuestions]);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center p-10">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
-            </div>
-        );
-    }
-
-    // Group questions by section for display
-    const groupedQuestions: QuestionGroup[] = (() => {
+    // Group questions by Section
+    const groupedQuestions = useMemo(() => {
         const groups: QuestionGroup[] = [];
         let currentGroup: QuestionGroup | null = null;
 
-        for (const q of questions) {
+        // Sort questions by order (if we had an order field) or just index
+        // Assuming API returns in creation order or we trust the array order
+
+        questions.forEach((q) => {
             let parsed: ParsedContent;
             try {
                 parsed = JSON.parse(q.content);
@@ -133,105 +151,120 @@ export default function AssignmentEditorPage() {
                 parsed = { text: q.content };
             }
 
-            const sectionTitle = parsed.sectionTitle || "Câu hỏi độc lập";
-            const sectionType = parsed.sectionType || "STANDALONE";
+            const qWithParsed = { ...q, parsed };
+            const sectionTitle = parsed.sectionTitle || "General";
+            const sectionType = parsed.sectionType || "MCQ";
 
-            // Check if we need a new group
+            if (q.type === "SECTION_HEADER") {
+                // Warning: Explicit section header question type is used to break sections
+                // It might not be a real question.
+                // Or if we encounter a new sectionTitle in a normal question, we start a new group?
+                // Let's rely on consistent sectionTitle for now.
+            }
+
+            // Simple grouping logic:
+            // If sectionTitle changes from the previous one, start a new group.
+            // OR if it's the first question.
+
             if (!currentGroup || currentGroup.sectionTitle !== sectionTitle) {
+                // Push old group
+                if (currentGroup) groups.push(currentGroup);
+
+                // Start new group
                 currentGroup = {
                     sectionTitle,
                     sectionType,
+                    sectionAudio: parsed.sectionAudio,
                     passage: parsed.passage,
                     passageTranslation: parsed.passageTranslation,
                     questions: []
                 };
-                groups.push(currentGroup);
             }
 
-            // Add question to current group
-            currentGroup.questions.push({
-                ...q,
-                parsed
-            });
-        }
+            // Sync Passage Info if the current question has passage info and the group doesn't (or update it)
+            // Usually the first question carries the passage info, or all of them do.
+            if (parsed.passage && !currentGroup.passage) currentGroup.passage = parsed.passage;
+            if (parsed.passageTranslation && !currentGroup.passageTranslation) currentGroup.passageTranslation = parsed.passageTranslation;
+            // Sync Audio
+            if (parsed.sectionAudio && !currentGroup.sectionAudio) currentGroup.sectionAudio = parsed.sectionAudio;
+
+            currentGroup.questions.push(qWithParsed);
+        });
+
+        if (currentGroup) groups.push(currentGroup);
 
         return groups;
-    })();
+    }, [questions]);
 
-    const handleDeleteQuestion = async (questionId: string) => {
+
+    // Handlers
+    const handleDeleteQuestion = async (qId: string) => {
         if (!confirm("Bạn có chắc chắn muốn xóa câu hỏi này?")) return;
-
         try {
-            await axios.delete(`/api/teacher/assignments/${assignmentId}/questions/${questionId}`);
+            await axios.delete(`/api/teacher/assignments/${assignmentId}/questions/${qId}`);
             toast.success("Đã xóa câu hỏi");
             fetchQuestions();
         } catch {
-            toast.error("Không thể xóa câu hỏi");
+            toast.error("Lỗi xóa câu hỏi");
         }
     };
 
-    const handleEditQuestion = (question: Question & { parsed: ParsedContent }) => {
-        setEditingQuestionId(question.id);
+    const handleEditQuestion = (q: Question & { parsed: ParsedContent }) => {
+        setEditingQuestionId(q.id);
+        const parsed = q.parsed;
 
-        if (question.type === "ESSAY") {
-            setEssayPrompt(question.parsed.text);
-        } else {
-            // MCQ or ORDERING
-            const options = question.parsed.options || ["", "", "", ""];
-            let correctAnswerIndex = null;
-
-            if (question.correctAnswer) {
-                const idx = options.indexOf(question.correctAnswer);
-                if (idx !== -1) correctAnswerIndex = idx;
-            }
-
-            setNewQuestion({
-                text: question.parsed.text,
-                options: options.length >= 4 ? options : [...options, ...Array(4 - options.length).fill("")],
-                correctAnswerIndex
-            });
-        }
-
+        setNewQuestion({
+            text: parsed.text,
+            options: parsed.options && parsed.options.length >= 4 ? parsed.options : ["", "", "", ""],
+            correctAnswerIndex: parsed.options ? parsed.options.findIndex(opt => opt === q.correctAnswer || q.correctAnswer === String.fromCharCode(65 + parsed.options.indexOf(opt))) : null,
+            points: q.points
+        });
         setIsAddingQuestion(true);
     };
 
     const onSaveQuestion = async () => {
+        // Validation logic...
+        // For MVP assuming good input or basic check
+        if (!newQuestion.text) return toast.error("Vui lòng nhập nội dung câu hỏi");
+
+        const contentObj = {
+            text: newQuestion.text,
+            options: newQuestion.options,
+            // Preserve section info if editing, or use current section context if adding?
+            // For now, simpler implementation:
+            // If adding new, we need to know which section. 
+            // MVP: Add to "General" or last section.
+            sectionTitle: "General"
+        };
+
+        const correctAnswerChar = newQuestion.correctAnswerIndex !== null
+            ? String.fromCharCode(65 + newQuestion.correctAnswerIndex)
+            : "";
+
+        const data = {
+            type: "MCQ",
+            content: JSON.stringify(contentObj),
+            correctAnswer: correctAnswerChar,
+            points: newQuestion.points
+        };
+
         try {
-            if (assignment?.type === "MCQ" && newQuestion.correctAnswerIndex === null) {
-                toast.error("Vui lòng chọn đáp án đúng");
-                return;
-            }
-
-            let type = "MCQ";
-            let content = "";
-            let correctAnswer = "";
-
-            if (assignment?.type === "ESSAY") {
-                type = "ESSAY";
-                content = essayPrompt; // For essay, content is just the prompt text initially
-                correctAnswer = "";
-            } else {
-                // MCQ Default
-                content = JSON.stringify({
-                    text: newQuestion.text,
-                    options: newQuestion.options
-                });
-                correctAnswer = newQuestion.options[newQuestion.correctAnswerIndex!];
-            }
-
-            const data = {
-                type,
-                content,
-                correctAnswer,
-                points: 10
-            };
-
             if (editingQuestionId) {
-                await axios.patch(`/api/teacher/assignments/${assignmentId}/questions/${editingQuestionId}`, data);
+                // Need to merge with existing content to preserve sectionTitle etc.
+                const existingQ = questions.find(q => q.id === editingQuestionId);
+                let existingContent = {};
+                try { existingContent = JSON.parse(existingQ?.content || "{}"); } catch { }
+
+                const mergedContent = { ...existingContent, ...contentObj };
+
+                await axios.patch(`/api/teacher/assignments/${assignmentId}/questions/${editingQuestionId}`, {
+                    ...data,
+                    content: JSON.stringify(mergedContent)
+                });
                 toast.success("Đã cập nhật câu hỏi");
             } else {
                 await axios.post(`/api/teacher/assignments/${assignmentId}/questions`, data);
-                toast.success(assignment?.type === "ESSAY" ? "Đã lưu đề bài" : "Thêm câu hỏi thành công");
+                toast.success("Thêm câu hỏi thành công");
             }
 
             setIsAddingQuestion(false);
@@ -239,7 +272,8 @@ export default function AssignmentEditorPage() {
             setNewQuestion({
                 text: "",
                 options: ["", "", "", ""],
-                correctAnswerIndex: null
+                correctAnswerIndex: null,
+                points: 1
             });
             setEssayPrompt("");
             fetchQuestions();
@@ -253,6 +287,7 @@ export default function AssignmentEditorPage() {
         setEditingSection({
             questionIds,
             sectionTitle: group.sectionTitle,
+            sectionAudio: group.sectionAudio,
             passage: group.passage || "",
             passageTranslation: group.passageTranslation || ""
         });
@@ -280,6 +315,31 @@ export default function AssignmentEditorPage() {
             toast.success("Cập nhật cài đặt thành công");
         } catch {
             toast.error("Lỗi khi lưu cài đặt");
+        }
+    };
+
+    const handleCreateSection = async () => {
+        // Create a placeholder question to establish the section
+        try {
+            const data = {
+                type: "SECTION_HEADER", // Special type, filtered out in runner
+                content: JSON.stringify({
+                    sectionTitle: newSectionTitle,
+                    sectionType: newSectionType,
+                    text: "Section Header",
+                    items: [],
+                    options: []
+                }),
+                correctAnswer: "",
+                points: 0
+            };
+            await axios.post(`/api/teacher/assignments/${assignmentId}/questions`, data);
+            toast.success("Đã tạo phần thi mới");
+            setIsAddingSection(false);
+            setNewSectionTitle("");
+            fetchQuestions();
+        } catch {
+            toast.error("Lỗi khi tạo phần thi");
         }
     };
 
@@ -312,6 +372,8 @@ export default function AssignmentEditorPage() {
                     assignmentId={assignmentId}
                     settings={assignment?.settings || null}
                     onUpdateSettings={onUpdateSettings}
+                    label="Audio Chung (Global)"
+                    description="Áp dụng cho toàn bộ bài thi nếu không có audio riêng từng phần"
                 />
 
                 {/* Questions List grouped by Section */}
@@ -329,13 +391,21 @@ export default function AssignmentEditorPage() {
                                     <span className="px-3 bg-indigo-50 text-indigo-600 rounded-full py-1">
                                         {group.sectionTitle}
                                     </span>
-                                    {group.passage && (
+                                    {group.passage ? (
                                         <button
                                             onClick={() => handleEditSection(group)}
                                             className="ml-2 text-slate-400 hover:text-indigo-600 transition"
                                             title="Sửa đoạn văn/tiêu đề"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleEditSection(group)}
+                                            className="ml-2 flex items-center gap-1 text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full hover:bg-indigo-100 transition"
+                                        >
+                                            <Pencil className="w-3 h-3" />
+                                            Sửa / Thêm nội dung
                                         </button>
                                     )}
                                     <div className="h-px flex-1 bg-slate-200"></div>
@@ -348,8 +418,10 @@ export default function AssignmentEditorPage() {
                                             <BookOpen className="w-4 h-4" />
                                             <span>Đoạn văn chung:</span>
                                         </div>
-                                        <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-white rounded-xl p-4 border border-blue-100">
-                                            {group.passage}
+                                        <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic bg-white rounded-xl p-4 border border-blue-100 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                                            <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                                {group.passage}
+                                            </ReactMarkdown>
                                         </div>
                                         {group.passageTranslation && (
                                             <div className="mt-4 pt-4 border-t border-blue-200">
@@ -364,7 +436,7 @@ export default function AssignmentEditorPage() {
 
                                 {/* Questions in this section */}
                                 <div className="space-y-3">
-                                    {group.questions.map((q) => {
+                                    {group.questions.filter(q => q.type !== "SECTION_HEADER").map((q) => {
                                         const currentIndex = questionCounter++;
                                         const parsed = q.parsed;
 
@@ -406,7 +478,11 @@ export default function AssignmentEditorPage() {
                                                         </button>
                                                     </div>
                                                 </div>
-                                                <div className="text-slate-900 font-medium mb-3">{displayText}</div>
+                                                <div className="text-slate-900 font-medium mb-3 [&_strong]:font-bold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                                                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                                        {displayText}
+                                                    </ReactMarkdown>
+                                                </div>
 
                                                 {/* Display Items for ORDERING questions */}
                                                 {displayItems.length > 0 && (
@@ -457,6 +533,19 @@ export default function AssignmentEditorPage() {
                 </div>
 
                 {/* Add Question Button */}
+                {/* Add Part Button (Bottom of list) */}
+                <div className="mt-8 pt-4 border-t border-slate-100 flex justify-center">
+                    <button
+                        onClick={() => {
+                            setNewSectionTitle(`Part ${groupedQuestions.length + 1}`);
+                            setIsAddingSection(true);
+                        }}
+                        className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-dashed border-slate-300 text-slate-600 font-bold rounded-2xl hover:border-indigo-500 hover:text-indigo-600 transition w-full max-w-md justify-center"
+                    >
+                        <PlusCircle className="w-5 h-5" />
+                        Thêm Phần Thi Mới (Add Part)
+                    </button>
+                </div>
             </div>
 
             {/* Add Question Button / Form */}
@@ -482,257 +571,163 @@ export default function AssignmentEditorPage() {
                     )
                 ) : (
                     <>
-                        <button
-                            onClick={() => {
-                                setEditingQuestionId(null);
-                                setNewQuestion({
-                                    text: "",
-                                    options: ["", "", "", ""],
-                                    correctAnswerIndex: null
-                                });
-                                setEssayPrompt("");
-                                setIsAddingQuestion(true);
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-medium rounded-xl hover:bg-indigo-100 transition"
-                        >
-                            <PlusCircle className="w-5 h-5" />
-                            Thêm câu hỏi
-                        </button>
-                        <button
-                            onClick={() => {
-                                setImportType("MCQ");
-                                setIsAIImportOpen(true);
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl hover:from-blue-600 hover:to-cyan-600 transition shadow-lg"
-                        >
-                            <Sparkles className="w-5 h-5" />
-                            Import MCQ / Word
-                        </button>
-                        <button
-                            onClick={() => {
-                                setImportType("LISTENING");
-                                setIsAIImportOpen(true);
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-indigo-600 transition shadow-lg"
-                        >
-                            <Sparkles className="w-5 h-5" />
-                            Import Listening
-                        </button>
                     </>
                 )}
             </div>
 
-            {/* Add Question Form (Inline for MVP) */}
+            {/* Modals */}
             {isAddingQuestion && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">
-                            {editingQuestionId ? "Chỉnh sửa câu hỏi" : "Thêm câu hỏi trắc nghiệm"}
-                        </h3>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            onSaveQuestion();
-                        }}>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Câu hỏi</label>
-                                    <textarea
-                                        value={newQuestion.text}
-                                        onChange={e => setNewQuestion({ ...newQuestion, text: e.target.value })}
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-                                        rows={2}
-                                        placeholder="Nhập nội dung câu hỏi..."
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Các lựa chọn</label>
-                                    {newQuestion.options.map((opt, i) => (
-                                        <div key={i} className="flex gap-2 mb-2">
-                                            <input
-                                                type="text"
-                                                value={opt}
-                                                onChange={e => {
-                                                    const newOptions = [...newQuestion.options];
-                                                    newOptions[i] = e.target.value;
-                                                    setNewQuestion({ ...newQuestion, options: newOptions });
-                                                }}
-                                                className={`flex-1 px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition ${newQuestion.correctAnswerIndex === i
-                                                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-medium"
-                                                    : "border-slate-200"
-                                                    }`}
-                                                placeholder={`Lựa chọn ${i + 1}`}
-                                                required
-                                            />
+                    <div className="bg-white rounded-xl w-full max-w-2xl p-6">
+                        <h3 className="text-lg font-bold mb-4">{editingQuestionId ? "Sửa câu hỏi" : "Thêm câu hỏi mới"}</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Nội dung câu hỏi</label>
+                                <Textarea
+                                    value={newQuestion.text}
+                                    onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                {newQuestion.options.map((opt, idx) => (
+                                    <div key={idx}>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-medium">Đáp án {String.fromCharCode(65 + idx)}</label>
                                             <input
                                                 type="radio"
                                                 name="correctAnswer"
-                                                checked={newQuestion.correctAnswerIndex === i}
-                                                onChange={() => setNewQuestion({ ...newQuestion, correctAnswerIndex: i })}
-                                                className="w-5 h-5 mt-2.5 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                                                required
+                                                checked={newQuestion.correctAnswerIndex === idx}
+                                                onChange={() => setNewQuestion({ ...newQuestion, correctAnswerIndex: idx })}
                                             />
                                         </div>
-                                    ))}
-                                </div>
+                                        <input
+                                            type="text"
+                                            value={opt}
+                                            onChange={(e) => {
+                                                const newOpts = [...newQuestion.options];
+                                                newOpts[idx] = e.target.value;
+                                                setNewQuestion({ ...newQuestion, options: newOpts });
+                                            }}
+                                            className="w-full px-3 py-2 border rounded-lg text-sm"
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                            <div className="flex justify-end gap-2 mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsAddingQuestion(false)}
-                                    className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition"
-                                >
-                                    Hủy
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
-                                >
-                                    {editingQuestionId ? "Lưu thay đổi" : "Lưu câu hỏi"}
-                                </button>
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button onClick={() => setIsAddingQuestion(false)} className="px-4 py-2 text-slate-500">Hủy</button>
+                                <button onClick={onSaveQuestion} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Lưu</button>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Edit Section Modal */}
             {editingSection && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">Chỉnh sửa Phần thi / Bài đọc</h3>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            onSaveSection();
-                        }}>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Tiêu đề phần (Section Title)</label>
-                                    <input
-                                        type="text"
-                                        value={editingSection.sectionTitle}
-                                        onChange={e => setEditingSection({ ...editingSection, sectionTitle: e.target.value })}
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Đoạn văn (Passage)</label>
-                                    <textarea
-                                        value={editingSection.passage}
-                                        onChange={e => setEditingSection({ ...editingSection, passage: e.target.value })}
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 h-48"
-                                        placeholder="Nội dung bài đọc..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Dịch nghĩa (Optional)</label>
-                                    <textarea
-                                        value={editingSection.passageTranslation}
-                                        onChange={e => setEditingSection({ ...editingSection, passageTranslation: e.target.value })}
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 h-24"
-                                        placeholder="Bản dịch của đoạn văn..."
-                                    />
-                                </div>
+                    <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+                        <h3 className="text-lg font-bold mb-4">Chỉnh sửa nội dung: {editingSection.sectionTitle}</h3>
+                        <div className="space-y-4">
+                            {/* Section Title */}
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Tiêu đề phần (Section Title)</label>
+                                <input
+                                    type="text"
+                                    value={editingSection.sectionTitle}
+                                    onChange={(e) => setEditingSection({ ...editingSection, sectionTitle: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg"
+                                />
                             </div>
-                            <div className="flex justify-end gap-2 mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => setEditingSection(null)}
-                                    className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition"
-                                >
-                                    Hủy
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
-                                >
-                                    Lưu thay đổi
-                                </button>
+
+                            {/* Section Audio */}
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Audio cho phần này - <span className="italic font-normal text-slate-500">Dành cho Listening</span></label>
+                                <AudioManager
+                                    assignmentId={assignmentId}
+                                    settings={{ audioUrl: editingSection.sectionAudio }}
+                                    onUpdateSettings={(newSettings) => setEditingSection({ ...editingSection, sectionAudio: newSettings.audioUrl })}
+                                    label="Cài đặt Audio"
+                                />
                             </div>
-                        </form>
+
+                            {/* Passage Editor - URL: changed to Textarea to preserve HTML Table structure */}
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Đoạn văn chung (Có hỗ trợ HTML Table)</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Preview Column */}
+                                    <div className="space-y-2">
+                                        <span className="text-xs font-semibold text-indigo-600">Xem trước (Preview):</span>
+                                        <div className="h-64 overflow-y-auto w-full p-3 border rounded-lg bg-slate-50 text-sm [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-100 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                                            <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                                {editingSection.passage || "_(Chưa có nội dung)_"}
+                                            </ReactMarkdown>
+                                        </div>
+                                    </div>
+
+                                    {/* Editor Column */}
+                                    <div className="space-y-2">
+                                        <span className="text-xs font-semibold text-slate-500">Mã nguồn (HTML/Markdown):</span>
+                                        <Textarea
+                                            value={editingSection.passage}
+                                            onChange={(e) => setEditingSection({ ...editingSection, passage: e.target.value })}
+                                            className="h-64 font-mono text-xs"
+                                            placeholder="Nhập nội dung hoặc mã HTML bảng..."
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-1">* Khuyên dùng: Không sửa trực tiếp code Table nếu không rành. Chỉ nên sửa text.</p>
+                            </div>
+
+                            {/* Translation Editor */}
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Dịch nghĩa (Optional)</label>
+                                <Textarea
+                                    value={editingSection.passageTranslation}
+                                    onChange={(e) => setEditingSection({ ...editingSection, passageTranslation: e.target.value })}
+                                    className="min-h-[100px]"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button onClick={() => setEditingSection(null)} className="px-4 py-2 text-slate-500">Hủy</button>
+                                <button onClick={onSaveSection} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Lưu thay đổi</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* AI Import Modal */}
-            {isAIImportOpen && (
+            {isAddingSection && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                            <Sparkles className="w-6 h-6 text-purple-500" />
-                            {importType === "LISTENING" ? "Import Listening Exercise" : "Import MCQ Exercise"}
-                        </h2>
-                        <p className="text-sm text-slate-600 mb-4">
-                            {importType === "LISTENING"
-                                ? "Tải lên file PDF chứa đề thi Listening (Parts, Questions). AI sẽ trích xuất và chia phần."
-                                : "Tải lên file PDF/DOCX chứa câu hỏi trắc nghiệm. AI sẽ tự động trích xuất."}
-                        </p>
-                        <input
-                            type="file"
-                            accept=".pdf,.txt,.md"
-                            onChange={(e) => setAIImportFile(e.target.files?.[0] || null)}
-                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-4"
-                        />
-                        {aiImportFile && (
-                            <p className="text-sm text-slate-500 mb-4">📄 {aiImportFile.name}</p>
-                        )}
-                        <div className="flex justify-end gap-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsAIImportOpen(false);
-                                    setAIImportFile(null);
-                                }}
-                                disabled={isAIImporting}
-                                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition"
-                            >
-                                Hủy
-                            </button>
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    if (!aiImportFile) {
-                                        toast.error("Vui lòng chọn file");
-                                        return;
-                                    }
-                                    setIsAIImporting(true);
-                                    try {
-                                        const formData = new FormData();
-                                        formData.append("file", aiImportFile);
-                                        formData.append("importType", importType);
-                                        const res = await axios.post(
-                                            `/api/teacher/assignments/${assignmentId}/import-ai`,
-                                            formData,
-                                            { headers: { "Content-Type": "multipart/form-data" } }
-                                        );
-                                        toast.success(`Import thành công ${res.data.count} câu hỏi từ ${res.data.sections} phần!`);
-                                        setIsAIImportOpen(false);
-                                        setAIImportFile(null);
-                                        fetchQuestions();
-                                    } catch (error) {
-                                        console.error("AI Import error:", error);
-                                        toast.error("Lỗi khi import. Vui lòng thử lại.");
-                                    } finally {
-                                        setIsAIImporting(false);
-                                    }
-                                }}
-                                disabled={!aiImportFile || isAIImporting}
-                                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-indigo-600 transition disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {isAIImporting ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Đang xử lý...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Upload className="w-4 h-4" />
-                                        Import
-                                    </>
-                                )}
-                            </button>
+                    <div className="bg-white rounded-xl w-full max-w-md p-6">
+                        <h3 className="text-lg font-bold mb-4">Thêm Phần Thi Mới</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Tên phần (VD: Part 1, Reading Passage 1...)</label>
+                                <input
+                                    type="text"
+                                    value={newSectionTitle}
+                                    onChange={(e) => setNewSectionTitle(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-lg"
+                                    placeholder="Part X..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Loại phần thi</label>
+                                <select
+                                    value={newSectionType}
+                                    onChange={(e) => setNewSectionType(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-lg"
+                                >
+                                    <option value="MCQ">Trắc nghiệm (MCQ)</option>
+                                    <option value="LISTENING">Listening</option>
+                                    <option value="READING">Reading</option>
+                                    <option value="WRITING">Writing</option>
+                                </select>
+                            </div>
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button onClick={() => setIsAddingSection(false)} className="px-4 py-2 text-slate-500">Hủy</button>
+                                <button onClick={handleCreateSection} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Tạo mới</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -740,5 +735,3 @@ export default function AssignmentEditorPage() {
         </div>
     );
 }
-
-// NOTE: This is a scaffold. I need to fully implement the question editors (MCQ, GapFill) here.

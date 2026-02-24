@@ -31,6 +31,32 @@ export async function POST(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        // SOFTWARE-SIDE CASCADE DELETE
+        // Chain: Submission -> AssignmentProgress -> Assignment
+
+        // 1. Delete Submissions dependent on the Progress
+        await prisma.submission.deleteMany({
+            where: {
+                assignmentProgress: {
+                    assignmentId: {
+                        in: assignmentIds
+                    }
+                }
+            }
+        });
+
+        // 2. Delete AssignmentProgress
+        await prisma.assignmentProgress.deleteMany({
+            where: {
+                assignmentId: {
+                    in: assignmentIds
+                }
+            }
+        });
+
+        // Question deletion is handled by DB Cascade (if set) or we should ensure it too.
+        // Checking schema: Question HAS onDelete: Cascade. So this is fine.
+
         await prisma.assignment.deleteMany({
             where: {
                 id: {

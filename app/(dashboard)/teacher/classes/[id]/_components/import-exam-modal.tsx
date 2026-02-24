@@ -5,6 +5,7 @@ import { Upload, FileText, X, Loader2, Check, AlertCircle, ChevronDown, ChevronU
 import axios from "axios";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 
 interface Question {
     questionNumber?: number;
@@ -266,7 +267,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                             Đoạn văn chung
                                                         </div>
                                                         <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic">
-                                                            <ReactMarkdown>
+                                                            <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                                                                 {section.passage || ''}
                                                             </ReactMarkdown>
                                                         </div>
@@ -291,7 +292,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                                 </div>
                                                                 {q.content && (
                                                                     <div className="mt-2 text-sm text-slate-800 [&_strong]:font-bold [&_em]:italic">
-                                                                        <ReactMarkdown>
+                                                                        <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                                                                             {q.content}
                                                                         </ReactMarkdown>
                                                                     </div>

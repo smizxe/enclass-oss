@@ -7,13 +7,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
-// PDF parsing helper - dynamic import to avoid SSR issues
-async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
-    const data = await pdfParse(buffer);
-    return data.text;
-}
+// extractTextFromPDF removed - using Multimodal input
 
 // The prompt for Gemini to extract questions intelligently
 const EXTRACTION_PROMPT = `You are an expert at analyzing English exam papers, especially IELTS Listening and Reading tests.
@@ -29,6 +23,26 @@ IMPORTANT RULES:
 3. Extract the question text, options (for MCQ), and correct answer if visible.
 4. If there's a passage or audio transcript description, include it.
 5. Assign 1 point per question unless specified otherwise.
+
+FORMATTING RULES FOR TEXT CONTENT:
+   - Bold text: **text**
+   - Italic text: *text*
+   - Underline text: __text__
+   - **Tables / Gap Fills in Tables**: MUST use **HTML Table** format ('<table border="1" style="border-collapse: collapse; width: 100%;">...</table>'). DO NOT use Markdown tables.
+   - Preserve paragraph breaks with double newlines.
+
+**QUESTION TYPES:**
+1. **ORDERING** (Sắp xếp câu):
+   - Type: "ORDERING"
+   - **items**: ["a. Sentence 1", "b. Sentence 2", ...]
+   - **options**: ["A. a-b-c", "B. c-b-a", ...]
+
+2. **READING / GAP_FILL**:
+   - Group questions sharing a passage.
+   - **passage**: Full text with **bold** formatting preserved. If the passage is a form/table, use HTML '<table>'.
+
+3. **MCQ**: Standard multiple choice.
+   - **passage**: Full text with **bold** formatting preserved. If the passage is a form/table, use HTML '<table>'.
 
 OUTPUT FORMAT (JSON array):
 [
@@ -47,16 +61,16 @@ OUTPUT FORMAT (JSON array):
       {
         "type": "GAP_FILL",
         "text": "The meeting is scheduled for _______ o'clock.",
-        "correctAnswer": "10",
-        "points": 1
-      }
-    ]
-  }
+                                    "correctAnswer": "10",
+                                    "points": 1
+                                }
+                            ]
+}
 ]
 
 If you cannot determine the correct answer, use an empty string "".
 For GAP_FILL, the correctAnswer should be the expected text to fill in.
-For MCQ, the correctAnswer should be the letter (A, B, C, or D).
+For MCQ, the correctAnswer should be the letter(A, B, C, or D).
 
 Here is the exam content to analyze:
 
@@ -91,28 +105,7 @@ export async function POST(
             return new NextResponse("No file uploaded", { status: 400 });
         }
 
-        // Extract text from file
-        let extractedText = "";
-        const fileName = file.name.toLowerCase();
-
-        if (fileName.endsWith(".pdf")) {
-            const arrayBuffer = await file.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            extractedText = await extractTextFromPDF(buffer);
-        } else if (fileName.endsWith(".txt") || fileName.endsWith(".md")) {
-            extractedText = await file.text();
-        } else {
-            return new NextResponse("Unsupported file type. Please upload PDF or TXT.", { status: 400 });
-        }
-
-        if (!extractedText.trim()) {
-            return new NextResponse("Could not extract text from file", { status: 400 });
-        }
-
         const importType = formData.get("importType") as string || "MCQ";
-
-        // Call Gemini AI
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         let dynamicPrompt = EXTRACTION_PROMPT;
         if (importType === "LISTENING") {
@@ -122,10 +115,56 @@ export async function POST(
             );
         }
 
-        const prompt = dynamicPrompt + extractedText;
+        // Initialize Mammoth for DOCX
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const mammoth = require("mammoth");
 
-        const result = await model.generateContent(prompt);
+        let promptParts: any[] = [];
+        let promptText = dynamicPrompt;
+
+        const fileName = file.name.toLowerCase();
+
+        if (fileName.endsWith(".pdf")) {
+            const arrayBuffer = await file.arrayBuffer();
+            const base64Data = Buffer.from(arrayBuffer).toString("base64");
+
+            // Multimodal input for PDF (Full context)
+            promptParts = [
+                { text: dynamicPrompt },
+                {
+                    inlineData: {
+                        mimeType: "application/pdf",
+                        data: base64Data
+                    }
+                }
+            ];
+        } else if (fileName.endsWith(".docx")) {
+            // Extract text for DOCX to save tokens
+            const arrayBuffer = await file.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const result = await mammoth.extractRawText({ buffer });
+            const docxText = result.value;
+
+            promptParts = [
+                { text: dynamicPrompt + "\n\n" + docxText }
+            ];
+        } else if (fileName.endsWith(".txt") || fileName.endsWith(".md")) {
+            // Raw text
+            const textContent = await file.text();
+            promptParts = [
+                { text: dynamicPrompt + "\n\n" + textContent }
+            ];
+        } else {
+            return new NextResponse("Unsupported file type. Please upload PDF, DOCX, or TXT.", { status: 400 });
+        }
+
+        // Call Gemini AI
+        // Using gemini-2.5-flash which supports PDF input
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const result = await model.generateContent(promptParts);
         const response = await result.response;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const text = response.text();
 
         // Parse AI response

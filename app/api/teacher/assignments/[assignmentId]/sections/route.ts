@@ -54,6 +54,9 @@ export async function PATCH(
                 parsedContent.sectionTitle = sectionTitle;
                 parsedContent.passage = passage;
                 parsedContent.passageTranslation = passageTranslation;
+                if (body.sectionAudio !== undefined) {
+                    parsedContent.sectionAudio = body.sectionAudio;
+                }
 
                 return prisma.question.update({
                     where: { id: q.id },

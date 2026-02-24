@@ -44,11 +44,11 @@ interface QuestionGroup {
     sectionType: string;
     passage?: string;
     passageTranslation?: string;
+    sectionAudio?: string; // Added field
     questions: ParsedQuestion[];
 }
 
-// Helper component for rendering questions list for a SINGLE section
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const SectionContent = ({
     group,
     answers,
@@ -71,12 +71,29 @@ const SectionContent = ({
     return (
         <div className="space-y-8 pb-10">
             <div className="space-y-4">
-                {/* Section Header */}
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-600 uppercase tracking-wide">
                     <div className="h-px flex-1 bg-slate-200"></div>
                     <span className="px-3">{group.sectionTitle}</span>
                     <div className="h-px flex-1 bg-slate-200"></div>
                 </div>
+
+                {/* Section Audio (If exists) */}
+                {group.sectionAudio && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                            <span className="text-xl">🎧</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Audio phần này</div>
+                            <audio
+                                controls
+                                src={group.sectionAudio}
+                                className="w-full h-8"
+                                controlsList="nodownload"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Passage (Only if showPassage is true) */}
                 {showPassage && group.passage && (
@@ -85,15 +102,18 @@ const SectionContent = ({
                             <BookOpen className="w-4 h-4" />
                             <span>Đọc đoạn văn sau:</span>
                         </div>
-                        <div className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2">
-                            <ReactMarkdown>{group.passage || ''}</ReactMarkdown>
-                        </div>
+                        {/* Render HTML from Quill Editor */}
+                        <div
+                            className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2"
+                            dangerouslySetInnerHTML={{ __html: group.passage }}
+                        />
                         {group.passageTranslation && (
                             <div className="mt-4 pt-4 border-t border-slate-200">
                                 <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                <div className="text-sm text-slate-600 italic leading-relaxed">
-                                    {group.passageTranslation}
-                                </div>
+                                <div
+                                    className="text-sm text-slate-600 italic leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: group.passageTranslation }}
+                                />
                             </div>
                         )}
                     </div>
@@ -101,7 +121,7 @@ const SectionContent = ({
 
                 {/* Questions */}
                 <div className="space-y-4">
-                    {group.questions.map((q) => {
+                    {group.questions.filter(q => q.type !== "SECTION_HEADER").map((q) => {
                         const currentIndex = questionCounter++;
                         const result = submissionResult?.results?.[q.id];
                         let statusColor = "border-slate-200";
@@ -239,17 +259,23 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                     sectionType,
                     passage: parsed.passage,
                     passageTranslation: parsed.passageTranslation,
+                    sectionAudio: parsed.sectionAudio, // Capture sectionAudio
                     questions: []
                 };
                 groups.push(currentGroup);
             }
 
-            // Add question to current group (remove passage from individual question to avoid duplication)
+            // Fallback: If current question has sectionAudio but group doesn't 
+            if (parsed.sectionAudio && !currentGroup.sectionAudio) {
+                currentGroup.sectionAudio = parsed.sectionAudio;
+            }
+
+            // Add question to current group
             currentGroup.questions.push({
                 ...q,
                 parsed: {
                     ...parsed,
-                    passage: undefined, // Will be shown at section level
+                    passage: undefined,
                     passageTranslation: undefined
                 }
             });
@@ -257,6 +283,7 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
 
         return groups;
     }, [assignment.questions]);
+
 
     // Calculate start index for questions in current section
     const currentSectionStartIndex = useMemo(() => {
@@ -466,15 +493,17 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                                             <BookOpen className="w-4 h-4" />
                                             <span>Đọc đoạn văn</span>
                                         </div>
-                                        <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2">
-                                            <ReactMarkdown>{activeGroup.passage || ''}</ReactMarkdown>
-                                        </div>
+                                        <div
+                                            className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2"
+                                            dangerouslySetInnerHTML={{ __html: activeGroup.passage || '' }}
+                                        />
                                         {activeGroup.passageTranslation && (
                                             <div className="mt-4 pt-4 border-t border-slate-200">
                                                 <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
-                                                <div className="text-sm text-slate-600 italic leading-relaxed">
-                                                    {activeGroup.passageTranslation}
-                                                </div>
+                                                <div
+                                                    className="text-sm text-slate-600 italic leading-relaxed"
+                                                    dangerouslySetInnerHTML={{ __html: activeGroup.passageTranslation }}
+                                                />
                                             </div>
                                         )}
                                     </div>
@@ -528,8 +557,11 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                 </div>
             </div>
             {/* Sticky Audio Player */}
-            {assignment.settings?.audioUrl && (
-                <StickyAudioPlayer src={assignment.settings.audioUrl} />
+            {(activeGroup.sectionAudio || assignment.settings?.audioUrl) && (
+                <StickyAudioPlayer
+                    src={activeGroup.sectionAudio || assignment.settings?.audioUrl}
+                    key={activeGroup.sectionAudio || assignment.settings?.audioUrl} // Force remount on source change to be safe
+                />
             )}
         </div>
     );
