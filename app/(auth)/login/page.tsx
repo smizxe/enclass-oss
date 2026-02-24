@@ -28,21 +28,19 @@ export default function LoginPage() {
         if (result?.error) {
             toast.error("Email hoặc mật khẩu không đúng.");
         } else {
-            toast.success("Đăng nhập thành công!");
+            toast.success("Đăng nhập thành công! Đang chuyển hướng...");
 
-            // Fetch session to get user role for redirect - ensure no cache
-            const response = await fetch("/api/auth/session", { cache: "no-store" });
-            const session = await response.json();
+            // Use getSession for better reliability
+            const session = await getSession();
 
-            router.refresh();
-
-            // Role-based redirect
+            // Hard redirect to ensure fresh state
             if (session?.user?.role === "TEACHER") {
-                router.push("/teacher");
+                window.location.href = "/teacher";
             } else if (session?.user?.role === "STUDENT") {
-                router.push("/student");
+                window.location.href = "/student";
             } else {
-                router.push("/"); // Fallback to homepage
+                // Fallback catch-all
+                window.location.href = "/student";
             }
         }
     };
