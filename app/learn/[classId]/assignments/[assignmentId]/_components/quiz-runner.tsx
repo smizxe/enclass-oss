@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft } from "lucide-react";
+import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -28,6 +29,10 @@ interface QuizRunnerProps {
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     initialSubmission?: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    allSubmissions?: any[];
+    maxAttempts?: number;
+    currentAttemptCount?: number;
 }
 
 interface ParsedQuestion {
@@ -259,7 +264,14 @@ const SectionContent = ({
     );
 };
 
-export const QuizRunner = ({ assignment, initialSubmission }: QuizRunnerProps) => {
+export const QuizRunner = ({
+    assignment,
+    initialSubmission,
+    allSubmissions = [],
+    maxAttempts = 1,
+    currentAttemptCount = 0
+}: QuizRunnerProps) => {
+    const router = useRouter();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -267,6 +279,11 @@ export const QuizRunner = ({ assignment, initialSubmission }: QuizRunnerProps) =
     const [activeSectionIndex, setActiveSectionIndex] = useState(0);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [submissionResult, setSubmissionResult] = useState<any>(null);
+    const [viewingAttempt, setViewingAttempt] = useState<number | null>(null); // null = latest/current
+    const [isStartingNewAttempt, setIsStartingNewAttempt] = useState(false);
+
+    const canRetry = currentAttemptCount < maxAttempts;
+    const remainingAttempts = maxAttempts - currentAttemptCount;
 
     // Initialize from existing submission
     useEffect(() => {
@@ -283,13 +300,57 @@ export const QuizRunner = ({ assignment, initialSubmission }: QuizRunnerProps) =
                 setSubmissionResult({
                     score: initialSubmission.score,
                     totalScore: assignment.questions.reduce((acc, q) => acc + q.points, 0),
-                    results: parsedFeedback
+                    results: parsedFeedback,
+                    attemptNumber: initialSubmission.attemptNumber || currentAttemptCount
                 });
             } catch (e) {
                 console.error("Error parsing submission", e);
             }
         }
-    }, [initialSubmission, assignment.questions]);
+    }, [initialSubmission, assignment.questions, currentAttemptCount]);
+
+    // Start new attempt - reset state
+    const handleStartNewAttempt = () => {
+        if (!canRetry) return;
+
+        const confirmMsg = `Bạn còn ${remainingAttempts} lượt làm bài. Bắt đầu lần làm mới?`;
+        if (!confirm(confirmMsg)) return;
+
+        setIsStartingNewAttempt(true);
+        // Reset state for new attempt
+        setAnswers({});
+        setIsSubmitted(false);
+        setSubmissionResult(null);
+        setViewingAttempt(null);
+        setActiveSectionIndex(0);
+        setIsStartingNewAttempt(false);
+    };
+
+    // View a specific past attempt
+    const handleViewAttempt = (attemptIndex: number) => {
+        const submission = allSubmissions[attemptIndex];
+        if (!submission) return;
+
+        try {
+            const parsedAnswers = JSON.parse(submission.answers);
+            let parsedFeedback = {};
+            try {
+                parsedFeedback = submission.feedback ? JSON.parse(submission.feedback) : {};
+            } catch { }
+
+            setViewingAttempt(attemptIndex);
+            setAnswers(parsedAnswers);
+            setIsSubmitted(true);
+            setSubmissionResult({
+                score: submission.score,
+                totalScore: assignment.questions.reduce((acc, q) => acc + q.points, 0),
+                results: parsedFeedback,
+                attemptNumber: submission.attemptNumber || attemptIndex + 1
+            });
+        } catch (e) {
+            console.error("Error parsing submission", e);
+        }
+    };
 
     // Parse questions and group by section
     const groupedQuestions = useMemo(() => {
@@ -497,18 +558,77 @@ export const QuizRunner = ({ assignment, initialSubmission }: QuizRunnerProps) =
     if (isSubmitted && submissionResult) {
         return (
             <div className="max-w-4xl mx-auto py-8 px-4">
+                {/* Attempt Tabs - Show if multiple attempts exist */}
+                {allSubmissions.length > 1 && (
+                    <div className="mb-6 flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-slate-600 flex items-center gap-1">
+                            <History className="w-4 h-4" />
+                            Lịch sử làm bài:
+                        </span>
+                        {allSubmissions.map((sub, idx) => (
+                            <button
+                                key={sub.id}
+                                onClick={() => handleViewAttempt(idx)}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${viewingAttempt === idx || (viewingAttempt === null && idx === allSubmissions.length - 1)
+                                        ? "bg-indigo-600 text-white"
+                                        : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                            >
+                                Lần {sub.attemptNumber || idx + 1}
+                                {sub.score !== null && (
+                                    <span className="ml-1 opacity-75">({Number.isInteger(sub.score) ? sub.score : sub.score?.toFixed(1)}đ)</span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Current Attempt Label */}
+                {submissionResult.attemptNumber && (
+                    <div className="text-center mb-4">
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            Lần làm thứ {submissionResult.attemptNumber}
+                        </span>
+                    </div>
+                )}
+
                 <AssignmentResult
                     submissionResult={submissionResult}
                     questions={assignment.questions}
                 />
 
-                <div className="mt-8 flex justify-center">
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="px-6 py-2 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 font-medium text-slate-600 transition"
-                    >
-                        Làm lại bài (Reload)
-                    </button>
+                {/* Action Buttons */}
+                <div className="mt-8 flex justify-center gap-3">
+                    {canRetry && viewingAttempt === null && (
+                        <button
+                            onClick={handleStartNewAttempt}
+                            disabled={isStartingNewAttempt}
+                            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium transition flex items-center gap-2 shadow-lg shadow-indigo-200"
+                        >
+                            {isStartingNewAttempt ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <RefreshCw className="w-4 h-4" />
+                            )}
+                            Làm lại (còn {remainingAttempts} lượt)
+                        </button>
+                    )}
+
+                    {!canRetry && viewingAttempt === null && (
+                        <div className="text-sm text-slate-500 bg-slate-100 px-4 py-2 rounded-lg">
+                            Bạn đã sử dụng hết {maxAttempts} lượt làm bài
+                        </div>
+                    )}
+
+                    {viewingAttempt !== null && (
+                        <button
+                            onClick={() => handleViewAttempt(allSubmissions.length - 1)}
+                            className="px-6 py-2 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 font-medium text-slate-600 transition"
+                        >
+                            Xem lần làm mới nhất
+                        </button>
+                    )}
                 </div>
             </div>
         );

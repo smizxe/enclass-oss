@@ -50,6 +50,7 @@ export async function GET(req: Request) {
             select: {
                 id: true,
                 submittedAt: true,
+                attemptNumber: true,  // Include attempt number
                 answers: true,
                 score: true,
                 feedback: true,

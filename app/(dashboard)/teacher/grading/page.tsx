@@ -12,7 +12,8 @@ import {
     ArrowLeft,
     CheckCircle,
     Bot,
-    Pencil
+    Pencil,
+    RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -34,6 +35,7 @@ interface Assignment {
 interface Submission {
     id: string;
     submittedAt: string;
+    attemptNumber: number;  // Track which attempt this is
     answers: string;
     score: number | null;
     feedback: string | null;
@@ -281,6 +283,13 @@ export default function GradingPage() {
                                                 <h3 className="font-medium text-slate-900 truncate">
                                                     {submission.user.name || submission.user.email}
                                                 </h3>
+                                                {/* Attempt Number Badge */}
+                                                {submission.attemptNumber > 1 && (
+                                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 flex items-center gap-1">
+                                                        <RefreshCw className="w-3 h-3" />
+                                                        Lần {submission.attemptNumber}
+                                                    </span>
+                                                )}
                                                 {status.type === "pending" && (
                                                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 flex items-center gap-1">
                                                         <Loader2 className="w-3 h-3 animate-spin" /> {status.label}

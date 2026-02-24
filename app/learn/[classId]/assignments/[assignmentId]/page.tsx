@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 
 import { LectureViewer } from "./_components/lecture-viewer";
 import { QuizRunner } from "./_components/quiz-runner";
-import { FileText, ClipboardList, Clock } from "lucide-react";
+import { FileText, ClipboardList, Clock, RefreshCw } from "lucide-react";
 
 export default async function AssignmentIdPage({
     params
@@ -37,7 +37,11 @@ export default async function AssignmentIdPage({
         return redirect("/");
     }
 
-    // Check if user has already submitted
+    // Get max attempts from settings
+    const settings = assignment.settings as { maxAttempts?: number } | null;
+    const maxAttempts = settings?.maxAttempts || 1;
+
+    // Fetch ALL submissions for this user (not just latest)
     const progress = await prisma.assignmentProgress.findUnique({
         where: {
             userId_assignmentId: {
@@ -47,13 +51,16 @@ export default async function AssignmentIdPage({
         },
         include: {
             submissions: {
-                orderBy: { submittedAt: 'desc' },
-                take: 1
+                orderBy: { submittedAt: 'asc' }  // Order by submission time
             }
         }
     });
 
-    const existingSubmission = progress?.submissions[0] || null;
+    const allSubmissions = progress?.submissions || [];
+    const latestSubmission = allSubmissions.length > 0
+        ? allSubmissions[allSubmissions.length - 1]
+        : null;
+    const currentAttemptCount = allSubmissions.length;
 
     const isQuiz = assignment.type !== "LECTURE";
     const Icon = isQuiz ? ClipboardList : FileText;
@@ -69,7 +76,7 @@ export default async function AssignmentIdPage({
                             <Icon className={`w-6 h-6 ${isQuiz ? "text-orange-600" : "text-indigo-600"}`} />
                         </div>
                         <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isQuiz
                                     ? "bg-orange-50 text-orange-700"
                                     : "bg-indigo-50 text-indigo-700"
@@ -80,6 +87,19 @@ export default async function AssignmentIdPage({
                                     <span className="flex items-center gap-1 text-xs text-slate-500">
                                         <Clock className="w-3 h-3" />
                                         {assignment.questions.length} câu hỏi
+                                    </span>
+                                )}
+                                {/* Max Attempts Badge */}
+                                {isQuiz && maxAttempts > 1 && (
+                                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                        <RefreshCw className="w-3 h-3" />
+                                        Được làm {maxAttempts} lần
+                                    </span>
+                                )}
+                                {/* Current Attempt Info */}
+                                {isQuiz && currentAttemptCount > 0 && (
+                                    <span className="text-xs text-slate-500">
+                                        • Đã làm {currentAttemptCount}/{maxAttempts} lần
                                     </span>
                                 )}
                             </div>
@@ -94,7 +114,13 @@ export default async function AssignmentIdPage({
                 {assignment.type === "LECTURE" ? (
                     <LectureViewer content={assignment.content} />
                 ) : (
-                    <QuizRunner assignment={assignment} initialSubmission={existingSubmission} />
+                    <QuizRunner
+                        assignment={assignment}
+                        initialSubmission={latestSubmission}
+                        allSubmissions={allSubmissions}
+                        maxAttempts={maxAttempts}
+                        currentAttemptCount={currentAttemptCount}
+                    />
                 )}
             </div>
         </div>

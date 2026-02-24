@@ -121,6 +121,10 @@ export default function AssignmentEditorPage() {
 
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
+    // Max Attempts Setting State
+    const [localMaxAttempts, setLocalMaxAttempts] = useState<number>(1);
+    const [maxAttemptsChanged, setMaxAttemptsChanged] = useState(false);
+
     const classId = id;
 
     const fetchQuestions = useCallback(async () => {
@@ -142,6 +146,8 @@ export default function AssignmentEditorPage() {
             try {
                 const res = await axios.get(`/api/teacher/assignments/${assignmentId}`);
                 setAssignment(res.data);
+                // Sync local maxAttempts state
+                setLocalMaxAttempts(res.data.settings?.maxAttempts || 1);
                 if (res.data.type === "ESSAY" && res.data.description) {
                     setEssayPrompt(res.data.description);
                 }
@@ -477,6 +483,53 @@ export default function AssignmentEditorPage() {
                     label="Audio Chung (Global)"
                     description="Áp dụng cho toàn bộ bài thi nếu không có audio riêng từng phần"
                 />
+
+                {/* Max Attempts Setting */}
+                <div className="mt-6 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
+                                🔄 Số lần làm bài tối đa
+                            </h3>
+                            <p className="text-xs text-emerald-600 mt-1">
+                                {localMaxAttempts === 1
+                                    ? "Học viên chỉ được làm 1 lần, không được làm lại."
+                                    : `Học viên được làm tối đa ${localMaxAttempts} lần. Điểm cao nhất sẽ được tính.`}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={10}
+                                    value={localMaxAttempts}
+                                    onChange={(e) => {
+                                        const val = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
+                                        setLocalMaxAttempts(val);
+                                        setMaxAttemptsChanged(val !== (assignment?.settings?.maxAttempts || 1));
+                                    }}
+                                    className="w-16 px-3 py-2 border border-emerald-300 rounded-lg text-center font-bold text-emerald-700 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                                <span className="text-sm text-emerald-600">lần</span>
+                            </div>
+                            {maxAttemptsChanged && (
+                                <button
+                                    onClick={() => {
+                                        onUpdateSettings({
+                                            ...assignment?.settings,
+                                            maxAttempts: localMaxAttempts
+                                        });
+                                        setMaxAttemptsChanged(false);
+                                    }}
+                                    className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition shadow-sm"
+                                >
+                                    Lưu
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
 
                 {/* Questions List grouped by Section */}
                 <div className="mt-8 space-y-6">

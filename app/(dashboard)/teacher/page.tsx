@@ -22,25 +22,43 @@ interface ClassItem {
 
 export default function TeacherDashboard() {
     const [classes, setClasses] = useState<ClassItem[]>([]);
+    const [stats, setStats] = useState({ totalClasses: 0, activeClasses: 0, totalStudents: 0 });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/api/teacher/classes")
-            .then((res) => {
-                if (res.ok) return res.json();
-                return [];
-            })
-            .then((data) => {
-                setClasses(data);
+        const fetchData = async () => {
+            try {
+                const [classesRes, statsRes] = await Promise.all([
+                    fetch("/api/teacher/classes"),
+                    fetch("/api/teacher/stats")
+                ]);
+
+                if (classesRes.ok) {
+                    const data = await classesRes.json();
+                    setClasses(data);
+                }
+
+                if (statsRes.ok) {
+                    const data = await statsRes.json();
+                    setStats(data);
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
                 setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setLoading(false);
-            });
+            }
+        };
+
+        fetchData();
     }, []);
 
     const publishedCount = classes.filter(c => c.published).length;
+    // We can use stats.totalClasses/activeClasses if we want server-side count accuracy
+    // or keep using client-side calculation from "classes" array if we are sure it's all of them.
+    // Let's use stats for consistency if available, otherwise fallback.
+    const displayTotal = stats.totalClasses || classes.length;
+    const displayActive = stats.activeClasses || publishedCount;
+    const displayStudents = stats.totalStudents;
 
     return (
         <div className="p-6 bg-slate-50 min-h-full">
@@ -69,7 +87,7 @@ export default function TeacherDashboard() {
                             Tổng cộng
                         </span>
                     </div>
-                    <div className="text-3xl font-bold text-slate-900">{classes.length}</div>
+                    <div className="text-3xl font-bold text-slate-900">{displayTotal}</div>
                     <div className="text-sm text-slate-500 mt-1">Lớp học</div>
                 </div>
 
@@ -82,7 +100,7 @@ export default function TeacherDashboard() {
                             Hoạt động
                         </span>
                     </div>
-                    <div className="text-3xl font-bold text-slate-900">{publishedCount}</div>
+                    <div className="text-3xl font-bold text-slate-900">{displayActive}</div>
                     <div className="text-sm text-slate-500 mt-1">Đã kích hoạt</div>
                 </div>
 
@@ -95,7 +113,7 @@ export default function TeacherDashboard() {
                             Học viên
                         </span>
                     </div>
-                    <div className="text-3xl font-bold text-slate-900">--</div>
+                    <div className="text-3xl font-bold text-slate-900">{displayStudents}</div>
                     <div className="text-sm text-slate-500 mt-1">Tổng số học viên</div>
                 </div>
             </div>
@@ -141,8 +159,8 @@ export default function TeacherDashboard() {
                                     <div className="flex items-center gap-2 mb-1">
                                         <h3 className="font-medium text-slate-900 truncate">{classItem.title}</h3>
                                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${classItem.published
-                                                ? "bg-emerald-50 text-emerald-700"
-                                                : "bg-yellow-50 text-yellow-700"
+                                            ? "bg-emerald-50 text-emerald-700"
+                                            : "bg-yellow-50 text-yellow-700"
                                             }`}>
                                             {classItem.published ? "Đang mở" : "Chưa kích hoạt"}
                                         </span>

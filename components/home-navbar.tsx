@@ -5,7 +5,7 @@ import { GraduationCap, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 export const HomeNavbar = () => {
-    const { status } = useSession();
+    const { data: session, status } = useSession();
 
     return (
         <nav className="fixed w-full top-0 z-50 glass-nav transition-all duration-300">
@@ -28,11 +28,11 @@ export const HomeNavbar = () => {
                 <div className="flex items-center gap-4">
                     {status === "authenticated" ? (
                         <Link
-                            href="/student"
+                            href={session?.user?.role === "TEACHER" ? "/teacher" : "/student"}
                             className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-600/20 flex items-center gap-2"
                         >
                             <GraduationCap className="w-4 h-4" />
-                            Vào Học
+                            {session?.user?.role === "TEACHER" ? "Khu vực Giáo viên" : "Vào Học"}
                         </Link>
                     ) : (
                         <>

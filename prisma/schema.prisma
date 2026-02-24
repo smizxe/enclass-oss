@@ -111,6 +111,7 @@ model Submission {
   assignmentProgressId String
   assignmentProgress   AssignmentProgress @relation(fields: [assignmentProgressId], references: [id])
   
+  attemptNumber        Int      @default(1)  // Which attempt this is (1, 2, 3...)
   answers              String
   score                Float?
   feedback             String?  // AI feedback (auto-generated)

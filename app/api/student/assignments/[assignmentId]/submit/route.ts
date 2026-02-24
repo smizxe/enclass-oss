@@ -41,6 +41,38 @@ export async function POST(
             return new NextResponse("Assignment not found", { status: 404 });
         }
 
+        // Get max attempts from settings
+        const settings = assignment.settings as { maxAttempts?: number } | null;
+        const maxAttempts = settings?.maxAttempts || 1;
+
+        // Check existing progress and submissions
+        const existingProgress = await prisma.assignmentProgress.findUnique({
+            where: {
+                userId_assignmentId: {
+                    userId: session.user.id,
+                    assignmentId
+                }
+            },
+            include: {
+                assignment: true,
+                submissions: {
+                    orderBy: { submittedAt: 'asc' }
+                }
+            }
+        });
+
+        const currentAttemptCount = existingProgress?.submissions.length || 0;
+
+        // Check if max attempts reached
+        if (currentAttemptCount >= maxAttempts) {
+            return new NextResponse(
+                `Đã hết lượt làm bài. Bạn chỉ được làm ${maxAttempts} lần.`,
+                { status: 403 }
+            );
+        }
+
+        const nextAttemptNumber = currentAttemptCount + 1;
+
         // Calculate Score & Grade
         let totalScore = 0;
         let earnedScore = 0;
@@ -161,15 +193,7 @@ export async function POST(
         await Promise.all(aiPromises);
 
         // Get or create assignment progress
-        let progress = await prisma.assignmentProgress.findUnique({
-            where: {
-                userId_assignmentId: {
-                    userId: session.user.id,
-                    assignmentId
-                }
-            },
-            include: { assignment: true }
-        });
+        let progress = existingProgress;
 
         if (!progress) {
             progress = await prisma.assignmentProgress.create({
@@ -180,34 +204,41 @@ export async function POST(
                     },
                     status: "IN_PROGRESS"
                 },
-                include: { assignment: true }
+                include: {
+                    assignment: true,
+                    submissions: true
+                }
             });
         }
 
         // Check assignment type to determine status
-        const isEssay = progress.assignment.type === "ESSAY";
-        // Since AI grades immediately, we can mark as COMPLETED even for ESSAY/WRITING
-        // Or keep PENDING_GRADING if we want manual review?
-        // User asked for "AI chấm bài". So COMPLETED is better.
         const newStatus = "COMPLETED";
 
-        // Create submission
+        // Create submission with attemptNumber
         const submission = await prisma.submission.create({
             data: {
                 userId: session.user.id,
                 assignmentProgressId: progress.id,
+                attemptNumber: nextAttemptNumber,  // Track which attempt this is
                 answers: JSON.stringify(answers),
                 score: earnedScore,
-                feedback: JSON.stringify(results) // Save detailed results including AI feedback
+                feedback: JSON.stringify(results)
             }
         });
 
-        // Update progress status AND score
+        // Calculate BEST score across all attempts
+        const allScores = [
+            ...progress.submissions.map(s => s.score || 0),
+            earnedScore  // Include current submission
+        ];
+        const bestScore = Math.max(...allScores);
+
+        // Update progress with BEST score (not just latest)
         await prisma.assignmentProgress.update({
             where: { id: progress.id },
             data: {
                 status: newStatus,
-                score: earnedScore  // Save the score to AssignmentProgress too!
+                score: bestScore  // Save BEST score to AssignmentProgress
             }
         });
 

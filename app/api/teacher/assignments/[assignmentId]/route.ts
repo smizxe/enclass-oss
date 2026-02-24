@@ -11,6 +11,14 @@ const assignmentSchema = z.object({
     settings: z.any().optional(),
 });
 
+// Partial schema for PATCH (all fields optional)
+const assignmentPatchSchema = z.object({
+    title: z.string().min(1).optional(),
+    content: z.string().optional(),
+    type: z.enum(["LECTURE", "QUIZ", "TEST", "ESSAY"]).optional(),
+    settings: z.any().optional(),
+});
+
 export async function GET(
     req: Request,
     { params }: { params: Promise<{ assignmentId: string }> }
@@ -60,7 +68,7 @@ export async function PATCH(
 
         const { assignmentId } = await params;
         const body = await req.json();
-        const { title, content, type, settings } = assignmentSchema.parse(body);
+        const validatedData = assignmentPatchSchema.parse(body);
 
         const assignment = await prisma.assignment.findUnique({
             where: {
@@ -75,16 +83,18 @@ export async function PATCH(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        // Build update data object with only provided fields
+        const updateData: any = {};
+        if (validatedData.title !== undefined) updateData.title = validatedData.title;
+        if (validatedData.content !== undefined) updateData.content = validatedData.content;
+        if (validatedData.type !== undefined) updateData.type = validatedData.type;
+        if (validatedData.settings !== undefined) updateData.settings = validatedData.settings;
+
         const updatedAssignment = await prisma.assignment.update({
             where: {
                 id: assignmentId,
             },
-            data: {
-                title,
-                content,
-                type,
-                settings,
-            },
+            data: updateData,
         });
 
         return NextResponse.json(updatedAssignment);
