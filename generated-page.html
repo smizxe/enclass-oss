@@ -1,0 +1,517 @@
+<html lang="vi" class="scroll-smooth"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống học tập - Thầy Điệp English</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .hero-pattern {
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+        }
+        .fade-enter {
+            animation: fadeIn 0.8s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 selection:bg-indigo-100 selection:text-indigo-900">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full top-0 z-50 glass-nav transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                    <iconify-icon icon="solar:hat-graduation-linear" width="22"></iconify-icon>
+                </div>
+                <span class="text-lg font-bold tracking-tight text-slate-900">Diep<span class="text-indigo-600">Class</span></span>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500">
+                <a href="#benefits" class="hover:text-indigo-600 transition-colors">Lợi ích</a>
+                <a href="#system" class="hover:text-indigo-600 transition-colors">Hệ thống</a>
+                <a href="#results" class="hover:text-indigo-600 transition-colors">Thành tích HV</a>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <a href="#" class="hidden md:flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-indigo-600 transition">
+                    <iconify-icon icon="solar:user-circle-linear" class="text-lg"></iconify-icon>
+                    Học viên đăng nhập
+                </a>
+                <a href="#register" class="px-5 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition shadow-lg shadow-slate-900/20">
+                    Đăng ký học
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 overflow-hidden">
+        <div class="absolute inset-0 hero-pattern opacity-40 -z-10"></div>
+        <!-- Gradient blobs -->
+        <div class="absolute top-20 right-0 w-[600px] h-[600px] bg-indigo-100/50 rounded-full blur-3xl -z-10 mix-blend-multiply"></div>
+        <div class="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-100/50 rounded-full blur-3xl -z-10 mix-blend-multiply"></div>
+
+        <div class="max-w-5xl mx-auto px-6 text-center fade-enter">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-indigo-100 text-indigo-700 text-xs font-semibold mb-6 shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Dành riêng cho học viên lớp Thầy Điệp
+            </div>
+            
+            <h1 class="text-4xl md:text-6xl font-bold text-slate-900 tracking-tight leading-[1.1] mb-6">
+                Hệ thống luyện thi &amp; <br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">Bài tập về nhà 4.0</span>
+            </h1>
+            
+            <p class="text-lg text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
+                Không chỉ học trên lớp, học viên được cấp tài khoản VIP luyện đề IELTS/TOEIC trên giao diện thi thật. Chấm điểm tự động, giải thích chi tiết, cam kết tăng band điểm.
+            </p>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                <a href="#register" class="w-full sm:w-auto px-8 py-3.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition shadow-xl shadow-indigo-600/25 flex items-center justify-center gap-2 group">
+                    Đăng ký tư vấn lộ trình
+                    <iconify-icon icon="solar:arrow-right-linear" class="group-hover:translate-x-1 transition-transform"></iconify-icon>
+                </a>
+                <a href="#system" class="w-full sm:w-auto px-8 py-3.5 bg-white text-slate-700 border border-slate-200 font-medium rounded-xl hover:bg-slate-50 transition flex items-center justify-center gap-2">
+                    <iconify-icon icon="solar:laptop-minimalistic-linear" class="text-xl"></iconify-icon>
+                    Xem giao diện thi
+                </a>
+            </div>
+
+            <!-- UI Mockup: Student Dashboard View -->
+            <div class="relative max-w-5xl mx-auto">
+                <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-2xl opacity-10 blur-xl"></div>
+                <div class="relative bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col md:flex-row h-[450px] md:h-[550px]">
+                    <!-- Sidebar Mockup -->
+                    <div class="w-16 md:w-60 border-r border-slate-100 bg-slate-50/50 p-4 flex flex-col gap-3 hidden md:flex">
+                        <div class="flex items-center gap-3 mb-6 px-2">
+                            <div class="w-10 h-10 rounded-full bg-slate-200 border-2 border-white shadow-sm overflow-hidden">
+                                <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Felix" alt="Avatar" class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-900">Nguyễn Văn A</div>
+                                <div class="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded inline-block">Lớp IELTS 6.5+</div>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="h-9 w-full bg-indigo-50 text-indigo-700 rounded-lg flex items-center px-3 gap-3 text-xs font-semibold border border-indigo-100/50">
+                                <iconify-icon icon="solar:home-smile-linear" class="text-lg"></iconify-icon> Tổng quan
+                            </div>
+                            <div class="h-9 w-full hover:bg-white hover:shadow-sm rounded-lg flex items-center px-3 gap-3 text-slate-600 text-xs font-medium transition cursor-pointer">
+                                <iconify-icon icon="solar:notebook-linear" class="text-lg"></iconify-icon> Bài tập về nhà <span class="ml-auto w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">2</span>
+                            </div>
+                            <div class="h-9 w-full hover:bg-white hover:shadow-sm rounded-lg flex items-center px-3 gap-3 text-slate-600 text-xs font-medium transition cursor-pointer">
+                                <iconify-icon icon="solar:laptop-minimalistic-linear" class="text-lg"></iconify-icon> Thi thử Mocktest
+                            </div>
+                            <div class="h-9 w-full hover:bg-white hover:shadow-sm rounded-lg flex items-center px-3 gap-3 text-slate-600 text-xs font-medium transition cursor-pointer">
+                                <iconify-icon icon="solar:chart-square-linear" class="text-lg"></iconify-icon> Bảng thành tích
+                            </div>
+                        </div>
+                        
+                        <div class="mt-auto bg-indigo-900 rounded-xl p-4 text-white relative overflow-hidden">
+                            <div class="relative z-10">
+                                <div class="text-xs opacity-80 mb-1">Dự đoán điểm</div>
+                                <div class="text-2xl font-bold">7.5</div>
+                                <div class="text-[10px] mt-2 flex items-center gap-1 opacity-80">
+                                    <iconify-icon icon="solar:trending-up-linear"></iconify-icon> Tăng 0.5 so với tháng trước
+                                </div>
+                            </div>
+                            <div class="absolute right-0 bottom-0 opacity-10">
+                                <iconify-icon icon="solar:graph-up-linear" width="60"></iconify-icon>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Main Content Mockup -->
+                    <div class="flex-1 bg-white flex flex-col">
+                        <!-- Top bar -->
+                        <div class="h-16 border-b border-slate-100 flex items-center justify-between px-8">
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-sm">Chào Nguyễn Văn A! 👋</h3>
+                                <p class="text-xs text-slate-500">Hôm nay bạn có 2 bài tập Reading cần hoàn thành.</p>
+                            </div>
+                            <div class="flex gap-3">
+                                <div class="h-9 px-4 rounded-lg bg-slate-100 flex items-center text-xs font-medium text-slate-600">
+                                    <iconify-icon icon="solar:flame-bold" class="text-orange-500 mr-1.5"></iconify-icon> 12 ngày liên tiếp
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Content area -->
+                        <div class="p-8 overflow-y-auto bg-slate-50/30 flex-1">
+                            <!-- Cards row -->
+                            <div class="grid grid-cols-3 gap-4 mb-8">
+                                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="text-xs text-slate-500 mb-2">Bài tập đã làm</div>
+                                    <div class="text-2xl font-bold text-slate-900">48</div>
+                                    <div class="w-full bg-slate-100 h-1.5 rounded-full mt-3">
+                                        <div class="w-3/4 bg-blue-500 h-1.5 rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="text-xs text-slate-500 mb-2">Điểm trung bình</div>
+                                    <div class="text-2xl font-bold text-slate-900">8.0</div>
+                                    <div class="text-[10px] text-emerald-600 mt-1">Excellent!</div>
+                                </div>
+                                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="text-xs text-slate-500 mb-2">Thời gian luyện</div>
+                                    <div class="text-2xl font-bold text-slate-900">12h</div>
+                                    <div class="text-[10px] text-slate-400 mt-1">Tuần này</div>
+                                </div>
+                            </div>
+
+                            <h4 class="text-sm font-bold text-slate-900 mb-4">Bài tập về nhà (Deadline: Tối nay)</h4>
+                            <div class="space-y-3">
+                                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-indigo-300 transition cursor-pointer group">
+                                    <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition">
+                                        <iconify-icon icon="solar:document-text-linear" width="20"></iconify-icon>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between mb-1">
+                                            <span class="text-sm font-semibold text-slate-900">Cam 18 - Test 2 - Passage 1</span>
+                                            <span class="text-xs text-red-500 font-medium bg-red-50 px-2 py-0.5 rounded">Chưa làm</span>
+                                        </div>
+                                        <div class="text-xs text-slate-500">Reading • 13 câu hỏi • 20 phút</div>
+                                    </div>
+                                    <div class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-400">
+                                        <iconify-icon icon="solar:alt-arrow-right-linear"></iconify-icon>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 hover:border-indigo-300 transition cursor-pointer group opacity-75">
+                                    <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                                        <iconify-icon icon="solar:check-circle-linear" width="20"></iconify-icon>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between mb-1">
+                                            <span class="text-sm font-semibold text-slate-900">Listening Practice - Section 2</span>
+                                            <span class="text-xs text-emerald-600 font-bold">9.0</span>
+                                        </div>
+                                        <div class="text-xs text-slate-500">Đã hoàn thành lúc 14:30 hôm nay</div>
+                                    </div>
+                                    <div class="text-xs font-medium text-indigo-600 underline">Xem lại bài</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Value Props for Student/Parents -->
+    <section id="benefits" class="py-24 bg-white border-y border-slate-100">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <h2 class="text-3xl font-bold text-slate-900 tracking-tight mb-4">Tại sao Học viên thích học tại lớp Thầy Điệp?</h2>
+                <p class="text-slate-500 text-lg">Hệ thống công nghệ giúp việc học trở nên thú vị, bám sát thực tế và hiệu quả hơn gấp 3 lần so với phương pháp truyền thống.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Benefit 1 -->
+                <div class="p-8 bg-slate-50 rounded-2xl border border-slate-100 hover:shadow-lg transition duration-300 relative group overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                        <iconify-icon icon="solar:monitor-camera-linear" width="100" class="text-indigo-600"></iconify-icon>
+                    </div>
+                    <div class="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-indigo-600 mb-6 shadow-sm border border-indigo-50">
+                        <iconify-icon icon="solar:laptop-minimalistic-bold-duotone" width="28"></iconify-icon>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Giao diện thi như thật</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">Học viên được làm quen với giao diện thi máy (Computer-based) của IDP/BC ngay từ ngày đầu. Vào phòng thi thật sẽ không bị bỡ ngỡ.</p>
+                </div>
+
+                <!-- Benefit 2 -->
+                <div class="p-8 bg-slate-50 rounded-2xl border border-slate-100 hover:shadow-lg transition duration-300 relative group overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                        <iconify-icon icon="solar:checklist-linear" width="100" class="text-emerald-600"></iconify-icon>
+                    </div>
+                    <div class="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-emerald-600 mb-6 shadow-sm border border-emerald-50">
+                        <iconify-icon icon="solar:check-read-bold-duotone" width="28"></iconify-icon>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Chấm điểm &amp; Giải thích ngay</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">Không cần đợi thầy chấm. Hệ thống trả điểm Reading/Listening ngay lập tức kèm giải thích chi tiết vì sao đúng/sai cho từng câu.</p>
+                </div>
+
+                <!-- Benefit 3 -->
+                <div class="p-8 bg-slate-50 rounded-2xl border border-slate-100 hover:shadow-lg transition duration-300 relative group overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                        <iconify-icon icon="solar:graph-new-up-linear" width="100" class="text-orange-600"></iconify-icon>
+                    </div>
+                    <div class="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-orange-500 mb-6 shadow-sm border border-orange-50">
+                        <iconify-icon icon="solar:chart-2-bold-duotone" width="28"></iconify-icon>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Phụ huynh nắm rõ tiến độ</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">Phụ huynh có thể đăng nhập để xem biểu đồ chuyên cần và điểm số của con. Biết rõ con đang yếu kỹ năng nào để đôn đốc.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Student Journey Step -->
+    <section class="py-24 bg-slate-900 text-white relative overflow-hidden">
+        <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+        <div class="max-w-7xl mx-auto px-6 relative z-10">
+            <h2 class="text-3xl font-bold text-center mb-16">Quy trình "Cày cuốc" tại lớp thầy Điệp</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="text-center relative">
+                    <div class="w-20 h-20 mx-auto bg-slate-800 rounded-full border border-slate-700 flex items-center justify-center text-3xl mb-6 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                        📚
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">1. Học trên lớp</h3>
+                    <p class="text-sm text-slate-400">Học kiến thức mới, chiến thuật làm bài trực tiếp với thầy Điệp.</p>
+                    <div class="hidden md:block absolute top-10 -right-[50%] w-full h-0.5 bg-gradient-to-r from-slate-700 to-transparent"></div>
+                </div>
+
+                <div class="text-center relative">
+                    <div class="w-20 h-20 mx-auto bg-slate-800 rounded-full border border-slate-700 flex items-center justify-center text-3xl mb-6 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                        💻
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">2. Luyện trên Web</h3>
+                    <p class="text-sm text-slate-400">Đăng nhập DiepClass làm bài tập về nhà theo đúng thời gian quy định.</p>
+                    <div class="hidden md:block absolute top-10 -right-[50%] w-full h-0.5 bg-gradient-to-r from-slate-700 to-transparent"></div>
+                </div>
+
+                <div class="text-center relative">
+                    <div class="w-20 h-20 mx-auto bg-slate-800 rounded-full border border-slate-700 flex items-center justify-center text-3xl mb-6 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+                        📊
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">3. Xem phân tích</h3>
+                    <p class="text-sm text-slate-400">Hệ thống chỉ ra lỗi sai. Xem video chữa chi tiết các câu khó.</p>
+                    <div class="hidden md:block absolute top-10 -right-[50%] w-full h-0.5 bg-gradient-to-r from-slate-700 to-transparent"></div>
+                </div>
+
+                <div class="text-center relative">
+                    <div class="w-20 h-20 mx-auto bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-3xl mb-6 shadow-[0_0_30px_rgba(99,102,241,0.6)] animate-pulse">
+                        🚀
+                    </div>
+                    <h3 class="text-lg font-bold mb-2">4. Tăng Band</h3>
+                    <p class="text-sm text-slate-400">Cải thiện điểm số sau mỗi tuần. Tự tin đi thi thật.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- System Preview Gallery (Student View) -->
+    <section id="system" class="py-24 bg-slate-50 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-6 mb-12">
+            <h2 class="text-3xl font-bold text-slate-900 tracking-tight mb-2">Trải nghiệm phòng thi ngay tại nhà</h2>
+            <p class="text-slate-500">Xem trước giao diện mà các bạn học viên đang sử dụng hàng ngày.</p>
+        </div>
+
+        <div class="flex gap-6 overflow-x-auto px-6 pb-12 snap-x snap-mandatory scrollbar-hide">
+            <!-- Card 1: Exam UI -->
+            <div class="min-w-[300px] md:min-w-[700px] snap-center bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
+                <div class="h-10 bg-slate-900 flex items-center px-4 justify-between">
+                    <span class="text-white text-xs font-medium">IELTS Reading Simulation</span>
+                    <span class="text-white text-xs font-mono bg-slate-700 px-2 py-1 rounded">58:20 left</span>
+                </div>
+                <div class="p-0 flex h-[350px]">
+                    <div class="w-1/2 p-6 overflow-y-auto border-r border-slate-200 bg-slate-50 text-slate-600 text-sm leading-7">
+                        <h4 class="font-bold text-slate-900 mb-3 text-lg">The Life of Bees</h4>
+                        <p class="mb-4">Bees are winged insects closely related to wasps and ants, known for their roles in pollination and, in the case of the best-known bee species, the western honey bee, for producing honey...</p>
+                        <p>Bees are found on every continent except Antarctica, in every habitat on the planet that contains insect-pollinated flowering plants.</p>
+                    </div>
+                    <div class="w-1/2 p-6 overflow-y-auto">
+                        <div class="mb-4">
+                            <h5 class="text-sm font-bold text-slate-900 mb-2">Questions 1-3</h5>
+                            <p class="text-xs text-slate-500 mb-3">Choose the correct letter, A, B, C or D.</p>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <p class="text-xs font-medium text-slate-800 mb-2">1. Where can bees be found?</p>
+                                    <div class="space-y-1.5">
+                                        <label class="flex items-center gap-2 cursor-pointer group">
+                                            <input type="radio" name="q1" class="accent-indigo-600">
+                                            <span class="text-xs text-slate-600 group-hover:text-indigo-600">Only in Europe</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 cursor-pointer group">
+                                            <input type="radio" name="q1" class="accent-indigo-600" checked="">
+                                            <span class="text-xs text-slate-900 font-semibold bg-indigo-50 px-2 py-0.5 rounded w-full">Every continent except Antarctica</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Leaderboard -->
+            <div class="min-w-[300px] md:min-w-[500px] snap-center bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col">
+                <div class="h-14 bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center px-6 gap-3">
+                    <iconify-icon icon="solar:cup-star-bold" class="text-white text-2xl"></iconify-icon>
+                    <span class="text-white font-bold text-lg">Bảng Vàng Tháng 10</span>
+                </div>
+                <div class="p-6 flex-1 bg-white">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-4 p-3 rounded-xl bg-yellow-50 border border-yellow-100">
+                            <div class="font-bold text-yellow-600 text-lg w-6">1</div>
+                            <div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden"><img src="https://api.dicebear.com/7.x/notionists/svg?seed=Annie" class="w-full h-full"></div>
+                            <div class="flex-1">
+                                <div class="text-sm font-bold text-slate-900">Trần Minh Tú</div>
+                                <div class="text-xs text-slate-500">Lớp IELTS Fighter</div>
+                            </div>
+                            <div class="font-bold text-indigo-600">8.5</div>
+                        </div>
+                        <div class="flex items-center gap-4 p-3 rounded-xl border border-slate-100">
+                            <div class="font-bold text-slate-400 text-lg w-6">2</div>
+                            <div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden"><img src="https://api.dicebear.com/7.x/notionists/svg?seed=Bob" class="w-full h-full"></div>
+                            <div class="flex-1">
+                                <div class="text-sm font-bold text-slate-900">Lê Hoàng</div>
+                                <div class="text-xs text-slate-500">Lớp TOEIC 600+</div>
+                            </div>
+                            <div class="font-bold text-indigo-600">8.0</div>
+                        </div>
+                        <div class="flex items-center gap-4 p-3 rounded-xl border border-slate-100">
+                            <div class="font-bold text-slate-400 text-lg w-6">3</div>
+                            <div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden"><img src="https://api.dicebear.com/7.x/notionists/svg?seed=Cait" class="w-full h-full"></div>
+                            <div class="flex-1">
+                                <div class="text-sm font-bold text-slate-900">Phạm Hương</div>
+                                <div class="text-xs text-slate-500">Lớp Foundation</div>
+                            </div>
+                            <div class="font-bold text-indigo-600">7.5</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Registration / Contact Section -->
+    <section id="register" class="py-24 relative overflow-hidden">
+        <div class="absolute inset-0 bg-indigo-900 -z-20"></div>
+        <!-- Decorations -->
+        <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500 rounded-full mix-blend-screen filter blur-[120px] opacity-30 animate-pulse"></div>
+        <div class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500 rounded-full mix-blend-screen filter blur-[120px] opacity-30"></div>
+
+        <div class="max-w-6xl mx-auto px-6 relative z-10">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div>
+                    <div class="inline-block px-3 py-1 bg-indigo-800 text-indigo-200 rounded-full text-xs font-semibold mb-4 border border-indigo-700">Tuyển sinh Khoá mới</div>
+                    <h2 class="text-3xl md:text-5xl font-bold text-white tracking-tight mb-6">Muốn trải nghiệm hệ thống này?</h2>
+                    <p class="text-indigo-100 text-lg mb-8 leading-relaxed">
+                        Đăng ký tư vấn lộ trình học ngay hôm nay để nhận tài khoản trải nghiệm miễn phí hệ thống DiepClass và bài test đầu vào.
+                    </p>
+                    <div class="flex items-center gap-4 mb-8">
+                        <div class="flex -space-x-3">
+                            <div class="w-10 h-10 rounded-full border-2 border-indigo-900 bg-slate-200"><img src="https://api.dicebear.com/7.x/notionists/svg?seed=1" class="w-full h-full"></div>
+                            <div class="w-10 h-10 rounded-full border-2 border-indigo-900 bg-slate-200"><img src="https://api.dicebear.com/7.x/notionists/svg?seed=2" class="w-full h-full"></div>
+                            <div class="w-10 h-10 rounded-full border-2 border-indigo-900 bg-slate-200"><img src="https://api.dicebear.com/7.x/notionists/svg?seed=3" class="w-full h-full"></div>
+                        </div>
+                        <div class="text-white text-sm font-medium">
+                            <span class="font-bold text-yellow-400">2,500+</span> học viên đã tham gia
+                        </div>
+                    </div>
+                    <ul class="space-y-4">
+                        <li class="flex items-center gap-3 text-white font-medium">
+                            <iconify-icon icon="solar:check-circle-bold" class="text-emerald-400 text-xl"></iconify-icon>
+                            Test trình độ đầu vào miễn phí
+                        </li>
+                        <li class="flex items-center gap-3 text-white font-medium">
+                            <iconify-icon icon="solar:check-circle-bold" class="text-emerald-400 text-xl"></iconify-icon>
+                            Cấp tài khoản Premium trọn đời khoá học
+                        </li>
+                        <li class="flex items-center gap-3 text-white font-medium">
+                            <iconify-icon icon="solar:check-circle-bold" class="text-emerald-400 text-xl"></iconify-icon>
+                            Cam kết đầu ra bằng văn bản
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-white rounded-2xl p-8 shadow-2xl">
+                    <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <iconify-icon icon="solar:pen-new-square-linear" class="text-indigo-600"></iconify-icon>
+                        Đăng ký Tư vấn Học
+                    </h3>
+                    <form class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Họ và tên học viên</label>
+                            <input type="text" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition text-sm font-medium text-slate-800" placeholder="Ví dụ: Nguyễn Văn A">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Số điện thoại (Zalo)</label>
+                            <input type="tel" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition text-sm font-medium text-slate-800" placeholder="09xxxxxxx">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Mục tiêu của bạn</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="target" class="peer sr-only">
+                                    <div class="px-4 py-3 rounded-lg border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 text-slate-600 text-sm font-medium text-center transition">IELTS</div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="target" class="peer sr-only">
+                                    <div class="px-4 py-3 rounded-lg border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 text-slate-600 text-sm font-medium text-center transition">TOEIC</div>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="button" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 mt-2">
+                            Gửi đăng ký
+                            <iconify-icon icon="solar:plain-3-bold"></iconify-icon>
+                        </button>
+                    </form>
+                    <p class="text-center text-xs text-slate-400 mt-4">Thầy Điệp sẽ liên hệ lại trong vòng 24h.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-50 border-t border-slate-200 pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+                        <iconify-icon icon="solar:hat-graduation-linear" width="22"></iconify-icon>
+                    </div>
+                    <span class="text-xl font-bold text-slate-900">Thầy Điệp <span class="text-indigo-600">English</span></span>
+                </div>
+                
+                <div class="flex gap-8 text-sm font-medium text-slate-500">
+                    <a href="#" class="hover:text-indigo-600">Về Thầy Điệp</a>
+                    <a href="#" class="hover:text-indigo-600">Lịch khai giảng</a>
+                    <a href="#" class="hover:text-indigo-600">Góc học viên</a>
+                </div>
+            </div>
+            
+            <div class="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
+                <p>Địa chỉ: 123 Đường Cầu Giấy, Hà Nội | Hotline: 09xx.xxx.xxx</p>
+                <p>© 2024 DiepClass LMS. Powered by PrepMaster.</p>
+            </div>
+        </div>
+    </footer>
+
+
+</body></html>

@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// SQLite does not support Enums. Using Strings.
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  role          String    @default("STUDENT") // TEACHER, STUDENT, ADMIN
+  createdAt     DateTime  @default(now())
+
+  createdById   String?
+  createdBy     User?     @relation("UserCreator", fields: [createdById], references: [id])
+  createdUsers  User[]    @relation("UserCreator")
+  
+  classesOwned  Class[]   @relation("TeacherClasses")
+  classMembers  ClassMember[]
+  dataset       Submission[]
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  published   Boolean  @default(false)
+  
+  teacherId   String
+  teacher     User     @relation("TeacherClasses", fields: [teacherId], references: [id])
+  
+  members     ClassMember[]
+  assignments Assignment[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Assignment {
+  id            String      @id @default(cuid())
+  title         String
+  content       String?
+  
+  classId       String
+  class         Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  
+  orderIndex    Int
+  type          String      @default("LECTURE") // LECTURE, QUIZ, TEST, ESSAY
+  
+  questions     Question[]
+  progress      AssignmentProgress[]
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Question {
+  id            String       @id @default(cuid())
+  assignmentId  String
+  assignment    Assignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  type          String       // MCQ, GAP_FILL, etc.
+  content       String
+  correctAnswer String       // Changed from Json to String
+  points        Int          @default(1)
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model ClassMember {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id])
+  joinedAt  DateTime @default(now())
+
+  @@unique([userId, classId])
+}
+
+model AssignmentProgress {
+  id            String   @id @default(cuid())
+  userId        String
+  assignmentId  String
+  assignment    Assignment @relation(fields: [assignmentId], references: [id])
+  
+  status        String   @default("LOCKED")
+  score         Int?
+  submissions   Submission[]
+  
+  @@unique([userId, assignmentId])
+}
+
+model Submission {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id])
+  assignmentProgressId String
+  assignmentProgress   AssignmentProgress @relation(fields: [assignmentProgressId], references: [id])
+  
+  answers              String
+  score                Int
+  submittedAt          DateTime @default(now())
+}
