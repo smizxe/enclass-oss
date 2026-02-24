@@ -5,6 +5,26 @@ import mammoth from "mammoth";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+// Polyfills for pdf-parse in Node.js environment
+if (!global.DOMMatrix) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (global as any).DOMMatrix = class DOMMatrix {
+    constructor() { }
+  };
+}
+if (!global.ImageData) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (global as any).ImageData = class ImageData {
+    constructor() { }
+  };
+}
+if (!global.Path2D) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (global as any).Path2D = class Path2D {
+    constructor() { }
+  };
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
 export async function POST(
