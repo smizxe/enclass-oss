@@ -53,10 +53,22 @@ export async function POST(
       {
         "type": "MCQ", // or "ESSAY"
         "content": "Question content here...",
-        "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"], // Only for MCQ. remove "A.", "B." prefix if possible, but keep it if unsure.
-        "correctAnswer": "Option 1" // For MCQ, try to identify the correct answer if marked (e.g. bold, underlined, asterisk, or answer key at end). If unknown, leave empty string.
+        "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"], // Only for MCQ. remove "A.", "B." prefix.
+        "correctAnswer": "Option 1" // Answer content only.
       }
     ]
+
+    Rules for extraction:
+    1. **Gap Filling / Cloze Tests**: If there is a passage with numbered blanks (e.g. (1), (2), [1]...) and corresponding questions:
+       - Create a separate MCQ for EACH blank.
+       - For the "content", extract **only the specific sentence** from the passage that contains that blank. Do not include the whole paragraph.
+       - Replace the blank number in the content with "_______" for clarity (e.g. "polluting the (9) environment" -> "polluting the _______ environment").
+    
+    2. **Prefixes**: Remove "Question X:", "Câu X:", "Part X" prefixes from the 'content' field. Just keep the question text.
+    
+    3. **Options**: Ensure options are clean strings.
+    
+    4. **Correct Answer**: Try to detect the correct answer. If not found, leave empty string.
 
     If there are reading passages, include them in the "content" of the question or as a separate "ESSAY" type if it's a writing prompt.
     For MCQ, ensure "options" is an array of strings.
