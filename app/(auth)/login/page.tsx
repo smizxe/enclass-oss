@@ -30,8 +30,8 @@ export default function LoginPage() {
         } else {
             toast.success("Đăng nhập thành công!");
 
-            // Fetch session to get user role for redirect
-            const response = await fetch("/api/auth/session");
+            // Fetch session to get user role for redirect - ensure no cache
+            const response = await fetch("/api/auth/session", { cache: "no-store" });
             const session = await response.json();
 
             router.refresh();
