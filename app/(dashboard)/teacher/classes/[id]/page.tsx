@@ -6,15 +6,12 @@ import Link from "next/link";
 import {
     ArrowLeft,
     BookOpen,
-    LayoutList,
-    FileText,
-    Settings,
-    ClipboardList,
     Users,
-    PenTool
 } from "lucide-react";
 import { PublishActions } from "./_components/publish-actions";
 import { CreateAssignmentButton } from "./_components/create-assignment-button";
+import { AssignmentsList } from "./_components/assignments-list";
+import { ClassInfoCard } from "./_components/class-info-card";
 
 export default async function ClassIdPage({
     params
@@ -105,72 +102,24 @@ export default async function ClassIdPage({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Class Info */}
                 <div className="lg:col-span-1 space-y-4">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                            <span className="font-medium text-slate-900 text-sm">Thông tin lớp học</span>
-                            <button className="p-1.5 hover:bg-slate-100 rounded-lg transition">
-                                <Settings className="w-4 h-4 text-slate-400" />
-                            </button>
-                        </div>
-                        <div className="p-4 space-y-4">
-                            <div>
-                                <div className="text-xs text-slate-500 mb-1">Tên lớp học</div>
-                                <div className="text-sm font-medium text-slate-900">{classItem.title}</div>
-                            </div>
-                            <div>
-                                <div className="text-xs text-slate-500 mb-1">Mô tả</div>
-                                <div className="text-sm text-slate-600">{classItem.description || "Chưa có mô tả"}</div>
-                            </div>
-                        </div>
-                    </div>
+                    <ClassInfoCard
+                        classId={classItem.id}
+                        title={classItem.title}
+                        description={classItem.description}
+                    />
                 </div>
 
                 {/* Assignments List */}
                 <div className="lg:col-span-2">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
-                        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                            <span className="font-medium text-slate-900 text-sm">Nội dung lớp học</span>
-                            <CreateAssignmentButton classId={classItem.id} />
-                        </div>
-
-                        {classItem.assignments.length === 0 ? (
-                            <div className="p-8 text-center flex flex-col items-center justify-center h-full pt-20">
-                                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
-                                    <LayoutList className="w-6 h-6 text-slate-400" />
-                                </div>
-                                <p className="text-sm text-slate-500">Chưa có bài tập nào</p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-slate-100">
-                                {classItem.assignments.map((assignment, index) => (
-                                    <Link
-                                        href={`/teacher/classes/${classItem.id}/assignments/${assignment.id}`}
-                                        key={assignment.id}
-                                        className="flex items-center gap-3 p-4 hover:bg-slate-50 transition group"
-                                    >
-                                        <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 font-semibold text-sm">
-                                            {index + 1}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium text-slate-900 group-hover:text-indigo-600 transition">{assignment.title}</span>
-                                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${assignment.type === 'LECTURE' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                                    assignment.type === 'QUIZ' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                                        'bg-purple-50 text-purple-700 border-purple-100' // ESSAY
-                                                    }`}>
-                                                    {assignment.type === 'LECTURE' ? 'Bài giảng' :
-                                                        assignment.type === 'QUIZ' ? 'Trắc nghiệm' : 'Viết'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        {assignment.type === "LECTURE" && <FileText className="w-4 h-4 text-slate-400" />}
-                                        {assignment.type === "QUIZ" && <ClipboardList className="w-4 h-4 text-slate-400" />}
-                                        {assignment.type === "ESSAY" && <PenTool className="w-4 h-4 text-slate-400" />}
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="font-medium text-slate-700">Nội dung lớp học</h2>
+                        <CreateAssignmentButton classId={classItem.id} />
                     </div>
+
+                    <AssignmentsList
+                        classId={classItem.id}
+                        initialAssignments={classItem.assignments}
+                    />
                 </div>
             </div>
         </div>

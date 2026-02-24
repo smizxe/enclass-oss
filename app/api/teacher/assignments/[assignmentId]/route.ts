@@ -86,3 +86,41 @@ export async function PATCH(
         return new NextResponse("Internal Error", { status: 500 });
     }
 }
+
+export async function DELETE(
+    req: Request,
+    { params }: { params: Promise<{ assignmentId: string }> }
+) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session || session.user.role !== "TEACHER") {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
+
+        const { assignmentId } = await params;
+
+        const assignment = await prisma.assignment.findUnique({
+            where: {
+                id: assignmentId,
+            },
+            include: {
+                class: true,
+            }
+        });
+
+        if (!assignment || assignment.class.teacherId !== session.user.id) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
+
+        const deletedAssignment = await prisma.assignment.delete({
+            where: {
+                id: assignmentId,
+            },
+        });
+
+        return NextResponse.json(deletedAssignment);
+    } catch (error) {
+        console.error("[ASSIGNMENT_DELETE]", error);
+        return new NextResponse("Internal Error", { status: 500 });
+    }
+}
