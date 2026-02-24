@@ -31,7 +31,9 @@ export function AssignmentResult({ submissionResult, questions }: AssignmentResu
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Kết quả bài làm</h2>
                 <div className="flex justify-center gap-6 text-sm text-slate-600">
                     <div className="flex flex-col items-center">
-                        <span className="font-semibold text-slate-900 text-lg">{score}/{totalScore}</span>
+                        <span className="font-semibold text-slate-900 text-lg">
+                            {Number.isInteger(score) ? score : score.toFixed(1)}/{totalScore}
+                        </span>
                         <span>Điểm số</span>
                     </div>
                     <div className="w-px bg-slate-200"></div>

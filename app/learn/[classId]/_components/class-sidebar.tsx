@@ -27,6 +27,15 @@ export const ClassSidebar = ({
 
     const totalAssignments = classItem.assignments?.length || 0;
 
+    // Calculate completed assignments based on status === "COMPLETED"
+    const completedAssignments = classItem.assignments?.filter((a: any) =>
+        a.progress?.length > 0 && a.progress[0]?.status === "COMPLETED"
+    ).length || 0;
+
+    const progressPercent = totalAssignments > 0
+        ? Math.round((completedAssignments / totalAssignments) * 100)
+        : 0;
+
     const getAssignmentIcon = (type: string) => {
         switch (type) {
             case "LECTURE":
@@ -54,14 +63,17 @@ export const ClassSidebar = ({
                     </div>
                 </div>
 
-                {/* Progress */}
+                {/* Progress - Now calculated based on completed assignments */}
                 <div>
                     <div className="flex justify-between text-xs mb-2">
                         <span className="text-slate-500">Tiến độ</span>
-                        <span className="font-medium text-indigo-600">0%</span>
+                        <span className="font-medium text-indigo-600">{progressPercent}%</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2 rounded-full">
-                        <div className="w-0 bg-indigo-600 h-2 rounded-full transition-all"></div>
+                        <div
+                            className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${progressPercent}%` }}
+                        ></div>
                     </div>
                 </div>
             </div>
@@ -71,7 +83,9 @@ export const ClassSidebar = ({
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {classItem.assignments?.map((assignment: any, index: number) => {
                     const isActive = pathname?.includes(assignment.id);
-                    const isCompleted = assignment.progress?.length > 0 && assignment.progress[0].completed;
+                    // Fixed: Check status === "COMPLETED" instead of non-existent 'completed' field
+                    const isCompleted = assignment.progress?.length > 0 &&
+                        assignment.progress[0]?.status === "COMPLETED";
                     const AssignmentIcon = isCompleted ? CheckCircle : getAssignmentIcon(assignment.type);
 
                     return (
@@ -88,9 +102,13 @@ export const ClassSidebar = ({
                         >
                             <div className={cn(
                                 "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0",
-                                isActive ? "bg-indigo-200 text-indigo-700" : "bg-slate-100 text-slate-500"
+                                isCompleted
+                                    ? "bg-emerald-100 text-emerald-600"
+                                    : isActive
+                                        ? "bg-indigo-200 text-indigo-700"
+                                        : "bg-slate-100 text-slate-500"
                             )}>
-                                {index + 1}
+                                {isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : index + 1}
                             </div>
 
                             <div className="flex-1 min-w-0">

@@ -202,10 +202,13 @@ export async function POST(
             }
         });
 
-        // Update progress status
+        // Update progress status AND score
         await prisma.assignmentProgress.update({
             where: { id: progress.id },
-            data: { status: newStatus }
+            data: {
+                status: newStatus,
+                score: earnedScore  // Save the score to AssignmentProgress too!
+            }
         });
 
         return NextResponse.json({
