@@ -11,145 +11,47 @@ import {
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
-// The prompt for Gemini to extract questions intelligently
+// Trimmed & optimized prompt for speed
 const EXTRACTION_PROMPT = `You are an expert at analyzing English exam papers, especially IELTS Listening and Reading tests.
 
-🔴🔴🔴 ABSOLUTE RULE - COMPLETE DOCUMENT EXTRACTION (HIGHEST PRIORITY) 🔴🔴🔴
-You MUST read and process the ENTIRE document from the VERY FIRST line/page to the VERY LAST line/page.
-- Do NOT skip any content at the BEGINNING of the document (page 1, headers, titles, instructions).
-- Do NOT skip any content at the END of the document (last pages, answer keys, appendices).
-- Do NOT truncate or summarize. Extract EVERY SINGLE question, passage, and section.
-- Process ALL pages: page 1, page 2, page 3... until the very last page.
-- If the document has 50 questions, output ALL 50. If it has 100, output ALL 100.
-- Count your extracted questions and compare with question numbers in the document to ensure NOTHING is missing.
+RULES:
+1. Extract the ENTIRE document from first to last page. Do NOT skip or truncate any content.
+2. Count extracted questions to match the document's numbering — ensure NOTHING is missing.
+3. Scan the document (especially last pages) for "Answer Key", "Đáp án", "KEY", "ĐÁP ÁN". If found, use those answers. If NOT found, predict answers and set "predictedAnswer": true.
+4. For GAP_FILL: correctAnswer = the EXACT word(s) that fill the blank. Never leave it empty.
+5. EVERY section with reading questions MUST include the FULL reading passage in "passage". If multiple question groups share one passage, DUPLICATE the full passage into each group.
+6. Preserve ALL task instructions ("Choose TWO letters", "Write NO MORE THAN TWO WORDS", etc.) in "passage" or the first question's "text".
+7. Each question's "text" must be COMPLETE — include all text, bullet points, mini-passages. Use \\n for line breaks. Never truncate.
+8. If a section has BOTH text AND a table/form: text → "passage", HTML table → "passageTable".
+9. No duplicate questions. Each question appears ONCE.
+10. Assign 1 point per question unless specified otherwise.
 
-Analyze the following exam content and extract ALL questions in a structured JSON format.
+FORMATTING:
+- Bold: **text**, Italic: *text*, Underline: __text__
+- Tables: HTML format (<table border="1" style="border-collapse: collapse; width: 100%;">...</table>)
+- Line breaks: \\n
 
-🔴 CRITICAL RULE #1 - ANSWER KEY DETECTION (VERY IMPORTANT):
-   1. FIRST, scan the ENTIRE document (especially the LAST pages) for a section named "Answer Key", "Đáp án", "KEY", "Answers", "Lời giải", "ĐÁP ÁN", "ANSWER KEY" or similar.
-   2. If found, use those answers to populate "correctAnswer" for each question.
-   3. If NOT found anywhere in the document, you MUST predict the most likely answer based on:
-      - Context clues in the passage
-      - Grammar rules
-      - Logical reasoning
-   4. Add "predictedAnswer": true to each question where you predicted (not found in answer key).
+QUESTION TYPES:
+- MCQ: options MUST include all choices. correctAnswer = letter (A/B/C/D)
+- GAP_FILL: correctAnswer = exact fill text
+- ORDERING: items=["a. ..."], options=["A. a-b-c", ...]
+- TRUE/FALSE/NOT GIVEN: type="MCQ", options=["TRUE","FALSE","NOT GIVEN"], correctAnswer="TRUE"/"FALSE"/"NOT GIVEN"
 
-🔴 CRITICAL RULE #2 - GAP_FILL ANSWER EXTRACTION:
-   For GAP_FILL questions (fill-in-the-blank):
-   1. The correctAnswer should be the EXACT word(s) that fill the blank.
-   2. Look in the Answer Key section for the gap fill answers.
-   3. If the answer key shows "1. information" or "1. TRUE" etc., use that exact text.
-   4. Do NOT leave correctAnswer empty for gap fill questions.
-
-🔴 CRITICAL RULE #3 - TABLE SEPARATION (MUST FOLLOW):
-   IF a section contains BOTH intro text AND a table/form:
-   ✅ CORRECT: Put intro text in "passage" field, put ONLY the <table>...</table> HTML code in "passageTable" field
-   ❌ WRONG: Do NOT put the table HTML inside "passage" field
-   
-   Example CORRECT output:
-   {
-     "passage": "Complete the form below. Write ONE WORD AND/OR A NUMBER for each answer.",
-     "passageTable": "<table border='1'><tr><th>Name</th><td>______</td></tr></table>"
-   }
-
-🔴🔴🔴 CRITICAL RULE #4 - READING PASSAGE MUST BE LINKED (VERY IMPORTANT) 🔴🔴🔴
-   For IELTS Reading tests, EVERY section/part that has questions about a reading passage MUST include the FULL reading passage text in the "passage" field.
-   - If the document has a long reading passage followed by multiple question groups (e.g., Questions 1-5 MCQ, Questions 6-10 GAP_FILL), ALL those groups MUST include the SAME full reading passage in their "passage" field.
-   - Do NOT create a section with questions but an empty/missing passage if those questions reference a reading text.
-   - If multiple Parts share one reading passage, DUPLICATE the full passage into each Part's "passage" field.
-   - The passage must be COMPLETE - do NOT shorten, summarize, or truncate it.
-   
-   ❌ WRONG: { "sectionTitle": "Part 2: Questions 6-10", "passage": "", "questions": [...] }
-   ✅ CORRECT: { "sectionTitle": "Part 2: Questions 6-10", "passage": "[THE FULL READING PASSAGE TEXT]", "questions": [...] }
-
-🔴 CRITICAL RULE #5 - PRESERVE ALL TASK INSTRUCTIONS AND INTRO TEXT:
-   Many IELTS sections have instruction lines BEFORE the questions, such as:
-   - "Choose TWO letters, A-E."
-   - "Complete the sentences below. Write NO MORE THAN TWO WORDS."
-   - "Which paragraph contains the following information?"
-   - A list of items/statements to match (like bullet lists)
-   - A small descriptive paragraph explaining the task
-   
-   These MUST be preserved! Rules:
-   1. If the instruction applies to ALL questions in the section, put it at the BEGINNING of the "passage" field (before the reading text, separated by a newline).
-   2. If the instruction is a task-specific intro that only applies to a sub-group of questions, include it in the FIRST question's "text" field of that sub-group, prefixed before the actual question.
-   3. NEVER drop or skip instruction lines. They are critical for students to understand what to do.
-   
-   Example: If the exam says:
-   "Questions 8-9: Choose TWO letters, A-E. Which TWO of the following are mentioned?"
-   Then question 8's text should be: "**Choose TWO letters, A-E.**\\nWhich TWO of the following are mentioned?"
-
-🔴 CRITICAL RULE #6 - COMPLETE QUESTION CONTENT (NEVER TRUNCATE):
-   Each question's "text" field must contain ALL text that belongs to that question:
-   - If a question has a mini-passage, introductory sentence, or context paragraph before the actual question stem, include ALL of it.
-   - If there are bullet points, numbered lists, or example items within a question, include ALL of them.
-   - If the question references a small text excerpt (not the main passage), include it in the "text" field.
-   - NEVER drop the first line of a question's content. The first line often contains critical context.
-   
-   ❌ WRONG (first line dropped): { "text": "What is the main purpose of the center?" }
-   ✅ CORRECT (all content preserved): { "text": "Read the following announcement and answer the question.\\nThe Riverside Community Center opened in 2019...\\nWhat is the main purpose of the center?" }
-
-IMPORTANT RULES:
-1. Identify sections/parts (e.g., "Part 1", "Section 1", "Questions 1-5").
-2. For each question, determine the type:
-   - "MCQ" for multiple choice questions (has options A, B, C, D)
-   - "GAP_FILL" for fill-in-the-blank / write-in questions
-   - "ORDERING" for ordering/arrangement questions
-3. Extract the question text, options (for MCQ), and correct answer.
-4. If there's a passage or audio transcript description, include it.
-5. Assign 1 point per question unless specified otherwise.
-
-FORMATTING RULES FOR TEXT CONTENT:
-   - Bold text: **text**
-   - Italic text: *text*
-   - Underline text: __text__
-   - **Tables / Gap Fills in Tables**: ALWAYS extract tables separately into "passageTable" field. Use HTML Table format ('<table border="1" style="border-collapse: collapse; width: 100%;">...</table>'). DO NOT use Markdown tables.
-   - Preserve paragraph breaks with double newlines.
-
-**QUESTION TYPES:**
-1. **ORDERING** (Sắp xếp câu):
-   - Type: "ORDERING"
-   - **items**: ["a. Sentence 1", "b. Sentence 2", ...]
-   - **options**: ["A. a-b-c", "B. c-b-a", ...]
-
-2. **READING / GAP_FILL**:
-   - Group questions sharing a passage.
-   - **passage**: The FULL reading passage text + any task instructions. Do NOT shorten or omit.
-   - **passageTable**: The COMPLETE HTML Table code (\`<table...>...</table>\`) if present. ALWAYS separate tables from text.
-
-3. **MCQ**: Standard multiple choice.
-   - **passage**: Reading passage + intro text.
-   - **passageTable**: HTML Table (if any) goes HERE, NOT in "passage".
-
-OUTPUT FORMAT (JSON):
+OUTPUT JSON:
 {
-    "hasAnswerKey": true/false,
+    "hasAnswerKey": true,
     "sections": [
         {
             "sectionTitle": "Part 1: Questions 1-7",
             "sectionType": "READING",
-            "passage": "Read the following passage and answer Questions 1-7.\\n\\n[THE FULL READING PASSAGE TEXT - NEVER OMIT THIS]",
+            "passage": "[FULL reading passage]\\n\\n**Choose the correct letter A, B, C or D.**",
             "passageTable": "",
             "questions": [
                 {
                     "type": "MCQ",
-                    "text": "**Choose the correct letter A, B, C or D.**\\nWhat is the main idea of the first paragraph?",
-                    "options": ["A. The history of the building", "B. The purpose of the center", "C. The location details", "D. The opening ceremony"],
+                    "text": "What is the main idea?",
+                    "options": ["A. The history", "B. The purpose", "C. The location", "D. The ceremony"],
                     "correctAnswer": "B",
-                    "predictedAnswer": false,
-                    "points": 1
-                }
-            ]
-        },
-        {
-            "sectionTitle": "Part 2: Questions 8-13",
-            "sectionType": "READING",
-            "passage": "[SAME FULL READING PASSAGE if questions reference the same text]\\n\\n**Complete the sentences below. Write NO MORE THAN TWO WORDS for each answer.**",
-            "questions": [
-                {
-                    "type": "GAP_FILL",
-                    "text": "The center was originally built as a _____.",
-                    "correctAnswer": "warehouse",
                     "predictedAnswer": false,
                     "points": 1
                 }
@@ -157,22 +59,6 @@ OUTPUT FORMAT (JSON):
         }
     ]
 }
-
-For MCQ, the correctAnswer should be the letter (A, B, C, or D).
-For GAP_FILL, the correctAnswer should be the expected text to fill in.
-For ORDERING, the correctAnswer should be the correct sequence (e.g., "B" if option B is correct).
-
-⚠️ FINAL CHECKLIST BEFORE OUTPUTTING:
-- Have I extracted content from the FIRST page? ✅
-- Have I extracted content from the LAST page? ✅
-- Did I count questions to match the document's numbering? ✅
-- ALWAYS include "hasAnswerKey" field at the root level ✅
-- Set "predictedAnswer": true if you predicted the answer ✅
-- Does EVERY question have a "correctAnswer" filled? ✅
-- If you see a table/form, is it in "passageTable" field, NOT in "passage" field? ✅
-- Does EVERY Reading section include the FULL reading passage in "passage"? ✅
-- Are ALL task instructions (Choose TWO, Write NO MORE THAN...) preserved? ✅
-- Is EVERY question's "text" field COMPLETE with no truncated content? ✅
 
 Here is the exam content to analyze:
 
@@ -259,27 +145,29 @@ export async function POST(
             return new NextResponse("Unsupported file type. Please upload PDF, DOCX, or TXT.", { status: 400 });
         }
 
-        // Call Gemini AI
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        // Optimized model config: JSON mode + low temperature for speed & accuracy
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+            generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.2,
+            }
+        });
 
         const result = await model.generateContent(promptParts);
         const response = await result.response;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const text = response.text();
 
-        // Parse AI response
-        // Clean up the response (remove markdown code blocks if present)
+        // Parse AI response (JSON mode produces clean output, but add safety fallback)
         let jsonText = text.trim();
-        if (jsonText.startsWith("```json")) {
-            jsonText = jsonText.slice(7);
-        }
         if (jsonText.startsWith("```")) {
-            jsonText = jsonText.slice(3);
+            jsonText = jsonText.replace(/```json/g, "").replace(/```/g, "").trim();
         }
-        if (jsonText.endsWith("```")) {
-            jsonText = jsonText.slice(0, -3);
+        const firstBrace = jsonText.indexOf("{");
+        const lastBrace = jsonText.lastIndexOf("}");
+        if (firstBrace > 0 && lastBrace !== -1) {
+            jsonText = jsonText.substring(firstBrace, lastBrace + 1);
         }
-        jsonText = jsonText.trim();
 
         let sections;
         let hasAnswerKey = true; // Assume has answer key unless told otherwise

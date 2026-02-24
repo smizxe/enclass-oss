@@ -116,7 +116,6 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
         const formData = new FormData();
         formData.append("file", file);
         formData.append("importType", importType);
-        formData.append("streaming", "true");
 
         try {
             const response = await fetch(`/api/teacher/classes/${classId}/import`, {
@@ -129,91 +128,25 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                 throw new Error(errorText || "Lỗi khi phân tích file");
             }
 
-            // Check if streaming response
-            const contentType = response.headers.get("content-type");
+            const data = await response.json();
 
-            if (contentType?.includes("text/event-stream")) {
-                // Handle streaming response
-                const reader = response.body?.getReader();
-                const decoder = new TextDecoder();
-
-                if (!reader) throw new Error("Không thể đọc response");
-
-                let buffer = "";
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-
-                    // Parse SSE events
-                    const lines = buffer.split("\n");
-                    buffer = lines.pop() || "";
-
-                    let eventType = "";
-                    let eventData = "";
-
-                    for (const line of lines) {
-                        if (line.startsWith("event: ")) {
-                            eventType = line.slice(7);
-                        } else if (line.startsWith("data: ")) {
-                            eventData = line.slice(6);
-
-                            try {
-                                const parsed = JSON.parse(eventData);
-
-                                if (eventType === "progress") {
-                                    // Don't update message from SSE - using fake staged progress instead
-                                    // setProgressMessage(parsed.message);
-                                } else if (eventType === "complete") {
-                                    // Handle complete data
-                                    if (parsed.sections && Array.isArray(parsed.sections)) {
-                                        setSections(parsed.sections);
-                                    } else if (Array.isArray(parsed)) {
-                                        setSections([{
-                                            title: "Câu hỏi",
-                                            type: "STANDALONE",
-                                            passage: null,
-                                            passageTranslation: null,
-                                            questions: parsed.map((q: Question, i: number) => ({
-                                                ...q,
-                                                questionNumber: i + 1
-                                            }))
-                                        }]);
-                                    }
-                                    setStep("preview");
-                                } else if (eventType === "error") {
-                                    throw new Error(parsed.message);
-                                }
-                            } catch (parseErr) {
-                                // Ignore parse errors for incomplete data
-                            }
-                        }
-                    }
-                }
+            if (data.sections && Array.isArray(data.sections)) {
+                setSections(data.sections);
+            } else if (Array.isArray(data)) {
+                setSections([{
+                    title: "Câu hỏi",
+                    type: "STANDALONE",
+                    passage: null,
+                    passageTranslation: null,
+                    questions: data.map((q: Question, i: number) => ({
+                        ...q,
+                        questionNumber: i + 1
+                    }))
+                }]);
             } else {
-                // Handle regular JSON response (fallback)
-                const data = await response.json();
-
-                if (data.sections && Array.isArray(data.sections)) {
-                    setSections(data.sections);
-                } else if (Array.isArray(data)) {
-                    setSections([{
-                        title: "Câu hỏi",
-                        type: "STANDALONE",
-                        passage: null,
-                        passageTranslation: null,
-                        questions: data.map((q: Question, i: number) => ({
-                            ...q,
-                            questionNumber: i + 1
-                        }))
-                    }]);
-                } else {
-                    setSections([]);
-                }
-                setStep("preview");
+                setSections([]);
             }
+            setStep("preview");
         } catch (err: unknown) {
             console.error(err);
             const errorMsg = err instanceof Error ? err.message : "Lỗi khi phân tích file. Vui lòng thử lại.";
