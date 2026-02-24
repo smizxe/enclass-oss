@@ -9,6 +9,7 @@ interface Question {
     questionNumber?: number;
     type: string;
     content: string;
+    items?: string[]; // For ORDERING questions
     options?: string[];
     correctAnswer?: string;
     explanation?: string | null;
@@ -284,6 +285,17 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                                                 </div>
                                                                 {q.content && (
                                                                     <p className="mt-2 text-sm text-slate-800">{q.content}</p>
+                                                                )}
+
+                                                                {/* Display Items for ORDERING questions */}
+                                                                {q.items && q.items.length > 0 && (
+                                                                    <div className="mt-2 text-sm space-y-1">
+                                                                        {q.items.map((item, idx) => (
+                                                                            <div key={idx} className="bg-amber-50 border border-amber-200 text-slate-700 px-3 py-1.5 rounded">
+                                                                                {item}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
                                                                 )}
                                                                 {q.options && q.options.length > 0 && (
                                                                     <div className="mt-2 grid grid-cols-2 gap-1">
