@@ -345,96 +345,148 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
 
                                         {expandedSections.has(sIndex) && (
                                             <div className="p-4 space-y-4">
-                                                {/* Passage */}
-                                                {section.passage && (
-                                                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                                        <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-2">
-                                                            <BookOpen className="w-4 h-4" />
-                                                            Đoạn văn chung
-                                                        </div>
-                                                        <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic">
-                                                            <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                                                {section.passage || ''}
-                                                            </ReactMarkdown>
-                                                        </div>
-                                                        {section.passageTable && (
-                                                            <div className="mt-3 overflow-x-auto" dangerouslySetInnerHTML={{ __html: section.passageTable }} />
-                                                        )}
-                                                    </div>
-                                                )}
+                                                {/* Check if all questions are GAP_FILL with {N} markers in passage */}
+                                                {(() => {
+                                                    const allGapFill = section.questions.every(q => q.type === "GAP_FILL");
+                                                    const hasMarkers = section.passage && /\{\d+\}/.test(section.passage);
 
-                                                {/* Questions */}
-                                                <div className="space-y-3">
-                                                    {section.questions.map((q, qIndex) => {
-                                                        const expKey = `${sIndex}-${qIndex}`;
+                                                    if (allGapFill && hasMarkers && section.passage) {
+                                                        // Compact mode: render passage with inline answer badges
+                                                        const parts = section.passage.split(/(\{\d+\})/g);
+                                                        const questionByNum = new Map<number, Question>();
+                                                        section.questions.forEach(q => {
+                                                            if (q.questionNumber) questionByNum.set(q.questionNumber, q);
+                                                        });
+
                                                         return (
-                                                            <div key={qIndex} className="p-3 bg-white border border-slate-200 rounded-lg">
-                                                                <div className="flex items-start gap-3">
-                                                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded">
-                                                                        Câu {q.questionNumber || qIndex + 1}
-                                                                    </span>
-                                                                    {q.correctAnswer && (
-                                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
-                                                                            Đáp án: {q.correctAnswer}
-                                                                        </span>
-                                                                    )}
+                                                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                                <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-2">
+                                                                    <BookOpen className="w-4 h-4" />
+                                                                    Bài đọc dạng điền từ (Compact View)
                                                                 </div>
-                                                                {q.content && (
-                                                                    <div className="mt-2 text-sm text-slate-800 [&_strong]:font-bold [&_em]:italic [&_p]:mb-1">
-                                                                        <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                                                            {q.content.replace(/\\n/g, '\n')}
-                                                                        </ReactMarkdown>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Display Items for ORDERING questions */}
-                                                                {q.items && q.items.length > 0 && (
-                                                                    <div className="mt-2 text-sm space-y-1">
-                                                                        {q.items.map((item, idx) => (
-                                                                            <div key={idx} className="bg-amber-50 border border-amber-200 text-slate-700 px-3 py-1.5 rounded">
-                                                                                {item}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                                {q.options && q.options.length > 0 && (
-                                                                    <div className="mt-2 grid grid-cols-2 gap-1">
-                                                                        {q.options.map((opt, i) => (
-                                                                            <div
-                                                                                key={i}
-                                                                                className={`text-sm px-2 py-1 rounded ${q.correctAnswer === String.fromCharCode(65 + i)
-                                                                                    ? "bg-green-100 text-green-800 font-medium"
-                                                                                    : "bg-slate-50 text-slate-600"
-                                                                                    }`}
-                                                                            >
-                                                                                {String.fromCharCode(65 + i)}. {opt}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                                {q.explanation && (
-                                                                    <div className="mt-2">
-                                                                        <button
-                                                                            onClick={() => toggleExplanation(expKey)}
-                                                                            className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                                                                        >
-                                                                            {expandedExplanations.has(expKey) ? (
-                                                                                <><ChevronUp className="w-3 h-3" /> Ẩn lời giải</>
-                                                                            ) : (
-                                                                                <><ChevronDown className="w-3 h-3" /> Xem lời giải</>
-                                                                            )}
-                                                                        </button>
-                                                                        {expandedExplanations.has(expKey) && (
-                                                                            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 whitespace-pre-wrap">
-                                                                                {q.explanation}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
+                                                                <div className="text-sm text-slate-700 leading-8 prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic">
+                                                                    {parts.map((part, idx) => {
+                                                                        const match = part.match(/^\{(\d+)\}$/);
+                                                                        if (match) {
+                                                                            const num = parseInt(match[1]);
+                                                                            const q = questionByNum.get(num);
+                                                                            return (
+                                                                                <span key={idx} className="inline-flex items-center gap-1 mx-1">
+                                                                                    <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 text-xs font-medium rounded">
+                                                                                        {num}
+                                                                                    </span>
+                                                                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200">
+                                                                                        {q?.correctAnswer || "?"}
+                                                                                    </span>
+                                                                                </span>
+                                                                            );
+                                                                        }
+                                                                        return <span key={idx} dangerouslySetInnerHTML={{ __html: part.replace(/\n/g, '<br/>') }} />;
+                                                                    })}
+                                                                </div>
+                                                                {section.passageTable && (
+                                                                    <div className="mt-3 overflow-x-auto" dangerouslySetInnerHTML={{ __html: section.passageTable }} />
                                                                 )}
                                                             </div>
                                                         );
-                                                    })}
-                                                </div>
+                                                    }
+
+                                                    // Standard mode: passage + question cards
+                                                    return (
+                                                        <>
+                                                            {/* Passage */}
+                                                            {section.passage && (
+                                                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                                    <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-2">
+                                                                        <BookOpen className="w-4 h-4" />
+                                                                        Đoạn văn chung
+                                                                    </div>
+                                                                    <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic">
+                                                                        <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                                                            {section.passage || ''}
+                                                                        </ReactMarkdown>
+                                                                    </div>
+                                                                    {section.passageTable && (
+                                                                        <div className="mt-3 overflow-x-auto" dangerouslySetInnerHTML={{ __html: section.passageTable }} />
+                                                                    )}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Questions */}
+                                                            <div className="space-y-3">
+                                                                {section.questions.map((q, qIndex) => {
+                                                                    const expKey = `${sIndex}-${qIndex}`;
+                                                                    return (
+                                                                        <div key={qIndex} className="p-3 bg-white border border-slate-200 rounded-lg">
+                                                                            <div className="flex items-start gap-3">
+                                                                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded">
+                                                                                    Câu {q.questionNumber || qIndex + 1}
+                                                                                </span>
+                                                                                {q.correctAnswer && (
+                                                                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+                                                                                        Đáp án: {q.correctAnswer}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            {q.content && (
+                                                                                <div className="mt-2 text-sm text-slate-800 [&_strong]:font-bold [&_em]:italic [&_p]:mb-1">
+                                                                                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                                                                        {q.content.replace(/\\n/g, '\n')}
+                                                                                    </ReactMarkdown>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* Display Items for ORDERING questions */}
+                                                                            {q.items && q.items.length > 0 && (
+                                                                                <div className="mt-2 text-sm space-y-1">
+                                                                                    {q.items.map((item, idx) => (
+                                                                                        <div key={idx} className="bg-amber-50 border border-amber-200 text-slate-700 px-3 py-1.5 rounded">
+                                                                                            {item}
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                            {q.options && q.options.length > 0 && (
+                                                                                <div className="mt-2 grid grid-cols-2 gap-1">
+                                                                                    {q.options.map((opt, i) => (
+                                                                                        <div
+                                                                                            key={i}
+                                                                                            className={`text-sm px-2 py-1 rounded ${q.correctAnswer === String.fromCharCode(65 + i)
+                                                                                                ? "bg-green-100 text-green-800 font-medium"
+                                                                                                : "bg-slate-50 text-slate-600"
+                                                                                                }`}
+                                                                                        >
+                                                                                            {String.fromCharCode(65 + i)}. {opt}
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                            {q.explanation && (
+                                                                                <div className="mt-2">
+                                                                                    <button
+                                                                                        onClick={() => toggleExplanation(expKey)}
+                                                                                        className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                                                                    >
+                                                                                        {expandedExplanations.has(expKey) ? (
+                                                                                            <><ChevronUp className="w-3 h-3" /> Ẩn lời giải</>
+                                                                                        ) : (
+                                                                                            <><ChevronDown className="w-3 h-3" /> Xem lời giải</>
+                                                                                        )}
+                                                                                    </button>
+                                                                                    {expandedExplanations.has(expKey) && (
+                                                                                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 whitespace-pre-wrap">
+                                                                                            {q.explanation}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         )}
                                     </div>

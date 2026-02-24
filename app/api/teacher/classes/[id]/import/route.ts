@@ -52,6 +52,11 @@ RULES:
 7. Each question's "content" must be COMPLETE — include all text, bullet points, mini-passages. Use \\n for line breaks. Never truncate.
 8. If a section has BOTH text AND a table/form: text → "passage", HTML table → "passageTable".
 9. No duplicate questions. Each question appears ONCE.
+10. **GAP_FILL INLINE MARKERS (CRITICAL):** For note completion, table completion, summary completion, diagram labeling, or ANY section where blanks appear inside structured text:
+    - In "passage", embed markers {N} at the EXACT position of each blank (N = question number).
+    - Example: if question 7's blank is after "various parts of a tree and", write: "various parts of a tree and {7}"
+    - The "content" field for each GAP_FILL question should still contain the surrounding context text.
+    - This preserves the original exam layout so students see the structured notes with blanks in context.
 
 FORMATTING:
 - Bold: **text**, Italic: *text*, Underline: __text__
@@ -61,7 +66,7 @@ FORMATTING:
 QUESTION TYPES:
 - ORDERING: items=["a. ...", "b. ..."], options=["A. a-b-c", "B. c-b-a", ...]
 - TRUE/FALSE/NOT GIVEN or YES/NO/NOT GIVEN: type="MCQ", options=["TRUE","FALSE","NOT GIVEN"] or ["YES","NO","NOT GIVEN"], correctAnswer="TRUE"/"FALSE"/"NOT GIVEN"
-- GAP_FILL: correctAnswer = exact fill text
+- GAP_FILL: correctAnswer = exact fill text. In passage, mark blank position with {N} where N is questionNumber.
 - MCQ: options MUST include all choices. correctAnswer = letter (A/B/C/D)
 
 OUTPUT JSON:
