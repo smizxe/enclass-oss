@@ -92,10 +92,13 @@ export async function POST(
             }
         });
 
+        let scoredManually = false; // For multi-gap, scoring is handled inline
+
         assignment.questions.forEach(q => {
             totalScore += q.points;
             const userAnswer = answers[q.id];
             let isCorrect = false;
+            scoredManually = false;
 
             // Manual parsing of content
             let parsedContent;
@@ -147,13 +150,46 @@ export async function POST(
                 }
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
             } else if (q.type === "GAP_FILL") {
-                // Gap fill - compare typed answer (case-insensitive, trimmed)
-                const userTyped = typeof userAnswer === 'string' ? userAnswer.trim().toLowerCase() : '';
-                const correctTyped = q.correctAnswer.trim().toLowerCase();
-                if (userTyped === correctTyped) {
-                    isCorrect = true;
+                // Multi-gap partial credit support
+                const correctParts = q.correctAnswer.split("|").map(s => s.trim().toLowerCase());
+
+                if (typeof userAnswer === 'object' && correctParts.length > 1) {
+                    // Multi-gap: compare each gap individually
+                    let correctCount = 0;
+                    const perGapResults: { isCorrect: boolean; correctAnswer: string }[] = [];
+                    const correctPartsOriginal = q.correctAnswer.split("|").map(s => s.trim());
+
+                    correctParts.forEach((correct, i) => {
+                        const userGap = (userAnswer[i] || "").trim().toLowerCase();
+                        const gapCorrect = userGap === correct;
+                        if (gapCorrect) correctCount++;
+                        perGapResults.push({
+                            isCorrect: gapCorrect,
+                            correctAnswer: correctPartsOriginal[i]
+                        });
+                    });
+
+                    // Proportional scoring — handled here, skip generic addition
+                    const gapScore = Math.round((correctCount / correctParts.length) * q.points);
+                    earnedScore += gapScore;
+                    isCorrect = correctCount === correctParts.length;
+                    scoredManually = true; // Prevent double-counting below
+
+                    results[q.id] = {
+                        isCorrect,
+                        correctAnswer: q.correctAnswer,
+                        perGapResults,
+                        score: gapScore
+                    } as any;
+                } else {
+                    // Single gap — backward compatible
+                    const userTyped = typeof userAnswer === 'string' ? userAnswer.trim().toLowerCase() : '';
+                    const correctTyped = correctParts[0];
+                    if (userTyped === correctTyped) {
+                        isCorrect = true;
+                    }
+                    results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
                 }
-                results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
             } else if (
                 q.type === "TRUE_FALSE_NOT_GIVEN" ||
                 q.type === "YES_NO_NOT_GIVEN" ||
@@ -162,7 +198,6 @@ export async function POST(
                 q.type === "SENTENCE_COMPLETION"
             ) {
                 // IELTS-style types: simple case-insensitive string comparison
-                // Answers are values like "TRUE", "FALSE", "NOT GIVEN", "A", "B", "C", etc.
                 const userStr = typeof userAnswer === 'string' ? userAnswer.trim().toUpperCase() : '';
                 const correctStr = q.correctAnswer.trim().toUpperCase();
                 if (userStr === correctStr) {
@@ -181,7 +216,7 @@ export async function POST(
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
             }
 
-            if (isCorrect) {
+            if (isCorrect && !scoredManually) {
                 earnedScore += q.points;
             }
         });
