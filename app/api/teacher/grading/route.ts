@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 
         const classIds = teacherClasses.map(c => c.id);
 
-        let whereClause: any = {
+        const whereClause: any = {
             assignmentProgress: {
                 assignment: {
                     classId: { in: classIds }

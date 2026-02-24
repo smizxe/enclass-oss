@@ -56,26 +56,26 @@ export const ProgressDashboard = ({ classId }: ProgressDashboardProps) => {
     const startDate = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday start
     const endDate = endOfWeek(currentDate, { weekStartsOn: 1 });
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const params = new URLSearchParams({
-                startDate: startDate.toISOString(),
-                endDate: endDate.toISOString()
-            });
-
-            const response = await axios.get(`/api/teacher/classes/${classId}/progress/weekly?${params}`);
-            setData(response.data.students);
-        } catch (error) {
-            console.error("Failed to fetch progress", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const params = new URLSearchParams({
+                    startDate: startDate.toISOString(),
+                    endDate: endDate.toISOString()
+                });
+
+                const response = await axios.get(`/api/teacher/classes/${classId}/progress/weekly?${params}`);
+                setData(response.data.students);
+            } catch (error) {
+                console.error("Failed to fetch progress", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         fetchData();
-    }, [classId, currentDate]);
+    }, [classId, startDate, endDate]);
 
     const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
     const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
@@ -206,8 +206,8 @@ export const ProgressDashboard = ({ classId }: ProgressDashboardProps) => {
                                         <TableCell className="text-center">
                                             {student.completedInWeek > 0 ? (
                                                 <span className={`font-semibold ${student.avgScore >= 8 ? 'text-emerald-600' :
-                                                        student.avgScore >= 5 ? 'text-indigo-600' :
-                                                            'text-red-500'
+                                                    student.avgScore >= 5 ? 'text-indigo-600' :
+                                                        'text-red-500'
                                                     }`}>
                                                     {student.avgScore.toFixed(1)}
                                                 </span>

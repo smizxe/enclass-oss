@@ -149,8 +149,8 @@ export async function DELETE(
         const filesToDelete: string[] = [];
 
         // Check Assignment Settings for Global Audio
-        if (assignment.settings) {
-            const settings = assignment.settings as any;
+        if ((assignment as any).settings) {
+            const settings = (assignment as any).settings;
             if (settings.audioUrl) {
                 try {
                     const path = settings.audioUrl.split('/storage/v1/object/public/images/')[1];
@@ -202,13 +202,14 @@ export async function DELETE(
             for (const q of questions) {
                 // List files in the question folder
                 const folderPath = `submissions/${assignmentId}/${q.id}`;
-                const { data: files, error } = await supabase
+                const { data: files } = await supabase
                     .storage
                     .from('submissions')
                     .list(folderPath);
 
                 if (files && files.length > 0) {
-                    const pathsToDelete = files.map(f => `${folderPath}/${f.name}`);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const pathsToDelete = files.map((f: any) => `${folderPath}/${f.name}`);
                     await supabase.storage.from('submissions').remove(pathsToDelete);
                 }
             }

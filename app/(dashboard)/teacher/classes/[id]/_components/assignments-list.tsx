@@ -1,21 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Assignment, AssignmentGroup } from "@prisma/client";
 import {
     FileText,
     ClipboardList,
-    PenTool,
     MoreVertical,
     Pencil,
     Trash2,
-    Loader2,
-    LayoutList,
     RefreshCw,
     GripVertical,
-    Plus,
     ChevronDown,
     ChevronRight,
     Folder
@@ -80,7 +76,7 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
     };
 
     const handleDragEnd = async (result: DropResult) => {
-        const { destination, source, draggableId, type } = result;
+        const { destination, source, draggableId } = result;
 
         if (!destination) return;
 
@@ -133,7 +129,7 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                 await axios.put(`/api/teacher/classes/${classId}/assignments/reorder`, {
                     updates
                 });
-            } catch (error) {
+            } catch {
                 toast.error("Lỗi cập nhật vị trí");
             }
         } else {
@@ -169,7 +165,7 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                 await axios.put(`/api/teacher/classes/${classId}/assignments/reorder`, {
                     updates // This endpoint handles bulk updates
                 });
-            } catch (error) {
+            } catch {
                 toast.error("Lỗi cập nhật nhóm");
                 router.refresh(); // Revert
             }
@@ -203,7 +199,7 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
             setSelectedIds(new Set());
             toast.success("Đã xóa");
             router.refresh();
-        } catch (error) {
+        } catch {
             toast.error("Lỗi");
         } finally {
             setIsDeleting(false);
@@ -217,7 +213,7 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
             setAssignments(prev => prev.filter(a => a.id !== id));
             toast.success("Đã xóa");
             router.refresh();
-        } catch (error) {
+        } catch {
             toast.error("Lỗi xóa");
         }
     };
@@ -230,7 +226,7 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
             // Update all assignments in this group to have groupId = null
             setAssignments(prev => prev.map(a => a.groupId === groupId ? { ...a, groupId: null } : a));
             toast.success("Đã xóa nhóm");
-        } catch (error) {
+        } catch {
             toast.error("Lỗi xóa nhóm");
         }
     }

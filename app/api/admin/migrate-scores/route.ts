@@ -46,7 +46,6 @@ export async function POST() {
             try {
                 // Parse the feedback JSON
                 const feedback = JSON.parse(submission.feedback || "{}");
-                const answers = JSON.parse(submission.answers || "{}");
                 const questions = submission.assignmentProgress.assignment.questions;
 
                 let calculatedScore = 0;
