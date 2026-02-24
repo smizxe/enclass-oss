@@ -11,7 +11,9 @@ import {
     Trash2,
     Loader2,
     BookOpen,
-    Pencil
+    Pencil,
+    Upload,
+    Sparkles
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -72,6 +74,11 @@ export default function AssignmentEditorPage() {
         correctAnswerIndex: null
     });
     const [essayPrompt, setEssayPrompt] = useState("");
+
+    // AI Import state
+    const [isAIImportOpen, setIsAIImportOpen] = useState(false);
+    const [aiImportFile, setAIImportFile] = useState<File | null>(null);
+    const [isAIImporting, setIsAIImporting] = useState(false);
 
     const classId = params.id as string;
     const assignmentId = params.assignmentId as string;
@@ -451,22 +458,31 @@ export default function AssignmentEditorPage() {
                         </div>
                     )
                 ) : (
-                    <button
-                        onClick={() => {
-                            setEditingQuestionId(null);
-                            setNewQuestion({
-                                text: "",
-                                options: ["", "", "", ""],
-                                correctAnswerIndex: null
-                            });
-                            setEssayPrompt("");
-                            setIsAddingQuestion(true);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-medium rounded-xl hover:bg-indigo-100 transition"
-                    >
-                        <PlusCircle className="w-5 h-5" />
-                        Thêm câu hỏi
-                    </button>
+                    <>
+                        <button
+                            onClick={() => {
+                                setEditingQuestionId(null);
+                                setNewQuestion({
+                                    text: "",
+                                    options: ["", "", "", ""],
+                                    correctAnswerIndex: null
+                                });
+                                setEssayPrompt("");
+                                setIsAddingQuestion(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-medium rounded-xl hover:bg-indigo-100 transition"
+                        >
+                            <PlusCircle className="w-5 h-5" />
+                            Thêm câu hỏi
+                        </button>
+                        <button
+                            onClick={() => setIsAIImportOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-medium rounded-xl hover:from-purple-600 hover:to-indigo-600 transition shadow-lg"
+                        >
+                            <Sparkles className="w-5 h-5" />
+                            Import bằng AI
+                        </button>
+                    </>
                 )}
             </div>
 
@@ -600,6 +616,85 @@ export default function AssignmentEditorPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* AI Import Modal */}
+            {isAIImportOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                        <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <Sparkles className="w-6 h-6 text-purple-500" />
+                            Import bằng AI
+                        </h2>
+                        <p className="text-sm text-slate-600 mb-4">
+                            Tải lên file PDF hoặc TXT chứa đề thi (IELTS Listening/Reading, v.v.). AI sẽ tự động trích xuất câu hỏi.
+                        </p>
+                        <input
+                            type="file"
+                            accept=".pdf,.txt,.md"
+                            onChange={(e) => setAIImportFile(e.target.files?.[0] || null)}
+                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-4"
+                        />
+                        {aiImportFile && (
+                            <p className="text-sm text-slate-500 mb-4">📄 {aiImportFile.name}</p>
+                        )}
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsAIImportOpen(false);
+                                    setAIImportFile(null);
+                                }}
+                                disabled={isAIImporting}
+                                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    if (!aiImportFile) {
+                                        toast.error("Vui lòng chọn file");
+                                        return;
+                                    }
+                                    setIsAIImporting(true);
+                                    try {
+                                        const formData = new FormData();
+                                        formData.append("file", aiImportFile);
+                                        const res = await axios.post(
+                                            `/api/teacher/assignments/${assignmentId}/import-ai`,
+                                            formData,
+                                            { headers: { "Content-Type": "multipart/form-data" } }
+                                        );
+                                        toast.success(`Import thành công ${res.data.count} câu hỏi từ ${res.data.sections} phần!`);
+                                        setIsAIImportOpen(false);
+                                        setAIImportFile(null);
+                                        fetchQuestions();
+                                    } catch (error) {
+                                        console.error("AI Import error:", error);
+                                        toast.error("Lỗi khi import. Vui lòng thử lại.");
+                                    } finally {
+                                        setIsAIImporting(false);
+                                    }
+                                }}
+                                disabled={!aiImportFile || isAIImporting}
+                                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-indigo-600 transition disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {isAIImporting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Đang xử lý...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="w-4 h-4" />
+                                        Import
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
