@@ -21,6 +21,7 @@ interface Section {
     title: string;
     type: string;
     passage?: string | null;
+    passageTable?: string | null;
     passageTranslation?: string | null;
     questions: Question[];
 }
@@ -423,6 +424,9 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                                 {section.passage || ''}
                                                             </ReactMarkdown>
                                                         </div>
+                                                        {section.passageTable && (
+                                                            <div className="mt-3 overflow-x-auto" dangerouslySetInnerHTML={{ __html: section.passageTable }} />
+                                                        )}
                                                     </div>
                                                 )}
 
@@ -443,9 +447,9 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                                     )}
                                                                 </div>
                                                                 {q.content && (
-                                                                    <div className="mt-2 text-sm text-slate-800 [&_strong]:font-bold [&_em]:italic">
+                                                                    <div className="mt-2 text-sm text-slate-800 [&_strong]:font-bold [&_em]:italic [&_p]:mb-1">
                                                                         <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                                                            {q.content}
+                                                                            {q.content.replace(/\\n/g, '\n')}
                                                                         </ReactMarkdown>
                                                                     </div>
                                                                 )}

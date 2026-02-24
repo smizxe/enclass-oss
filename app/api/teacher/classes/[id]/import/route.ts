@@ -35,7 +35,7 @@ export async function POST(
     // Fast model for speed
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    let promptIntro = "You are an expert AI for digitizing Vietnamese English exams (TNPT format).";
+    let promptIntro = "You are an expert AI for digitizing English exams (IELTS Reading, Listening, TNPT format, and general English tests).";
     if (importType === "LISTENING") {
         promptIntro = "You are an expert at analyzing English exam papers, specifically IELTS LISTENING tests. The output MUST be grouped by Parts (Part 1, Part 2, etc.)";
     }
@@ -70,7 +70,52 @@ For GAP_FILL questions (fill-in-the-blank):
 3. If the answer key shows "1. information" or "1. TRUE" etc., use that exact text.
 4. Do NOT leave correctAnswer empty for gap fill questions.
 
-**🔥 OTHER CRITICAL RULES 🔥**
+**🔴🔴🔴 CRITICAL RULE #3 - READING PASSAGE MUST BE LINKED (VERY IMPORTANT) 🔴🔴🔴**
+For IELTS Reading or any exam with reading passages:
+1. EVERY section/part that has questions about a reading passage MUST include the FULL reading passage text in the "passage" field.
+2. If the document has a long reading passage followed by multiple question groups (e.g., Questions 1-7 MCQ, Questions 8-13 GAP_FILL), ALL those groups MUST include the SAME full reading passage in their "passage" field.
+3. Do NOT create a section with questions but an EMPTY or MISSING "passage" if those questions reference a reading text.
+4. If multiple Parts share one reading passage, DUPLICATE the full passage into each Part's "passage" field.
+5. The passage must be COMPLETE — do NOT shorten, summarize, or truncate it.
+
+   ❌ WRONG: { "title": "Questions 8-13", "passage": "", "questions": [...] }
+   ✅ CORRECT: { "title": "Questions 8-13", "passage": "[THE FULL READING PASSAGE TEXT — every paragraph, every sentence]", "questions": [...] }
+
+**🔴 CRITICAL RULE #4 - PRESERVE ALL TASK INSTRUCTIONS AND INTRO TEXT:**
+Many IELTS sections have instruction lines BEFORE the actual questions, such as:
+- "Choose TWO letters, A-E."
+- "Complete the sentences below. Write NO MORE THAN TWO WORDS."
+- "Which paragraph contains the following information?"
+- "Do the following statements agree with the information given in the reading passage?"
+- A list of items/statements to match
+- A descriptive paragraph explaining the task
+
+These MUST be preserved! Rules:
+1. If the instruction applies to ALL questions in the section, put it at the BEGINNING of the "passage" field (before or after the reading text, separated by newlines).
+2. If the instruction is specific to a sub-group of questions, include it in the FIRST question's "content" field of that sub-group.
+3. NEVER drop or skip instruction lines. Students need them to understand what to do.
+
+Example: If the exam says "Questions 8-9: Choose TWO letters, A-E. Which TWO of the following are mentioned?"
+Then question 8's content should be: "**Choose TWO letters, A-E.**\\nWhich TWO of the following are mentioned?"
+
+**🔴 CRITICAL RULE #5 - COMPLETE QUESTION CONTENT (NEVER TRUNCATE):**
+Each question's "content" field must contain ALL text that belongs to that question:
+- If a question has a mini-passage, introductory sentence, or context paragraph before the question stem, include ALL of it.
+- If there are bullet points, numbered lists, or example items within a question, include ALL of them as proper line-breaks (use \\n).
+- If the question references a small text excerpt (not the main passage), include it in the "content" field.
+- NEVER drop the first line of a question's content.
+- Use proper line breaks (\\n) to separate distinct lines — do NOT join multiple lines into one long line with bullet characters.
+
+   ❌ WRONG (lines collapsed into one): { "content": "A type of parrot: • diet consists of... • nests are created 8 ________ in where eggs are laid." }
+   ✅ CORRECT (proper line breaks): { "content": "A type of parrot:\\n• diet consists of fern fronds, various parts of a tree and 7 bulbs\\n• nests are created 8 ________ in where eggs are laid." }
+
+**🔴 CRITICAL RULE #6 - TABLE/FORM SEPARATION:**
+IF a section contains BOTH intro text AND a table/form:
+- Put intro text in "passage" field
+- Put ONLY the <table>...</table> HTML in "passageTable" field
+- Do NOT put the table HTML inside "passage" field
+
+**🔥 OTHER IMPORTANT RULES 🔥**
 1. **NO LOOPS/DUPLICATES**: Each question appears ONCE.
 2. **SPEED**: Output ONLY valid JSON. No preamble, no explanation, no markdown fences.
 3. **FORMATTING**: Use **markdown** for formatting:
@@ -78,7 +123,7 @@ For GAP_FILL questions (fill-in-the-blank):
    - Italic text: *text*
    - Underline text: __text__
    - **Tables / Gap Fills in Tables**: MUST use **HTML Table** format ('<table border="1" style="border-collapse: collapse; width: 100%;">...</table>'). DO NOT use Markdown tables.
-   - Preserve paragraph breaks with double newlines.
+   - Preserve paragraph breaks with \\n (newlines).
 
 **QUESTION TYPES:**
 1. **ORDERING** (Sắp xếp câu):
@@ -88,27 +133,50 @@ For GAP_FILL questions (fill-in-the-blank):
 
 2. **READING / GAP_FILL**:
    - Group questions sharing a passage.
-   - **passage**: COMPLETE full text with **bold** formatting preserved. Do NOT shorten the passage. If the passage is a form/table, use HTML '<table>'.
+   - **passage**: The COMPLETE, FULL reading passage text. Do NOT shorten or omit ANY part.
+   - **passageTable**: If there's a table/form, put the HTML table here.
+   - Include task instructions in "passage" or in the first question's "content".
 
 3. **MCQ**: Standard multiple choice.
+   - **passage**: Reading passage + task instructions if applicable.
 
 **JSON STRUCTURE:**
 {
   "hasAnswerKey": true,
   "sections": [
     {
-      "title": "Section Title",
-      "type": "GAP_FILL | READING | STANDALONE | ORDERING",
-      "passage": "Full passage text...",
+      "title": "Part 1: Questions 1-7",
+      "type": "READING",
+      "passage": "[FULL reading passage — every paragraph, every sentence, NEVER shortened]\\n\\n**Choose the correct letter A, B, C or D.**",
+      "passageTable": "",
       "passageTranslation": "",
       "questions": [
         {
           "questionNumber": 1,
-          "type": "MCQ | GAP_FILL | ORDERING",
-          "content": "Question text...",
+          "type": "MCQ",
+          "content": "What is the main idea of the first paragraph?",
           "items": [],
-          "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-          "correctAnswer": "A",
+          "options": ["The history of the building", "The purpose of the center", "The location details", "The opening ceremony"],
+          "correctAnswer": "B",
+          "predictedAnswer": false,
+          "explanation": ""
+        }
+      ]
+    },
+    {
+      "title": "Part 2: Questions 8-13",
+      "type": "GAP_FILL",
+      "passage": "[SAME FULL reading passage if questions reference the same text]\\n\\n**Complete the sentences below. Write NO MORE THAN TWO WORDS for each answer.**",
+      "passageTable": "",
+      "passageTranslation": "",
+      "questions": [
+        {
+          "questionNumber": 8,
+          "type": "GAP_FILL",
+          "content": "A type of parrot:\\n• diet consists of fern fronds, various parts of a tree and 7 bulbs\\n• nests are created 8 ________ in where eggs are laid.",
+          "items": [],
+          "options": [],
+          "correctAnswer": "soil",
           "predictedAnswer": false,
           "explanation": ""
         }
@@ -125,6 +193,10 @@ For GAP_FILL questions (fill-in-the-blank):
 - Does EVERY question have a "correctAnswer"? ✅
 - Are GAP_FILL answers filled with actual words (not just letters)? ✅
 - Did I count questions to match the document's numbering? ✅
+- Does EVERY Reading section include the FULL reading passage in "passage"? ✅
+- Are ALL task instructions ("Choose TWO", "Write NO MORE THAN...") preserved? ✅
+- Is EVERY question's "content" field COMPLETE with proper line breaks (\\n)? ✅
+- Are bullet points and lists using \\n separators, NOT collapsed into one line? ✅
 
 **RETURN VALID JSON ONLY. NO MARKDOWN FENCES. NO PREAMBLE.**
 `;
