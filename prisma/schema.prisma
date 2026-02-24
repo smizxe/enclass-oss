@@ -70,7 +70,7 @@ model Question {
   content       String
   correctAnswer String       // Changed from Json to String
   explanation   String?      // Teacher's explanation for the answer
-  points        Int          @default(1)
+  points        Float          @default(1)
   orderIndex    Int          @default(0)
   
   createdAt     DateTime     @default(now())
@@ -95,7 +95,7 @@ model AssignmentProgress {
   assignment    Assignment @relation(fields: [assignmentId], references: [id])
   
   status        String   @default("LOCKED")
-  score         Int?
+  score         Float?
   submissions   Submission[]
   
   createdAt     DateTime @default(now())
@@ -112,8 +112,9 @@ model Submission {
   assignmentProgress   AssignmentProgress @relation(fields: [assignmentProgressId], references: [id])
   
   answers              String
-  score                Int?
-  feedback             String?
+  score                Float?
+  feedback             String?  // AI feedback (auto-generated)
+  teacherFeedback      String?  // Teacher's own feedback/comments
   gradedAt             DateTime?
   gradedById           String?
   submittedAt          DateTime @default(now())

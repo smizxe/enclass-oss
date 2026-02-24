@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const gradeSchema = z.object({
     score: z.number().min(0).max(10),
-    feedback: z.string().optional(),
+    teacherFeedback: z.string().optional(),
 });
 
 // PATCH: Grade a submission
@@ -22,7 +22,7 @@ export async function PATCH(
 
         const { submissionId } = await params;
         const body = await req.json();
-        const { score, feedback } = gradeSchema.parse(body);
+        const { score, teacherFeedback } = gradeSchema.parse(body);
 
         // Verify submission exists and belongs to teacher's class
         const submission = await prisma.submission.findUnique({
@@ -46,12 +46,12 @@ export async function PATCH(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        // Update submission with grade
+        // Update submission with grade (save teacher feedback separately from AI feedback)
         const updatedSubmission = await prisma.submission.update({
             where: { id: submissionId },
             data: {
                 score,
-                feedback,
+                teacherFeedback,
                 gradedAt: new Date(),
                 gradedById: session.user.id
             }

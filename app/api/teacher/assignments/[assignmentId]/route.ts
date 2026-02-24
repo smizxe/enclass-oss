@@ -123,7 +123,7 @@ export async function DELETE(
         // 1. Fetch all questions to find images/audio
         const questions = await prisma.question.findMany({
             where: { assignmentId },
-            select: { content: true }
+            select: { id: true, content: true }
         });
 
         const filesToDelete: string[] = [];
@@ -164,13 +164,37 @@ export async function DELETE(
             } catch { }
         }
 
+        // Initialize Supabase Admin Client
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
         if (filesToDelete.length > 0) {
-            const { createClient } = await import("@supabase/supabase-js");
-            const supabase = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.SUPABASE_SERVICE_ROLE_KEY!
-            );
             await supabase.storage.from('images').remove(filesToDelete);
+        }
+
+        // Cleanup Student Submission Files (Audio)
+        // Files are stored at: submissions/{assignmentId}/{questionId}/{filename}
+        try {
+            // We need to clean up question by question because they are in subfolders
+            for (const q of questions) {
+                // List files in the question folder
+                const folderPath = `submissions/${assignmentId}/${q.id}`;
+                const { data: files, error } = await supabase
+                    .storage
+                    .from('submissions')
+                    .list(folderPath);
+
+                if (files && files.length > 0) {
+                    const pathsToDelete = files.map(f => `${folderPath}/${f.name}`);
+                    await supabase.storage.from('submissions').remove(pathsToDelete);
+                }
+            }
+        } catch (error) {
+            console.error("Error cleaning up submission files:", error);
+            // Continue with deletion of assignment record even if storage cleanup fails partially
         }
 
         const deletedAssignment = await prisma.assignment.delete({

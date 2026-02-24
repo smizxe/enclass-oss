@@ -3,13 +3,15 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// GET: Fetch all submissions pending grading for teacher's classes
-export async function GET() {
+export async function GET(req: Request) {
     try {
         const session = await getServerSession(authOptions);
         if (!session || session.user.role !== "TEACHER") {
             return new NextResponse("Unauthorized", { status: 401 });
         }
+
+        const { searchParams } = new URL(req.url);
+        const assignmentId = searchParams.get("assignmentId");
 
         // Get all classes owned by this teacher
         const teacherClasses = await prisma.class.findMany({
@@ -19,23 +21,45 @@ export async function GET() {
 
         const classIds = teacherClasses.map(c => c.id);
 
-        // Get all pending submissions from those classes
-        const submissions = await prisma.submission.findMany({
-            where: {
-                gradedAt: null, // Not graded yet
-                assignmentProgress: {
-                    assignment: {
-                        classId: { in: classIds },
-                        type: "ESSAY" // Only essay type needs manual grading
-                    }
+        let whereClause: any = {
+            assignmentProgress: {
+                assignment: {
+                    classId: { in: classIds }
                 }
-            },
-            include: {
+            }
+        };
+
+        if (assignmentId) {
+            // If viewing specific assignment, show ALL submissions (graded or not)
+            whereClause.assignmentProgress.assignment.id = assignmentId;
+        } else {
+            // Default view: Show only pending manual grading tasks (Essay/Speaking/Writing)
+            // But user might want to see Speaking/Writing too, not just Essay
+            whereClause.gradedAt = null;
+            whereClause.assignmentProgress.assignment.type = { in: ["ESSAY", "LECTURE", "QUIZ", "TEST"] }; // Just filter generally or maybe restrict types?
+            // Actually, best to just show "pending" items if no assignment selected.
+            whereClause.assignmentProgress.assignment.questions = {
+                some: {
+                    type: { in: ["ESSAY", "WRITING", "SPEAKING"] }
+                }
+            };
+        }
+
+        const submissions = await prisma.submission.findMany({
+            where: whereClause,
+            select: {
+                id: true,
+                submittedAt: true,
+                answers: true,
+                score: true,
+                feedback: true,
+                gradedAt: true,
+                gradedById: true,
                 user: {
                     select: { id: true, name: true, email: true }
                 },
                 assignmentProgress: {
-                    include: {
+                    select: {
                         assignment: {
                             select: { id: true, title: true, classId: true }
                         }
