@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { StudentSidebar } from "@/components/layout/student-sidebar";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { SWRProvider } from "@/lib/swr-provider";
 
 export default async function DashboardLayout({
     children,
@@ -18,9 +19,12 @@ export default async function DashboardLayout({
             </div>
             <main className="md:pl-72 h-full">
                 <div className="p-8 h-full">
-                    {children}
+                    <SWRProvider>
+                        {children}
+                    </SWRProvider>
                 </div>
             </main>
         </div>
     );
 }
+

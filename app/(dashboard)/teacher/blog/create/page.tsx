@@ -68,7 +68,6 @@ export default function CreateBlogPage() {
             });
             toast.success(published ? "Đã xuất bản bài viết!" : "Đã lưu nháp!");
             router.push("/teacher/blog");
-            router.refresh();
         } catch {
             toast.error("Lỗi lưu bài viết");
         } finally {

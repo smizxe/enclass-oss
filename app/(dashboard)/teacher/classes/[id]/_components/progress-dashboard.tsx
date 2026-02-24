@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useState } from "react";
+import useSWR from "swr";
 import {
     format,
     startOfWeek,
@@ -48,34 +48,22 @@ interface ProgressDashboardProps {
 }
 
 export const ProgressDashboard = ({ classId }: ProgressDashboardProps) => {
-    const [loading, setLoading] = useState(true);
-    const [data, setData] = useState<StudentProgress[]>([]);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [searchQuery, setSearchQuery] = useState("");
 
     const startDate = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday start
     const endDate = endOfWeek(currentDate, { weekStartsOn: 1 });
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                const params = new URLSearchParams({
-                    startDate: startDate.toISOString(),
-                    endDate: endDate.toISOString()
-                });
+    const params = new URLSearchParams({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+    });
 
-                const response = await axios.get(`/api/teacher/classes/${classId}/progress/weekly?${params}`);
-                setData(response.data.students);
-            } catch (error) {
-                console.error("Failed to fetch progress", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const { data: responseData, isLoading: loading } = useSWR<{ students: StudentProgress[] }>(
+        `/api/teacher/classes/${classId}/progress/weekly?${params}`
+    );
 
-        fetchData();
-    }, [classId, startDate, endDate]);
+    const data = responseData?.students || [];
 
     const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
     const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));

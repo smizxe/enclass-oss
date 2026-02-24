@@ -5,7 +5,7 @@ import { HomeNavbar } from "@/components/home-navbar";
 import { HomeFooter } from "@/components/home-footer";
 import { Calendar, User2, ChevronLeft, Clock } from "lucide-react";
 
-export const revalidate = 0; // Force dynamic
+export const revalidate = 300; // ISR: cache 5 phút
 
 interface BlogDetailPageProps {
     params: Promise<{ id: string }>;

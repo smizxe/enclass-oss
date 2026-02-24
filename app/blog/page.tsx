@@ -4,7 +4,7 @@ import { HomeNavbar } from "@/components/home-navbar";
 import { HomeFooter } from "@/components/home-footer";
 import { Calendar, User2, ArrowRight } from "lucide-react";
 
-export const revalidate = 0; // Force dynamic
+export const revalidate = 300; // ISR: cache 5 phút
 
 export default async function BlogPage() {
     const posts = await prisma.post.findMany({

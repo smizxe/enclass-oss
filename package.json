@@ -53,6 +53,7 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "showdown": "^2.1.0",
+    "swr": "^2.4.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "xlsx": "^0.18.5",

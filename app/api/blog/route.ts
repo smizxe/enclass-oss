@@ -1,8 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export const dynamic = 'force-dynamic';
-
 // Public API: Fetch published blog posts
 export async function GET(req: Request) {
     try {
@@ -41,7 +39,11 @@ export async function GET(req: Request) {
             },
         });
 
-        return NextResponse.json(posts);
+        return NextResponse.json(posts, {
+            headers: {
+                "Cache-Control": "s-maxage=300, stale-while-revalidate=600"
+            }
+        });
     } catch (error) {
         console.error("[BLOG_PUBLIC_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });

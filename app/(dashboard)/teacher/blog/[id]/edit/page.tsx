@@ -100,7 +100,6 @@ export default function EditBlogPage() {
             });
             toast.success("Đã lưu thay đổi!");
             router.push("/teacher/blog");
-            router.refresh();
         } catch {
             toast.error("Lỗi lưu bài viết");
         } finally {

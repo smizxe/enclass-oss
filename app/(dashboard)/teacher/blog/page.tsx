@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
+import useSWR from "swr";
 import toast from "react-hot-toast";
 import { Plus, Edit2, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -17,31 +18,18 @@ interface BlogPost {
 }
 
 export default function BlogListPage() {
-    const [posts, setPosts] = useState<BlogPost[]>([]);
-    const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    useEffect(() => {
-        fetchPosts();
-    }, []);
-
-    const fetchPosts = async () => {
-        try {
-            const { data } = await axios.get("/api/teacher/blog");
-            setPosts(data);
-        } catch {
-            toast.error("Không thể tải danh sách blog");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { data: posts = [], isLoading: loading, mutate } = useSWR<BlogPost[]>(
+        "/api/teacher/blog"
+    );
 
     const handleDelete = async (id: string) => {
         if (!confirm("Bạn có chắc muốn xóa bài viết này?")) return;
         try {
             await axios.delete(`/api/teacher/blog/${id}`);
             toast.success("Đã xóa bài viết");
-            setPosts(prev => prev.filter(p => p.id !== id));
+            mutate(posts.filter(p => p.id !== id), false);
         } catch {
             toast.error("Lỗi xóa bài viết");
         }
@@ -50,7 +38,7 @@ export default function BlogListPage() {
     const togglePublish = async (id: string, published: boolean) => {
         try {
             await axios.patch(`/api/teacher/blog/${id}`, { published: !published });
-            setPosts(prev => prev.map(p => p.id === id ? { ...p, published: !published } : p));
+            mutate(posts.map(p => p.id === id ? { ...p, published: !published } : p), false);
             toast.success(published ? "Đã ẩn bài viết" : "Đã xuất bản bài viết");
         } catch {
             toast.error("Lỗi cập nhật");
@@ -119,8 +107,8 @@ export default function BlogListPage() {
                                     <h3 className="font-semibold text-slate-900 truncate">{post.title}</h3>
                                     <span
                                         className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${post.published
-                                                ? "bg-green-100 text-green-700"
-                                                : "bg-amber-100 text-amber-700"
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-amber-100 text-amber-700"
                                             }`}
                                     >
                                         {post.published ? "Công khai" : "Nháp"}
