@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Upload, FileText, X, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -32,6 +32,17 @@ interface ImportExamModalProps {
     onSuccess: () => void;
 }
 
+// Staged progress configuration
+const PROGRESS_STAGES = [
+    { progress: 10, message: "Đang tải file lên...", duration: 2000 },
+    { progress: 25, message: "Đang khởi tạo AI...", duration: 3000 },
+    { progress: 40, message: "Đang phân tích nội dung...", duration: 8000 },
+    { progress: 55, message: "Đang trích xuất câu hỏi...", duration: 15000 },
+    { progress: 70, message: "Đang xử lý đáp án...", duration: 20000 },
+    { progress: 85, message: "Đang kiểm tra kết quả...", duration: 15000 },
+    { progress: 92, message: "Đang hoàn tất...", duration: 30000 },
+];
+
 export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSuccess }: ImportExamModalProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +54,41 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
     const [expandedExplanations, setExpandedExplanations] = useState<Set<string>>(new Set());
 
     const [progressMessage, setProgressMessage] = useState("");
+    const [progressPercent, setProgressPercent] = useState(0);
+    const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const stageIndexRef = useRef(0);
+
+    // Fake staged progress effect
+    useEffect(() => {
+        if (isLoading && step === "upload") {
+            const runNextStage = () => {
+                if (stageIndexRef.current < PROGRESS_STAGES.length) {
+                    const stage = PROGRESS_STAGES[stageIndexRef.current];
+                    setProgressPercent(stage.progress);
+                    setProgressMessage(stage.message);
+                    stageIndexRef.current++;
+                    progressTimerRef.current = setTimeout(runNextStage, stage.duration);
+                }
+            };
+            runNextStage();
+        }
+
+        return () => {
+            if (progressTimerRef.current) {
+                clearTimeout(progressTimerRef.current);
+            }
+        };
+    }, [isLoading, step]);
+
+    // Reset progress when loading stops
+    useEffect(() => {
+        if (!isLoading) {
+            stageIndexRef.current = 0;
+            if (progressTimerRef.current) {
+                clearTimeout(progressTimerRef.current);
+            }
+        }
+    }, [isLoading]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -63,6 +109,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
 
         setIsLoading(true);
         setError("");
+        setProgressPercent(0);
         setProgressMessage("Đang tải file lên...");
 
         const formData = new FormData();
@@ -116,7 +163,8 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                 const parsed = JSON.parse(eventData);
 
                                 if (eventType === "progress") {
-                                    setProgressMessage(parsed.message);
+                                    // Don't update message from SSE - using fake staged progress instead
+                                    // setProgressMessage(parsed.message);
                                 } else if (eventType === "complete") {
                                     // Handle complete data
                                     if (parsed.sections && Array.isArray(parsed.sections)) {
@@ -170,8 +218,14 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
             const errorMsg = err instanceof Error ? err.message : "Lỗi khi phân tích file. Vui lòng thử lại.";
             setError(errorMsg);
         } finally {
-            setIsLoading(false);
-            setProgressMessage("");
+            // Show 100% briefly before resetting
+            setProgressPercent(100);
+            setProgressMessage("Hoàn tất!");
+            setTimeout(() => {
+                setIsLoading(false);
+                setProgressMessage("");
+                setProgressPercent(0);
+            }, 500);
         }
     };
 
@@ -278,14 +332,38 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                 </label>
                             </div>
 
-                            <div className="bg-slate-50 rounded-xl p-4">
-                                <h3 className="font-medium text-slate-700 mb-2">Hướng dẫn</h3>
-                                <ul className="text-sm text-slate-600 space-y-1">
-                                    <li>• Hỗ trợ định dạng đề thi TNPT (THPT Quốc gia)</li>
-                                    <li>• AI sẽ tự động nhận diện các phần (Reading, Gap Fill...)</li>
-                                    <li>• Bài đọc chung sẽ được nhóm với các câu hỏi liên quan</li>
-                                </ul>
-                            </div>
+                            {/* Progress Bar - shown when loading */}
+                            {isLoading && (
+                                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-5 border border-indigo-100">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+                                            <span className="text-sm font-medium text-slate-700">{progressMessage}</span>
+                                        </div>
+                                        <span className="text-sm font-bold text-indigo-600">{progressPercent}%</span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                                        <div
+                                            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-1000 ease-out"
+                                            style={{ width: `${progressPercent}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-2 text-center">
+                                        ⏳ AI đang xử lý... Vui lòng đợi trong giây lát
+                                    </p>
+                                </div>
+                            )}
+
+                            {!isLoading && (
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                    <h3 className="font-medium text-slate-700 mb-2">Hướng dẫn</h3>
+                                    <ul className="text-sm text-slate-600 space-y-1">
+                                        <li>• Hỗ trợ định dạng đề thi TNPT (THPT Quốc gia)</li>
+                                        <li>• AI sẽ tự động nhận diện các phần (Reading, Gap Fill...)</li>
+                                        <li>• Bài đọc chung sẽ được nhóm với các câu hỏi liên quan</li>
+                                    </ul>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -449,7 +527,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition"
                             >
                                 {isLoading ? (
-                                    <><Loader2 className="w-4 h-4 animate-spin" /> {progressMessage || "Đang phân tích..."}</>
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> Đang xử lý... ({progressPercent}%)</>
                                 ) : (
                                     <><Upload className="w-4 h-4" /> Phân tích bằng AI</>
                                 )}

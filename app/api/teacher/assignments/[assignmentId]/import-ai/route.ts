@@ -185,7 +185,7 @@ export async function POST(
         }
 
         // Call Gemini AI
-        // Using gemini-2.5-flash which supports PDF input
+        // Using gemini-2.5-flash which supports PDF input and has better rate limits
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const result = await model.generateContent(promptParts);

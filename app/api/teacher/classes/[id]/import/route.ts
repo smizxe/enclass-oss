@@ -33,7 +33,7 @@ export async function POST(
     const useStreaming = formData.get("streaming") === "true";
 
     // Fast model for speed
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     let promptIntro = "You are an expert AI for digitizing Vietnamese English exams (TNPT format).";
     if (importType === "LISTENING") {
@@ -44,7 +44,16 @@ export async function POST(
 ${promptIntro}
 Extract ALL questions into structured JSON sections.
 
-**🔥 CRITICAL RULES 🔥**
+**🔴 CRITICAL RULE #1 - ANSWER KEY DETECTION (VERY IMPORTANT):**
+1. FIRST, look for a section named "Answer Key", "Đáp án", "KEY", "Answers", "Lời giải" or similar.
+2. If found, use those answers to populate "correctAnswer" for each question.
+3. If NOT found anywhere in the document, you MUST predict the most likely answer based on:
+   - Context clues in the passage
+   - Grammar rules
+   - Logical reasoning
+4. Add "predictedAnswer": true to each question where you predicted (not found in answer key).
+
+**🔥 OTHER CRITICAL RULES 🔥**
 1. **NO LOOPS/DUPLICATES**: Each question appears ONCE.
 2. **SPEED**: Output ONLY valid JSON. No preamble.
 3. **FORMATTING**: Use **markdown** for formatting:
@@ -68,6 +77,7 @@ Extract ALL questions into structured JSON sections.
 
 **JSON STRUCTURE:**
 {
+  "hasAnswerKey": true,  // true if Answer Key section was found, false if AI predicted
   "sections": [
     {
       "title": "Section Title",
@@ -82,12 +92,18 @@ Extract ALL questions into structured JSON sections.
           "items": ["a. Item 1", "b. Item 2"],
           "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
           "correctAnswer": "A",
+          "predictedAnswer": false,
           "explanation": "Explanation..."
         }
       ]
     }
   ]
 }
+
+⚠️ REMEMBER:
+- ALWAYS include "hasAnswerKey" field at the root level
+- Set "predictedAnswer": true if you predicted the answer (no answer key found)
+- "correctAnswer" is REQUIRED for every question
 
 **RETURN VALID JSON ONLY.**
 `;
