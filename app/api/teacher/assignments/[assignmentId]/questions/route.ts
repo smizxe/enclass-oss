@@ -57,9 +57,10 @@ export async function GET(
             where: {
                 assignmentId
             },
-            orderBy: {
-                createdAt: "asc" // Or add orderIndex to Question model later if needed
-            }
+            orderBy: [
+                { orderIndex: "asc" },
+                { createdAt: "asc" }
+            ]
         });
 
         return NextResponse.json(questions);

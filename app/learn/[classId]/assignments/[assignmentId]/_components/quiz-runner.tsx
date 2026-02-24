@@ -255,7 +255,14 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                                                 onChange={(val) => onAnswerChange(q.id, val)}
                                             />
                                         )}
-                                        {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY"].includes(q.type) && (
+                                        {q.type === "ORDERING" && (
+                                            <McqQuestionSimple
+                                                question={q}
+                                                value={answers[q.id] as string}
+                                                onChange={(val) => onAnswerChange(q.id, val)}
+                                            />
+                                        )}
+                                        {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY", "ORDERING"].includes(q.type) && (
                                             <div className="bg-slate-50 p-4 rounded-lg">
                                                 <p className="text-slate-600">{q.content}</p>
                                                 <p className="mt-2 text-xs text-slate-400">[Loại câu hỏi chưa hỗ trợ: {q.type}]</p>

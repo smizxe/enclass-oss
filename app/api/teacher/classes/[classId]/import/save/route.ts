@@ -70,6 +70,7 @@ export async function POST(
             correctAnswer: string;
             explanation: string | null;
             points: number;
+            orderIndex: number;
         }[] = [];
 
         for (const section of sections) {
@@ -115,6 +116,7 @@ export async function POST(
                     correctAnswer: q.correctAnswer || "",
                     explanation: q.explanation || null,
                     points: 1,
+                    orderIndex: flatQuestions.length, // Assign order index
                 });
             }
         }
