@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Upload, FileText, X, Loader2, Check, AlertCircle } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -56,9 +56,10 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
 
             setQuestions(response.data);
             setStep("preview");
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.response?.data || "Lỗi khi phân tích file. Vui lòng thử lại.");
+            const errorMsg = (err as { response?: { data?: string } })?.response?.data;
+            setError(errorMsg || "Lỗi khi phân tích file. Vui lòng thử lại.");
         } finally {
             setIsLoading(false);
         }
@@ -82,9 +83,10 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
             toast.success("Import thành công!");
             onSuccess();
             onClose();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.response?.data || "Lỗi khi lưu bài tập");
+            const errorMsg = (err as { response?: { data?: string } })?.response?.data;
+            setError(errorMsg || "Lỗi khi lưu bài tập");
             setStep("preview");
         } finally {
             setIsLoading(false);
@@ -95,11 +97,7 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
         setQuestions((prev) => prev.filter((_, i) => i !== index));
     };
 
-    const updateQuestion = (index: number, field: keyof Question, value: any) => {
-        setQuestions((prev) =>
-            prev.map((q, i) => (i === index ? { ...q, [field]: value } : q))
-        );
-    };
+
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -219,8 +217,8 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                                                             <div
                                                                 key={i}
                                                                 className={`text-sm px-3 py-1.5 rounded ${q.correctAnswer && opt.includes(q.correctAnswer)
-                                                                        ? "bg-green-100 text-green-800"
-                                                                        : "bg-white text-slate-600"
+                                                                    ? "bg-green-100 text-green-800"
+                                                                    : "bg-white text-slate-600"
                                                                     }`}
                                                             >
                                                                 {opt}

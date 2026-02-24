@@ -64,7 +64,7 @@ export async function POST(
                 orderIndex: nextOrderIndex,
                 type: assignmentType,
                 questions: {
-                    create: questions.map((q, idx) => ({
+                    create: questions.map((q) => ({
                         type: q.type || "MCQ",
                         content: q.options && q.options.length > 0
                             ? JSON.stringify({ question: q.content, options: q.options })

@@ -9,7 +9,7 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
 export async function POST(
     req: Request,
-    { params }: { params: { classId: string } }
+    { params: _params }: { params: { classId: string } }
 ) {
     try {
         const session = await getServerSession(authOptions);
