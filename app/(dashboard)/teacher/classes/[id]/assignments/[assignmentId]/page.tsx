@@ -10,7 +10,8 @@ import {
     PlusCircle,
     Trash2,
     Loader2,
-    BookOpen
+    BookOpen,
+    Pencil
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -54,6 +55,7 @@ export default function AssignmentEditorPage() {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+    const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
     const [newQuestion, setNewQuestion] = useState<{
         text: string;
         options: string[];
@@ -139,7 +141,44 @@ export default function AssignmentEditorPage() {
         return groups;
     })();
 
-    const onAddQuestion = async () => {
+    const handleDeleteQuestion = async (questionId: string) => {
+        if (!confirm("Bạn có chắc chắn muốn xóa câu hỏi này?")) return;
+
+        try {
+            await axios.delete(`/api/teacher/assignments/${assignmentId}/questions/${questionId}`);
+            toast.success("Đã xóa câu hỏi");
+            fetchQuestions();
+        } catch {
+            toast.error("Không thể xóa câu hỏi");
+        }
+    };
+
+    const handleEditQuestion = (question: Question & { parsed: ParsedContent }) => {
+        setEditingQuestionId(question.id);
+
+        if (question.type === "ESSAY") {
+            setEssayPrompt(question.parsed.text);
+        } else {
+            // MCQ or ORDERING
+            const options = question.parsed.options || ["", "", "", ""];
+            let correctAnswerIndex = null;
+
+            if (question.correctAnswer) {
+                const idx = options.indexOf(question.correctAnswer);
+                if (idx !== -1) correctAnswerIndex = idx;
+            }
+
+            setNewQuestion({
+                text: question.parsed.text,
+                options: options.length >= 4 ? options : [...options, ...Array(4 - options.length).fill("")],
+                correctAnswerIndex
+            });
+        }
+
+        setIsAddingQuestion(true);
+    };
+
+    const onSaveQuestion = async () => {
         try {
             if (assignment?.type === "MCQ" && newQuestion.correctAnswerIndex === null) {
                 toast.error("Vui lòng chọn đáp án đúng");
@@ -152,11 +191,10 @@ export default function AssignmentEditorPage() {
 
             if (assignment?.type === "ESSAY") {
                 type = "ESSAY";
-                content = essayPrompt;
-                correctAnswer = ""; // No correct answer for essay
+                content = essayPrompt; // For essay, content is just the prompt text initially
+                correctAnswer = "";
             } else {
                 // MCQ Default
-                // Transform to simple JSON format for MVP
                 content = JSON.stringify({
                     text: newQuestion.text,
                     options: newQuestion.options
@@ -164,15 +202,23 @@ export default function AssignmentEditorPage() {
                 correctAnswer = newQuestion.options[newQuestion.correctAnswerIndex!];
             }
 
-            await axios.post(`/api/teacher/assignments/${assignmentId}/questions`, {
+            const data = {
                 type,
                 content,
                 correctAnswer,
-                points: 10 // Default points
-            });
+                points: 10
+            };
 
-            toast.success(assignment?.type === "ESSAY" ? "Đã lưu đề bài" : "Thêm câu hỏi thành công");
+            if (editingQuestionId) {
+                await axios.patch(`/api/teacher/assignments/${assignmentId}/questions/${editingQuestionId}`, data);
+                toast.success("Đã cập nhật câu hỏi");
+            } else {
+                await axios.post(`/api/teacher/assignments/${assignmentId}/questions`, data);
+                toast.success(assignment?.type === "ESSAY" ? "Đã lưu đề bài" : "Thêm câu hỏi thành công");
+            }
+
             setIsAddingQuestion(false);
+            setEditingQuestionId(null);
             setNewQuestion({
                 text: "",
                 options: ["", "", "", ""],
@@ -276,7 +322,18 @@ export default function AssignmentEditorPage() {
                                                 <div className="flex justify-between items-start mb-2">
                                                     <span className="font-bold text-slate-700">Câu {currentIndex + 1} ({q.type})</span>
                                                     <div className="flex gap-2">
-                                                        <button className="text-slate-400 hover:text-red-500 transition">
+                                                        <button
+                                                            onClick={() => handleEditQuestion(q)}
+                                                            className="text-slate-400 hover:text-indigo-600 transition"
+                                                            title="Sửa câu hỏi"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteQuestion(q.id)}
+                                                            className="text-slate-400 hover:text-red-500 transition"
+                                                            title="Xóa câu hỏi"
+                                                        >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
                                                     </div>
@@ -344,7 +401,7 @@ export default function AssignmentEditorPage() {
                                 className="min-h-[150px] mb-4"
                             />
                             <button
-                                onClick={onAddQuestion}
+                                onClick={onSaveQuestion}
                                 disabled={!essayPrompt.trim()}
                                 className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
@@ -355,6 +412,13 @@ export default function AssignmentEditorPage() {
                 ) : (
                     <button
                         onClick={() => {
+                            setEditingQuestionId(null);
+                            setNewQuestion({
+                                text: "",
+                                options: ["", "", "", ""],
+                                correctAnswerIndex: null
+                            });
+                            setEssayPrompt("");
                             setIsAddingQuestion(true);
                         }}
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-medium rounded-xl hover:bg-indigo-100 transition"
@@ -369,10 +433,12 @@ export default function AssignmentEditorPage() {
             {isAddingQuestion && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">Thêm câu hỏi trắc nghiệm</h3>
+                        <h3 className="text-lg font-bold text-slate-900 mb-4">
+                            {editingQuestionId ? "Chỉnh sửa câu hỏi" : "Thêm câu hỏi trắc nghiệm"}
+                        </h3>
                         <form onSubmit={(e) => {
                             e.preventDefault();
-                            onAddQuestion();
+                            onSaveQuestion();
                         }}>
                             <div className="space-y-4">
                                 <div>
@@ -427,7 +493,7 @@ export default function AssignmentEditorPage() {
                                     type="submit"
                                     className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
                                 >
-                                    Lưu câu hỏi
+                                    {editingQuestionId ? "Lưu thay đổi" : "Lưu câu hỏi"}
                                 </button>
                             </div>
                         </form>

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
-import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, Menu } from "lucide-react";
+import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { ResizableSplitPane } from "@/components/ui/resizable-split-pane";
 
@@ -362,8 +362,8 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                     key={idx}
                     onClick={() => setActiveSectionIndex(idx)}
                     className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition border ${activeSectionIndex === idx
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200"
-                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                         }`}
                 >
                     {group.sectionType === "READING" ? "📖 " : "📝 "}
