@@ -19,6 +19,7 @@ import {
     CheckCircle2
 } from "lucide-react";
 import { HomeNavbar } from "@/components/home-navbar";
+import { RegistrationForm } from "@/components/home/registration-form";
 
 export default function HomePage() {
     return (
@@ -409,40 +410,7 @@ export default function HomePage() {
                             </ul>
                         </div>
 
-                        <div className="bg-white rounded-2xl p-8 shadow-2xl">
-                            <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-indigo-600" />
-                                Đăng ký Tư vấn Học
-                            </h3>
-                            <form className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Họ và tên học viên</label>
-                                    <input type="text" className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition text-sm font-medium text-slate-800" placeholder="Ví dụ: Nguyễn Văn A" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Số điện thoại (Zalo)</label>
-                                    <input type="tel" className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition text-sm font-medium text-slate-800" placeholder="09xxxxxxx" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Mục tiêu của bạn</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <label className="cursor-pointer">
-                                            <input type="radio" name="target" className="peer sr-only" />
-                                            <div className="px-4 py-3 rounded-lg border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 text-slate-600 text-sm font-medium text-center transition">IELTS</div>
-                                        </label>
-                                        <label className="cursor-pointer">
-                                            <input type="radio" name="target" className="peer sr-only" />
-                                            <div className="px-4 py-3 rounded-lg border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 text-slate-600 text-sm font-medium text-center transition">TOEIC</div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <button type="button" className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 mt-2">
-                                    Gửi đăng ký
-                                    <Send className="w-4 h-4" />
-                                </button>
-                            </form>
-                            <p className="text-center text-xs text-slate-400 mt-4">Thầy Điệp sẽ liên hệ lại trong vòng 24h.</p>
-                        </div>
+                        <RegistrationForm />
                     </div>
                 </div>
             </section>
