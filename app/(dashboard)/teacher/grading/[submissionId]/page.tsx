@@ -91,33 +91,20 @@ function isAudioUrl(answer: string): boolean {
         (answer.includes('/submissions/') || answer.includes('.m4a') || answer.includes('.webm') || answer.includes('.mp3') || answer.includes('.wav'));
 }
 
-// Helper: Parse AI feedback - extract full readable feedback text
+// Helper: Parse AI feedback - only return general feedback if it's NOT structured JSON
 function parseAIFeedbackForDisplay(feedback: string | null): string {
     if (!feedback) return "";
 
-    const parsed = safeParseJSON(feedback);
-    if (!parsed || typeof parsed !== 'object') return feedback;
+    const parsed = safeParseJSON(feedback, null);
 
-    // It's a per-question feedback object
-    const lines: string[] = [];
-    for (const [, value] of Object.entries(parsed)) {
-        if (value && typeof value === 'object') {
-            const v = value as { isCorrect?: boolean; feedback?: string; correctAnswer?: string };
-            if (v.feedback) {
-                lines.push(v.feedback);
-            }
-        }
+    // If it parses as an object, it means we have structured per-question feedback.
+    // Since the user confirmed AI won't generate general feedback, we should hide this section
+    // to avoid duplicating the per-question feedback or showing empty/irrelevant text.
+    if (parsed && typeof parsed === 'object') {
+        return "";
     }
 
-    if (lines.length > 0) {
-        return lines.join("\n\n---\n\n");
-    }
-
-    // Single feedback object
-    if (parsed.feedback) return parsed.feedback;
-    if (parsed.comment) return parsed.comment;
-    if (parsed.evaluation) return parsed.evaluation;
-
+    // If it's not JSON (e.g. legacy plain text), return as is
     return feedback;
 }
 
@@ -332,8 +319,8 @@ export default function GradeSubmissionPage() {
                                                     <div
                                                         key={i}
                                                         className={`px-3 py-2 rounded-lg border text-sm ${String(answer) === String(i) || String(answer) === opt
-                                                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                                                                : 'bg-slate-50 border-slate-200 text-slate-600'
+                                                            ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                                                            : 'bg-slate-50 border-slate-200 text-slate-600'
                                                             }`}
                                                     >
                                                         <span className="font-medium">{String.fromCharCode(65 + i)}.</span> {opt}
@@ -371,10 +358,10 @@ export default function GradeSubmissionPage() {
                                     {/* Per-question AI Feedback */}
                                     {qFeedback && qFeedback.feedbackText && (
                                         <div className={`rounded-lg p-4 border ${qFeedback.isCorrect === true
-                                                ? 'bg-emerald-50 border-emerald-200'
-                                                : qFeedback.isCorrect === false
-                                                    ? 'bg-red-50 border-red-200'
-                                                    : 'bg-blue-50 border-blue-200'
+                                            ? 'bg-emerald-50 border-emerald-200'
+                                            : qFeedback.isCorrect === false
+                                                ? 'bg-red-50 border-red-200'
+                                                : 'bg-blue-50 border-blue-200'
                                             }`}>
                                             <div className="flex items-center gap-2 mb-2">
                                                 {qFeedback.isCorrect === true && <CheckSquare className="w-4 h-4 text-emerald-600" />}
@@ -423,8 +410,8 @@ export default function GradeSubmissionPage() {
                         {/* Status Badge */}
                         {hasScore && (
                             <div className={`mb-4 p-3 rounded-lg border flex items-center gap-2 ${isGradedByTeacher
-                                    ? 'bg-emerald-50 border-emerald-100'
-                                    : 'bg-blue-50 border-blue-100'
+                                ? 'bg-emerald-50 border-emerald-100'
+                                : 'bg-blue-50 border-blue-100'
                                 }`}>
                                 {isGradedByTeacher ? (
                                     <>
