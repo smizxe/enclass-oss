@@ -24,7 +24,11 @@ export default async function AssignmentIdPage({
             id: assignmentId,
         },
         include: {
-            questions: true,
+            questions: {
+                orderBy: {
+                    createdAt: "asc",
+                },
+            },
         }
     });
 
