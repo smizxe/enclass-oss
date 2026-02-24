@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 
 interface GapFillQuestionProps {
     question: {

@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
     ArrowLeft,
-    FileText,
     PlusCircle,
-    Save,
     Trash2,
     Loader2
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Question {
     id: string;
@@ -31,7 +30,7 @@ interface Assignment {
 
 export default function AssignmentEditorPage() {
     const params = useParams();
-    const router = useRouter();
+    // const router = useRouter();
     const [assignment, setAssignment] = useState<Assignment | null>(null);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
@@ -45,54 +44,86 @@ export default function AssignmentEditorPage() {
         options: ["", "", "", ""],
         correctAnswerIndex: null
     });
+    const [essayPrompt, setEssayPrompt] = useState("");
 
     const classId = params.id as string;
     const assignmentId = params.assignmentId as string;
 
-    const fetchQuestions = async () => {
+    const fetchAssignment = useCallback(async () => {
+        try {
+            const res = await axios.get(`/api/teacher/assignments/${assignmentId}`);
+            setAssignment(res.data);
+        } catch {
+            toast.error("Không thể tải thông tin bài tập");
+        }
+    }, [assignmentId]);
+
+    const fetchQuestions = useCallback(async () => {
         try {
             const questionsRes = await axios.get(`/api/teacher/assignments/${assignmentId}/questions`);
             setQuestions(questionsRes.data);
+        } catch {
             setLoading(false);
-        } catch (error) {
-            console.error(error);
+        } finally {
             setLoading(false);
         }
-    };
+    }, [assignmentId]);
 
     useEffect(() => {
+        fetchAssignment();
         fetchQuestions();
-    }, [assignmentId]);
+    }, [fetchAssignment, fetchQuestions]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center p-10">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+            </div>
+        );
+    }
 
     const onAddQuestion = async () => {
         try {
-            if (newQuestion.correctAnswerIndex === null) {
+            if (assignment?.type === "MCQ" && newQuestion.correctAnswerIndex === null) {
                 toast.error("Vui lòng chọn đáp án đúng");
                 return;
             }
 
-            // Transform to simple JSON format for MVP
-            const content = JSON.stringify({
-                text: newQuestion.text,
-                options: newQuestion.options
-            });
+            let type = "MCQ";
+            let content = "";
+            let correctAnswer = "";
+
+            if (assignment?.type === "ESSAY") {
+                type = "ESSAY";
+                content = essayPrompt;
+                correctAnswer = ""; // No correct answer for essay
+            } else {
+                // MCQ Default
+                // Transform to simple JSON format for MVP
+                content = JSON.stringify({
+                    text: newQuestion.text,
+                    options: newQuestion.options
+                });
+                correctAnswer = newQuestion.options[newQuestion.correctAnswerIndex!];
+            }
 
             await axios.post(`/api/teacher/assignments/${assignmentId}/questions`, {
-                type: "MCQ",
+                type,
                 content,
-                correctAnswer: newQuestion.options[newQuestion.correctAnswerIndex],
+                correctAnswer,
                 points: 10 // Default points
             });
 
-            toast.success("Thêm câu hỏi thành công");
+            toast.success(assignment?.type === "ESSAY" ? "Đã lưu đề bài" : "Thêm câu hỏi thành công");
             setIsAddingQuestion(false);
             setNewQuestion({
                 text: "",
                 options: ["", "", "", ""],
                 correctAnswerIndex: null
             });
+            setEssayPrompt("");
             fetchQuestions();
-        } catch (error) {
+        } catch {
             toast.error("Có lỗi xảy ra");
         }
     };
@@ -109,7 +140,7 @@ export default function AssignmentEditorPage() {
                         Quay lại lớp học
                     </Link>
                     <h1 className="text-2xl font-bold text-slate-900">
-                        Biên tập bài tập
+                        {assignment?.title || "Biên tập bài tập"}
                     </h1>
                 </div>
             </div>
@@ -124,6 +155,7 @@ export default function AssignmentEditorPage() {
                 {/* Questions List Logic Here */}
                 <div className="mt-8 space-y-4">
                     {questions.map((q, idx) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         let contentObj: any = {};
                         try {
                             contentObj = JSON.parse(q.content);
@@ -166,11 +198,32 @@ export default function AssignmentEditorPage() {
                 </div>
 
                 {/* Add Question Button */}
-                <div className="mt-6 flex justify-center">
+            </div>
+
+            {/* Add Question Button / Form */}
+            <div className="mt-6 flex justify-center">
+                {assignment?.type === "ESSAY" ? (
+                    questions.length === 0 && (
+                        <div className="w-full max-w-2xl">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Đề bài viết (Essay Prompt)</label>
+                            <Textarea
+                                value={essayPrompt}
+                                onChange={(e) => setEssayPrompt(e.target.value)}
+                                placeholder="Nhập chủ đề bài viết..."
+                                className="min-h-[150px] mb-4"
+                            />
+                            <button
+                                onClick={onAddQuestion}
+                                disabled={!essayPrompt.trim()}
+                                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Lưu đề bài
+                            </button>
+                        </div>
+                    )
+                ) : (
                     <button
                         onClick={() => {
-                            // Logic to open modal (to be implemented efficiently without full modal code here first, sticking to simple prompt or separate component)
-                            // For MVP, I'll implement a simple form below toggled by state
                             setIsAddingQuestion(true);
                         }}
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-medium rounded-xl hover:bg-indigo-100 transition"
@@ -178,78 +231,78 @@ export default function AssignmentEditorPage() {
                         <PlusCircle className="w-5 h-5" />
                         Thêm câu hỏi
                     </button>
-                </div>
-
-                {/* Add Question Form (Inline for MVP) */}
-                {isAddingQuestion && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
-                            <h3 className="text-lg font-bold text-slate-900 mb-4">Thêm câu hỏi trắc nghiệm</h3>
-                            <form onSubmit={(e) => {
-                                e.preventDefault();
-                                onAddQuestion();
-                            }}>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Câu hỏi</label>
-                                        <textarea
-                                            value={newQuestion.text}
-                                            onChange={e => setNewQuestion({ ...newQuestion, text: e.target.value })}
-                                            className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-                                            rows={2}
-                                            placeholder="Nhập nội dung câu hỏi..."
-                                            required
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Các lựa chọn</label>
-                                        {newQuestion.options.map((opt, i) => (
-                                            <div key={i} className="flex gap-2 mb-2">
-                                                <input
-                                                    type="text"
-                                                    value={opt}
-                                                    onChange={e => {
-                                                        const newOptions = [...newQuestion.options];
-                                                        newOptions[i] = e.target.value;
-                                                        setNewQuestion({ ...newQuestion, options: newOptions });
-                                                    }}
-                                                    className="flex-1 px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                                                    placeholder={`Lựa chọn ${i + 1}`}
-                                                    required
-                                                />
-                                                <input
-                                                    type="radio"
-                                                    name="correctAnswer"
-                                                    checked={newQuestion.correctAnswerIndex === i}
-                                                    onChange={() => setNewQuestion({ ...newQuestion, correctAnswerIndex: i })}
-                                                    className="w-5 h-5 mt-2.5 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                                                    required
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="flex justify-end gap-2 mt-6">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsAddingQuestion(false)}
-                                        className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition"
-                                    >
-                                        Hủy
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
-                                    >
-                                        Lưu câu hỏi
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
                 )}
             </div>
+
+            {/* Add Question Form (Inline for MVP) */}
+            {isAddingQuestion && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+                        <h3 className="text-lg font-bold text-slate-900 mb-4">Thêm câu hỏi trắc nghiệm</h3>
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            onAddQuestion();
+                        }}>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Câu hỏi</label>
+                                    <textarea
+                                        value={newQuestion.text}
+                                        onChange={e => setNewQuestion({ ...newQuestion, text: e.target.value })}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                                        rows={2}
+                                        placeholder="Nhập nội dung câu hỏi..."
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Các lựa chọn</label>
+                                    {newQuestion.options.map((opt, i) => (
+                                        <div key={i} className="flex gap-2 mb-2">
+                                            <input
+                                                type="text"
+                                                value={opt}
+                                                onChange={e => {
+                                                    const newOptions = [...newQuestion.options];
+                                                    newOptions[i] = e.target.value;
+                                                    setNewQuestion({ ...newQuestion, options: newOptions });
+                                                }}
+                                                className="flex-1 px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                                placeholder={`Lựa chọn ${i + 1}`}
+                                                required
+                                            />
+                                            <input
+                                                type="radio"
+                                                name="correctAnswer"
+                                                checked={newQuestion.correctAnswerIndex === i}
+                                                onChange={() => setNewQuestion({ ...newQuestion, correctAnswerIndex: i })}
+                                                className="w-5 h-5 mt-2.5 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                                                required
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-2 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddingQuestion(false)}
+                                    className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
+                                >
+                                    Lưu câu hỏi
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

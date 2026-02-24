@@ -24,19 +24,17 @@ export default async function ClassLayout({
             id: params.classId,
         },
         include: {
-            include: {
-                assignments: {
-                    orderBy: {
-                        orderIndex: "asc",
-                    },
-                    include: {
-                        progress: {
-                            where: {
-                                userId: session.user.id
-                            }
+            assignments: {
+                orderBy: {
+                    orderIndex: "asc",
+                },
+                include: {
+                    progress: {
+                        where: {
+                            userId: session.user.id
                         }
                     }
-                },
+                }
             },
         },
     });
@@ -51,7 +49,6 @@ export default async function ClassLayout({
             <div className="hidden md:flex w-80 flex-col border-r border-slate-200 bg-white">
                 <ClassSidebar
                     classItem={classItem}
-                    progressCount={0}
                 />
             </div>
 

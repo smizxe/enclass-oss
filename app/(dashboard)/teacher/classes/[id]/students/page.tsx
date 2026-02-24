@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -30,7 +30,7 @@ interface ClassMember {
 
 export default function ClassStudentsPage() {
     const params = useParams();
-    const router = useRouter();
+    // const router = useRouter();
     const [members, setMembers] = useState<ClassMember[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
@@ -39,7 +39,7 @@ export default function ClassStudentsPage() {
 
     const classId = params.id as string;
 
-    const fetchMembers = async () => {
+    const fetchMembers = useCallback(async () => {
         try {
             const response = await axios.get(`/api/teacher/classes/${classId}/members`);
             setMembers(response.data);
@@ -49,11 +49,11 @@ export default function ClassStudentsPage() {
             toast.error("Không thể tải danh sách học viên");
             setLoading(false);
         }
-    };
+    }, [classId]);
 
     useEffect(() => {
         fetchMembers();
-    }, [classId]);
+    }, [fetchMembers]);
 
     const onAddStudent = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -68,6 +68,7 @@ export default function ClassStudentsPage() {
             setStudentEmail("");
             setIsAdding(false);
             fetchMembers();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             if (error.response?.status === 404) {
                 toast.error("Không tìm thấy học viên với email này");

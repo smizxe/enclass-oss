@@ -34,3 +34,9 @@ ts-debug.log*
 next-env.d.ts
 
 .agent
+
+
+# Temporary files
+lint-results*.json
+tsc_log.txt
+build.log

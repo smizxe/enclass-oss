@@ -12,7 +12,7 @@ function parseCSV(csvText: string) {
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        const [type, content, correctAnswer, points, ...rest] = line.split(',');
+        const [type, content, correctAnswer, points] = line.split(',');
 
         // Basic validation
         if (!type || !content) continue;
@@ -38,10 +38,10 @@ export async function POST(req: Request, { params }: { params: { assignmentId: s
         // Verify ownership
         const assignment = await prisma.assignment.findUnique({
             where: { id: assignmentId },
-            include: { module: { include: { class: true } } }
+            include: { class: true }
         });
 
-        if (!assignment || assignment.module.class.teacherId !== session.user.id) {
+        if (!assignment || assignment.class.teacherId !== session.user.id) {
             return new NextResponse("Forbidden", { status: 403 });
         }
 
@@ -63,6 +63,7 @@ export async function POST(req: Request, { params }: { params: { assignmentId: s
         await prisma.question.createMany({
             data: questions.map(q => ({
                 assignmentId,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 type: q.type as any, // Simple cast for MVP
                 content: q.content,
                 correctAnswer: q.correctAnswer,

@@ -21,7 +21,6 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
         <div className="relative inline-block text-left" ref={dropdownRef}>
             {React.Children.map(children, (child) => {
                 if (React.isValidElement(child)) {
-                    // @ts-ignore
                     return React.cloneElement(child, { isOpen, setIsOpen });
                 }
                 return child;
@@ -30,16 +29,20 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
     );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const DropdownMenuTrigger = ({ children, asChild, isOpen, setIsOpen, className }: any) => {
-    const Comp = asChild ? React.Fragment : "button";
+    // const Comp = asChild ? React.Fragment : "button"; // Unused
     // If asChild is true, we need to clone the child to add onClick
     if (asChild && React.isValidElement(children)) {
         return React.cloneElement(children, {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onClick: (e: any) => {
                 e.stopPropagation();
                 setIsOpen(!isOpen);
-                children.props.onClick && children.props.onClick(e);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (children as any).props.onClick?.(e);
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
     }
 
@@ -57,6 +60,7 @@ const DropdownMenuTrigger = ({ children, asChild, isOpen, setIsOpen, className }
     );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const DropdownMenuContent = ({ children, align = "end", className, isOpen }: any) => {
     if (!isOpen) return null;
 
@@ -73,12 +77,13 @@ const DropdownMenuContent = ({ children, align = "end", className, isOpen }: any
     );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const DropdownMenuItem = ({ children, onClick, className }: any) => {
     return (
         <div
             onClick={(e) => {
                 e.stopPropagation();
-                onClick && onClick();
+                onClick?.();
             }}
             className={cn(
                 "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 hover:text-indigo-600 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",

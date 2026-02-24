@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
     try {
         const session = await getServerSession(authOptions);
         if (!session || session.user.role !== "TEACHER") {
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
 
         const classes = await prisma.class.findMany({
             where: {
-                // Allow seeing all classes for moderation
+                teacherId: session.user.id,
             },
             orderBy: {
                 createdAt: "desc",

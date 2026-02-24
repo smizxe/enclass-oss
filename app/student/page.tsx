@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import {
     BookOpen,
     Loader2,
-    ChevronRight,
     PlayCircle,
     Clock,
     Trophy

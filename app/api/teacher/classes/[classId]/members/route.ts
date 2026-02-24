@@ -61,6 +61,18 @@ export async function GET(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        // Verify class ownership
+        const classItem = await prisma.class.findUnique({
+            where: {
+                id: params.classId,
+                teacherId: session.user.id
+            }
+        });
+
+        if (!classItem) {
+            return new NextResponse("Class not found", { status: 404 });
+        }
+
         const classMembers = await prisma.classMember.findMany({
             where: {
                 classId: params.classId

@@ -11,16 +11,9 @@ export default async function ClassIdPage({
             id: params.classId,
         },
         include: {
-            modules: {
+            assignments: {
                 orderBy: {
                     orderIndex: "asc",
-                },
-                include: {
-                    assignments: {
-                        orderBy: {
-                            orderIndex: "asc",
-                        },
-                    },
                 },
             },
         },
@@ -30,9 +23,9 @@ export default async function ClassIdPage({
         return redirect("/");
     }
 
-    // Redirect to first assignment of first module
-    if (classItem.modules.length > 0 && classItem.modules[0].assignments.length > 0) {
-        return redirect(`/learn/${classItem.id}/assignment/${classItem.modules[0].assignments[0].id}`);
+    // Redirect to first assignment
+    if (classItem.assignments.length > 0) {
+        return redirect(`/learn/${classItem.id}/assignments/${classItem.assignments[0].id}`);
     }
 
     return (

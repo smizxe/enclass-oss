@@ -34,6 +34,7 @@ export const SortableQuestion = ({
             // If value exists (user already moved things), use that order.
             // Otherwise use default shuffled order from content.
             if (value && value.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const ordered = value.map(id => parsed.items.find((item: any) => item.id === id)).filter(Boolean);
                 setItems(ordered);
             } else {

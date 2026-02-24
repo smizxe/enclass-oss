@@ -7,21 +7,25 @@ import { CheckCircle, Send, Loader2 } from "lucide-react";
 import { McqQuestion } from "@/components/questions/mcq-question";
 import { GapFillQuestion } from "@/components/questions/gap-fill-question";
 import { SortableQuestion } from "@/components/questions/sortable-question";
+import { EssayQuestion } from "@/components/questions/essay-question";
 
 interface QuizRunnerProps {
     assignment: {
         id: string;
         title: string;
         type: string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         questions: any[];
     };
 }
 
 export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onAnswerChange = (questionId: string, value: any) => {
         setAnswers(prev => ({
             ...prev,
@@ -75,12 +79,13 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
 
             {/* Questions */}
             <div className="space-y-4">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {assignment.questions.map((q: any, i: number) => (
                     <div
                         key={q.id}
                         className={`bg-white rounded-xl border shadow-sm overflow-hidden transition ${answers[q.id]
-                                ? "border-emerald-200"
-                                : "border-slate-200"
+                            ? "border-emerald-200"
+                            : "border-slate-200"
                             }`}
                     >
                         {/* Question Header */}
@@ -88,8 +93,8 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                             }`}>
                             <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${answers[q.id]
-                                        ? "bg-emerald-500 text-white"
-                                        : "bg-white text-slate-600 border border-slate-200"
+                                    ? "bg-emerald-500 text-white"
+                                    : "bg-white text-slate-600 border border-slate-200"
                                     }`}>
                                     {answers[q.id] ? <CheckCircle className="w-4 h-4" /> : i + 1}
                                 </div>
@@ -125,7 +130,14 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                                     onChange={(val) => onAnswerChange(q.id, val)}
                                 />
                             )}
-                            {!["MCQ", "GAP_FILL", "SORTABLE"].includes(q.type) && (
+                            {q.type === "ESSAY" && (
+                                <EssayQuestion
+                                    question={q}
+                                    value={answers[q.id] as string}
+                                    onChange={(val) => onAnswerChange(q.id, val)}
+                                />
+                            )}
+                            {!["MCQ", "GAP_FILL", "SORTABLE", "ESSAY"].includes(q.type) && (
                                 <div className="bg-slate-50 p-4 rounded-lg">
                                     <p className="text-slate-600">{q.content}</p>
                                     <p className="mt-2 text-xs text-slate-400">[Loại câu hỏi chưa hỗ trợ: {q.type}]</p>

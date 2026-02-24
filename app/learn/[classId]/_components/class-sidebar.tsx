@@ -4,23 +4,19 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
     PlayCircle,
-    Lock,
     CheckCircle,
-    ChevronDown,
     BookOpen,
     FileText,
     ClipboardList
 } from "lucide-react";
-import { useState } from "react";
 
 interface ClassSidebarProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     classItem: any; // Type accurately later
-    progressCount: number;
 }
 
 export const ClassSidebar = ({
     classItem,
-    progressCount,
 }: ClassSidebarProps) => {
     const pathname = usePathname();
     const router = useRouter();
@@ -72,6 +68,7 @@ export const ClassSidebar = ({
 
             {/* Assignments List (Flat) */}
             <div className="flex-1 overflow-y-auto py-2">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {classItem.assignments?.map((assignment: any, index: number) => {
                     const isActive = pathname?.includes(assignment.id);
                     const isCompleted = assignment.progress?.length > 0 && assignment.progress[0].completed;

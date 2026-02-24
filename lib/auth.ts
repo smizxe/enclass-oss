@@ -1,7 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "@/lib/prisma";
-import { compare } from "bcryptjs"; // You might need to install bcryptjs later, for now we can mock check or assume text
+import { compare } from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -21,10 +21,8 @@ export const authOptions: NextAuthOptions = {
 
                 if (!user) return null;
 
-                // Simple password check (In real app, use bcrypt.compare(credentials.password, user.password))
-                // For prototype seed, we will store plain text or use a simple equality check if hash is not implemented yet
-                // Let's assume for this step we match directly or simply verify
-                const isMatch = credentials.password === user.password;
+                // Use bcrypt to check password
+                const isMatch = await compare(credentials.password, user.password);
 
                 if (!isMatch) return null;
 

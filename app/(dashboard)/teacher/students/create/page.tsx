@@ -34,8 +34,8 @@ export default function CreateStudentPage() {
                 password
             });
             toast.success("Tạo tài khoản học viên thành công!");
-            router.push("/teacher/students");
             router.refresh();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             if (error.response?.status === 400) {
                 toast.error("Email đã được sử dụng");

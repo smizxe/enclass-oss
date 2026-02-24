@@ -50,6 +50,7 @@ export const McqQuestion = ({
                 value={value}
                 className="flex flex-col space-y-2"
             >
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {parsedContent.options.map((option: any, index: number) => {
                     // Handle both string array and object array
                     const optionValue = typeof option === 'string' ? option : option.id;

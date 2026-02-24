@@ -36,7 +36,7 @@ export const CreateAssignmentButton = ({ classId }: CreateAssignmentButtonProps)
             router.refresh();
             // Navigate to editor
             router.push(`/teacher/classes/${classId}/assignments/${response.data.id}`);
-        } catch (error) {
+        } catch {
             toast.error("Đã có lỗi xảy ra");
         } finally {
             setIsLoading(false);

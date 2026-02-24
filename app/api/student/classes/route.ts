@@ -3,26 +3,26 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+export async function GET() {
     try {
         const session = await getServerSession(authOptions);
         if (!session || session.user.role !== "STUDENT") {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const enrollments = await prisma.enrollment.findMany({
+        const enrollments = await prisma.classMember.findMany({
             where: {
                 userId: session.user.id,
             },
             include: {
-                course: true,
+                class: true,
             },
             orderBy: {
                 joinedAt: "desc",
             },
         });
 
-        const courses = enrollments.map((enrollment) => enrollment.course);
+        const courses = enrollments.map((enrollment) => enrollment.class);
 
         return NextResponse.json(courses);
     } catch (error) {

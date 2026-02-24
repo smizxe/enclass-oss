@@ -3,16 +3,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
-import { PlusCircle, BookOpen, MoreVertical, Pencil, LayoutGrid, List as ListIcon } from "lucide-react";
+import { PlusCircle, BookOpen, Pencil } from "lucide-react";
 
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 
 export default async function ClassesPage() {
     const session = await getServerSession(authOptions);

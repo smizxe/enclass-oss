@@ -43,8 +43,8 @@ export async function POST(req: Request) {
             },
         });
 
-        // Remove password from response
-        const { password: _, ...result } = student;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password: _password, ...result } = student;
 
         return NextResponse.json(result);
     } catch (error) {
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
     try {
         const session = await getServerSession(authOptions);
         if (!session || session.user.role !== "TEACHER") {
@@ -63,6 +63,7 @@ export async function GET(req: Request) {
         const students = await prisma.user.findMany({
             where: {
                 role: "STUDENT",
+                createdById: session.user.id,
             },
             orderBy: {
                 createdAt: "desc",

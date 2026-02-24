@@ -33,7 +33,7 @@ export default function CreateClassPage() {
             });
             toast.success("Tạo lớp học thành công!");
             router.push(`/teacher/classes/${response.data.id}`);
-        } catch (error) {
+        } catch {
             toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
         } finally {
             setIsLoading(false);

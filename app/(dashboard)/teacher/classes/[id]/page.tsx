@@ -7,7 +7,6 @@ import {
     ArrowLeft,
     BookOpen,
     LayoutList,
-    PlusCircle,
     FileText,
     Settings,
     ClipboardList,
@@ -155,8 +154,8 @@ export default async function ClassIdPage({
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium text-slate-900 group-hover:text-indigo-600 transition">{assignment.title}</span>
                                                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${assignment.type === 'LECTURE' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                                        assignment.type === 'QUIZ' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                                            'bg-purple-50 text-purple-700 border-purple-100' // ESSAY
+                                                    assignment.type === 'QUIZ' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                                        'bg-purple-50 text-purple-700 border-purple-100' // ESSAY
                                                     }`}>
                                                     {assignment.type === 'LECTURE' ? 'Bài giảng' :
                                                         assignment.type === 'QUIZ' ? 'Trắc nghiệm' : 'Viết'}
