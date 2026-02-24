@@ -67,7 +67,7 @@ export async function POST(
                     create: questions.map((q) => ({
                         type: q.type || "MCQ",
                         content: q.options && q.options.length > 0
-                            ? JSON.stringify({ question: q.content, options: q.options })
+                            ? JSON.stringify({ text: q.content, options: q.options })
                             : q.content,
                         correctAnswer: q.correctAnswer || "",
                         points: 1,
