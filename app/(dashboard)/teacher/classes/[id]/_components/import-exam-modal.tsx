@@ -42,6 +42,8 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
     const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
     const [expandedExplanations, setExpandedExplanations] = useState<Set<string>>(new Set());
 
+    const [progressMessage, setProgressMessage] = useState("");
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
@@ -61,43 +63,115 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
 
         setIsLoading(true);
         setError("");
+        setProgressMessage("Đang tải file lên...");
 
         const formData = new FormData();
         formData.append("file", file);
         formData.append("importType", importType);
+        formData.append("streaming", "true");
 
         try {
-            const response = await axios.post(`/api/teacher/classes/${classId}/import`, formData, {
-                headers: { "Content-Type": "multipart/form-data" },
+            const response = await fetch(`/api/teacher/classes/${classId}/import`, {
+                method: "POST",
+                body: formData,
             });
 
-            const data = response.data;
-
-            // Handle both section-based output and legacy flat array
-            if (data.sections && Array.isArray(data.sections)) {
-                setSections(data.sections);
-            } else if (Array.isArray(data)) {
-                // Legacy flat array - convert to single section
-                setSections([{
-                    title: "Câu hỏi",
-                    type: "STANDALONE",
-                    passage: null,
-                    passageTranslation: null,
-                    questions: data.map((q: Question, i: number) => ({
-                        ...q,
-                        questionNumber: i + 1
-                    }))
-                }]);
-            } else {
-                setSections([]);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Lỗi khi phân tích file");
             }
-            setStep("preview");
+
+            // Check if streaming response
+            const contentType = response.headers.get("content-type");
+
+            if (contentType?.includes("text/event-stream")) {
+                // Handle streaming response
+                const reader = response.body?.getReader();
+                const decoder = new TextDecoder();
+
+                if (!reader) throw new Error("Không thể đọc response");
+
+                let buffer = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+
+                    // Parse SSE events
+                    const lines = buffer.split("\n");
+                    buffer = lines.pop() || "";
+
+                    let eventType = "";
+                    let eventData = "";
+
+                    for (const line of lines) {
+                        if (line.startsWith("event: ")) {
+                            eventType = line.slice(7);
+                        } else if (line.startsWith("data: ")) {
+                            eventData = line.slice(6);
+
+                            try {
+                                const parsed = JSON.parse(eventData);
+
+                                if (eventType === "progress") {
+                                    setProgressMessage(parsed.message);
+                                } else if (eventType === "complete") {
+                                    // Handle complete data
+                                    if (parsed.sections && Array.isArray(parsed.sections)) {
+                                        setSections(parsed.sections);
+                                    } else if (Array.isArray(parsed)) {
+                                        setSections([{
+                                            title: "Câu hỏi",
+                                            type: "STANDALONE",
+                                            passage: null,
+                                            passageTranslation: null,
+                                            questions: parsed.map((q: Question, i: number) => ({
+                                                ...q,
+                                                questionNumber: i + 1
+                                            }))
+                                        }]);
+                                    }
+                                    setStep("preview");
+                                } else if (eventType === "error") {
+                                    throw new Error(parsed.message);
+                                }
+                            } catch (parseErr) {
+                                // Ignore parse errors for incomplete data
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Handle regular JSON response (fallback)
+                const data = await response.json();
+
+                if (data.sections && Array.isArray(data.sections)) {
+                    setSections(data.sections);
+                } else if (Array.isArray(data)) {
+                    setSections([{
+                        title: "Câu hỏi",
+                        type: "STANDALONE",
+                        passage: null,
+                        passageTranslation: null,
+                        questions: data.map((q: Question, i: number) => ({
+                            ...q,
+                            questionNumber: i + 1
+                        }))
+                    }]);
+                } else {
+                    setSections([]);
+                }
+                setStep("preview");
+            }
         } catch (err: unknown) {
             console.error(err);
-            const errorMsg = (err as { response?: { data?: string } })?.response?.data;
-            setError(errorMsg || "Lỗi khi phân tích file. Vui lòng thử lại.");
+            const errorMsg = err instanceof Error ? err.message : "Lỗi khi phân tích file. Vui lòng thử lại.";
+            setError(errorMsg);
         } finally {
             setIsLoading(false);
+            setProgressMessage("");
         }
     };
 
@@ -375,7 +449,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 transition"
                             >
                                 {isLoading ? (
-                                    <><Loader2 className="w-4 h-4 animate-spin" /> Đang phân tích...</>
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> {progressMessage || "Đang phân tích..."}</>
                                 ) : (
                                     <><Upload className="w-4 h-4" /> Phân tích bằng AI</>
                                 )}

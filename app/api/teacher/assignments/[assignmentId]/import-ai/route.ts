@@ -74,7 +74,7 @@ OUTPUT FORMAT (JSON):
             "sectionTitle": "Part 1: Personal Information",
             "sectionType": "LISTENING",
             "passage": "Complete the form below. Write ONE WORD AND/OR A NUMBER for each answer.",
-            "passageTable": "<table>...</table>",
+        "passageTable": "<table border='1' style='border-collapse: collapse; width: 100%;'><tr><th>Field</th><th>Answer</th></tr><tr><td>Name</td><td>_____</td></tr></table>",
             "questions": [
                 {
                     "type": "MCQ",
@@ -235,6 +235,18 @@ export async function POST(
         // Log warning if answers were predicted
         if (!hasAnswerKey) {
             console.log("[IMPORT_AI] ⚠️ No Answer Key found - AI predicted answers");
+        }
+
+        // 🔧 POST-PROCESSING: Clean up duplicate option prefixes (e.g., "A. A. text" -> "A. text")
+        for (const section of sections) {
+            for (const q of section.questions || []) {
+                if (q.options && Array.isArray(q.options)) {
+                    q.options = q.options.map((opt: string) => {
+                        // Remove duplicate letter prefixes like "A. A." or "B. B."
+                        return opt.replace(/^([A-D])\.\s*\1\.\s*/i, '$1. ');
+                    });
+                }
+            }
         }
 
         // 🔧 POST-PROCESSING: Auto-extract tables from passage if AI missed it
