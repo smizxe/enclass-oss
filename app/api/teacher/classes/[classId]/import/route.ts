@@ -8,8 +8,7 @@ import { authOptions } from "@/lib/auth";
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
 export async function POST(
-    req: Request,
-    { params: _params }: { params: { classId: string } }
+    req: Request
 ) {
     try {
         const session = await getServerSession(authOptions);
