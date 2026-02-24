@@ -283,8 +283,8 @@ export default function AssignmentEditorPage() {
                                                     </div>
                                                 )}
 
-                                                {/* MCQ Options */}
-                                                {q.type === "MCQ" && parsed.options && (
+                                                {/* Answer Options (for MCQ and ORDERING) */}
+                                                {parsed.options && parsed.options.length > 0 && (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                                         {parsed.options.map((opt: string, i: number) => (
                                                             <div
