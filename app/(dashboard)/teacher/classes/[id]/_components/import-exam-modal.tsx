@@ -6,6 +6,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
 
 interface Question {
     questionNumber?: number;
@@ -347,16 +348,21 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                             <div className="p-4 space-y-4">
                                                 {/* Check if all questions are GAP_FILL with {N} markers in passage */}
                                                 {(() => {
-                                                    const allGapFill = section.questions.every(q => q.type === "GAP_FILL");
-                                                    const hasMarkers = section.passage && /\{\d+\}/.test(section.passage);
+                                                    // Detect if ALL questions in this section are GAP_FILL (case insensitive)
+                                                    const allGapFill = section.questions.every(q => {
+                                                        const type = (q.type || "").toUpperCase().replace(/[\s-]/g, "_");
+                                                        return type === "GAP_FILL";
+                                                    });
 
-                                                    if (allGapFill && hasMarkers && section.passage) {
-                                                        // Compact mode: render passage with inline answer badges
-                                                        const parts = section.passage.split(/(\{\d+\})/g);
-                                                        const questionByNum = new Map<number, Question>();
-                                                        section.questions.forEach(q => {
-                                                            if (q.questionNumber) questionByNum.set(q.questionNumber, q);
-                                                        });
+                                                    if (allGapFill && section.passage) {
+                                                        // Map to CompactQuestion format
+                                                        const compactQuestions = section.questions.map((q, idx) => ({
+                                                            id: `preview-${sIndex}-${idx}`,
+                                                            parsed: { text: q.content },
+                                                            correctAnswer: q.correctAnswer || "",
+                                                            points: 1,
+                                                            questionNumber: q.questionNumber
+                                                        }));
 
                                                         return (
                                                             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -364,28 +370,16 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                                     <BookOpen className="w-4 h-4" />
                                                                     Bài đọc dạng điền từ (Compact View)
                                                                 </div>
-                                                                <div className="text-sm text-slate-700 leading-8 prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic">
-                                                                    {parts.map((part, idx) => {
-                                                                        const match = part.match(/^\{(\d+)\}$/);
-                                                                        if (match) {
-                                                                            const num = parseInt(match[1]);
-                                                                            const q = questionByNum.get(num);
-                                                                            return (
-                                                                                <span key={idx} className="inline-flex items-center gap-1 mx-1">
-                                                                                    <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 text-xs font-medium rounded">
-                                                                                        {num}
-                                                                                    </span>
-                                                                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200">
-                                                                                        {q?.correctAnswer || "?"}
-                                                                                    </span>
-                                                                                </span>
-                                                                            );
-                                                                        }
-                                                                        return <span key={idx} dangerouslySetInnerHTML={{ __html: part.replace(/\n/g, '<br/>') }} />;
-                                                                    })}
-                                                                </div>
+                                                                <CompactGapFillSection
+                                                                    passage={section.passage}
+                                                                    questions={compactQuestions}
+                                                                    answers={{}}
+                                                                    onAnswerChange={() => { }}
+                                                                    startIndex={0}
+                                                                    mode="teacher_preview"
+                                                                />
                                                                 {section.passageTable && (
-                                                                    <div className="mt-3 overflow-x-auto" dangerouslySetInnerHTML={{ __html: section.passageTable }} />
+                                                                    <div className="mt-3 overflow-x-auto bg-white p-2 rounded border border-slate-200" dangerouslySetInnerHTML={{ __html: section.passageTable }} />
                                                                 )}
                                                             </div>
                                                         );
