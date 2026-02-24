@@ -31,12 +31,12 @@ export const AudioManager = ({ assignmentId, settings, onUpdateSettings }: Audio
             const filePath = `audio/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
-                .from('assignments')
+                .from('audio')
                 .upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
-            const { data } = supabase.storage.from('assignments').getPublicUrl(filePath);
+            const { data } = supabase.storage.from('audio').getPublicUrl(filePath);
             const publicUrl = data.publicUrl;
 
             // Update local state and parent
