@@ -180,9 +180,14 @@ export const QuizRunner = ({ assignment }: QuizRunnerProps) => {
                                 <BookOpen className="w-4 h-4" />
                                 <span>Đọc đoạn văn sau:</span>
                             </div>
-                            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-white rounded-xl p-4 border border-slate-100">
-                                {group.passage}
-                            </div>
+                            <div
+                                className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&>p]:mb-3 [&>strong]:text-slate-900 [&>strong]:font-bold"
+                                dangerouslySetInnerHTML={{
+                                    __html: group.passage
+                                        ? group.passage.replace(/\n/g, '<br />') // Fallback for newlines
+                                        : ''
+                                }}
+                            />
                             {group.passageTranslation && (
                                 <div className="mt-4 pt-4 border-t border-slate-200">
                                     <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
@@ -342,9 +347,10 @@ const McqQuestionSimple = ({
         <div className="space-y-4">
             {/* Question Text */}
             {displayData.text && (
-                <div className="text-base font-medium text-slate-900">
-                    {displayData.text}
-                </div>
+                <div
+                    className="text-base font-medium text-slate-900 [&>p]:inline [&>strong]:font-bold"
+                    dangerouslySetInnerHTML={{ __html: displayData.text }}
+                />
             )}
 
             {/* Display Items for ORDERING questions */}

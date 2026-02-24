@@ -26,9 +26,23 @@ export async function POST(
     const buffer = Buffer.from(await file.arrayBuffer());
     let text = "";
 
+    // --- MAMMOTH: Extract HTML to preserve formatting ---
     try {
-      const result = await mammoth.extractRawText({ buffer });
+      // Custom style map to ensure correct tags
+      const options = {
+        buffer,
+        styleMap: [
+          "p[style-name='Heading 1'] => h1:fresh",
+          "b => strong",
+          "i => em",
+          "u => u",
+          "strike => s"
+        ]
+      };
+
+      const result = await mammoth.convertToHtml(options);
       text = result.value;
+
     } catch (error) {
       console.error("Mammoth error:", error);
       return new NextResponse("Error reading file", { status: 500 });
@@ -38,77 +52,69 @@ export async function POST(
       return new NextResponse("Empty file content", { status: 400 });
     }
 
-    // --- GEMINI PROMPT with Enhanced Question Types ---
+    // --- GEMINI PROMPT with Enhanced Formatting & Anti-Loop ---
+    // User requested gemini-2.5-flash for speed/quality
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
-You are an AI assistant specialized in digitizing Vietnamese English exams (TNPT format).
-Analyze the following exam text and extract ALL questions into properly structured SECTIONS.
+You are an expert AI specialized in digitizing English exams (TNPT format).
+Your task is to extract questions from the provided HTML/Text content into a structured JSON.
 
-**CRITICAL FORMATTING RULES:**
+**🔥 CRITICAL PERFORMANCE & PRECISION RULES 🔥**
+1.  **NO LOOPS**: Process questions sequentially. DO NOT repeat questions. If you see the same question twice, ignore the duplicate.
+2.  **SPEED**: Output ONLY the JSON. No preamble.
+3.  **FORMATTING PRESERVATION (VERY IMPORTANT)**:
+    -   The input contains HTML tags like **<strong>**, *<em>*, <u><u></u>.
+    -   **YOU MUST PRESERVE THESE TAGS** in the "content" and "passage" fields.
+    -   Example: "Choose the word <u>closest</u> in meaning" -> Keep the <u> tag.
+    -   Preserve paragraph breaks. Use HTML <p> tags or double newlines \\n\\n for passages.
 
-1. **ORDERING/ARRANGEMENT QUESTIONS** (e.g., "sắp xếp câu", sentences to arrange):
-   - These have multiple sentences labeled a, b, c, d, e that students must put in order
-   - Output as type "ORDERING" with an "items" array
-   - Each item should be on its own line, formatted as: "a. [sentence text]"
-   - The options are the possible orderings (e.g., "b-e-d-a-c", "a-d-b-c-e")
+**QUESTION TYPES:**
+1.  **ORDERING** (Sắp xếp câu):
+    -   Identify questions where sentences are labeled (a, b, c...) and need reordering.
+    -   Output type: "ORDERING".
+    -   **items**: Array of sentences ["a. Text...", "b. Text..."].
+    -   **options**: Array of answer choices ["A. a-b-c", "B. c-b-a"].
+2.  **READING / GAP_FILL**:
+    -   Group questions sharing a passage.
+    -   **passage**: *Keep rich text formatting (bold/italic/underline)*.
+3.  **MCQ**: Standard multiple choice.
 
-2. **READING COMPREHENSION**:
-   - Group questions that share the same reading passage
-   - The passage MUST be stored in the section's "passage" field
-   - Keep passage formatting with proper paragraphs
-
-3. **GAP FILL (CLOZE)**:
-   - Questions where students fill blanks in a passage
-   - Store the passage with blanks like (1)___, (2)___ in section's "passage" field
-
-**OUTPUT FORMAT (strictly valid JSON):**
+**OUTPUT STRUCTURE (Strict JSON):**
 {
   "sections": [
     {
-      "title": "Section title (e.g., Gap Fill 1-6)",
+      "title": "Section Title",
       "type": "GAP_FILL | READING | STANDALONE | ORDERING",
-      "passage": "Shared passage text if any, otherwise null",
-      "passageTranslation": "Vietnamese translation if available, otherwise null",
+      "passage": "Full passage with <b>HTML</b> tags and <p>paragraphs</p>...",
+      "passageTranslation": "Vietnamese translation (optional)",
       "questions": [
         {
           "questionNumber": 1,
-          "type": "MCQ",
-          "content": "Question text (for ORDERING: describe what to arrange)",
-          "items": ["a. First sentence", "b. Second sentence", "c. Third sentence"],
-          "options": ["A. a-b-c-d-e", "B. b-a-c-e-d", "C. c-a-b-d-e", "D. d-c-b-a-e"],
-          "correctAnswer": "B",
-          "explanation": "Vietnamese explanation or null"
+          "type": "MCQ | ORDERING",
+          "content": "Question text with <u>formatting</u>...",
+          "items": ["a. Item 1", "b. Item 2"], // Only for ORDERING
+          "options": ["A. Option 1", "B. Option 2"],
+          "correctAnswer": "A",
+          "explanation": "Explanation..."
         }
       ]
     }
   ]
 }
 
-**QUESTION TYPE RULES:**
-- **MCQ**: Standard multiple choice with A, B, C, D options
-- **ORDERING**: Sentence arrangement - MUST have "items" array with each sentence on separate line
-- For ORDERING questions, the "content" should be a brief instruction like "Arrange the sentences in the correct order:"
-- For ORDERING, "items" array contains sentences like ["a. First sentence here.", "b. Second sentence here.", ...]
-
-**EXTRACTION RULES:**
-1. Group questions by their shared passage/context
-2. Look for "Đọc đoạn văn sau", "Read the following passage" to identify reading sections
-3. Look for sentence arrangement clues like "a.", "b.", "c.", "d.", "e." followed by sentences
-4. Extract Vietnamese explanations (look for "Giải thích:", "Tạm dịch:", "→Chọn đáp án")
-5. correctAnswer should be just the letter (A, B, C, or D)
-6. Remove "Question X." prefixes from content
-7. Preserve paragraph breaks in passages using \\n
-
-**EXAM TEXT:**
+**INPUT CONTENT (HTML):**
 """
-${text.substring(0, 60000)}
+${text.substring(0, 80000)}
 """
 
-Return ONLY the JSON object, no markdown code blocks.
+**FINAL REMINDER:**
+-   **PRESERVE <u>, <strong>, <em> TAGS.**
+-   **DO NOT LOOP.**
+-   **RETURN VALID JSON ONLY.**
 `;
 
-    // Use standard generation to avoid stream parsing errors on Vercel
+    // Use generateContent (non-streaming for now as per v1 fix)
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const fullText = response.text();
