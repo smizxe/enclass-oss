@@ -14,23 +14,34 @@ export const authOptions: NextAuthOptions = {
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) return null;
 
-                // DB Lookup
-                const user = await prisma.user.findUnique({
-                    where: { email: credentials.email }
+                // DB Lookup (case-insensitive for email)
+                const userEmail = credentials.email.toLowerCase();
+                const user = await prisma.user.findFirst({
+                    where: {
+                        email: {
+                            equals: userEmail,
+                            mode: "insensitive"
+                        }
+                    }
                 });
 
-                if (!user) return null;
+                // Fallback to strict match if insensitive fails (e.g., SQLite doesn't fully support 'insensitive' Mode on all fields depending on Prisma driver features, though we updated the email to lowercase so 'equals' will catch it)
+                const finalUser = user || await prisma.user.findFirst({
+                    where: { email: userEmail }
+                });
+
+                if (!finalUser) return null;
 
                 // Use bcrypt to check password
-                const isMatch = await compare(credentials.password, user.password);
+                const isMatch = await compare(credentials.password, finalUser.password);
 
                 if (!isMatch) return null;
 
                 return {
-                    id: user.id,
-                    email: user.email,
-                    name: user.name,
-                    role: user.role
+                    id: finalUser.id,
+                    email: finalUser.email,
+                    name: finalUser.name,
+                    role: finalUser.role
                 };
             }
         })
