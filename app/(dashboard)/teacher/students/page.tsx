@@ -19,6 +19,11 @@ interface Student {
     name: string | null;
     email: string | null;
     createdAt: string;
+    classMembers: {
+        class: {
+            title: string;
+        }
+    }[];
 }
 
 export default function StudentsPage() {
@@ -141,6 +146,9 @@ export default function StudentsPage() {
                                     Email
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                    Lớp
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                     Ngày tham gia
                                 </th>
                                 <th className="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -165,6 +173,19 @@ export default function StudentsPage() {
                                         <div className="flex items-center gap-2 text-sm text-slate-600">
                                             <Mail className="w-4 h-4 text-slate-400" />
                                             {student.email}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-wrap gap-1">
+                                            {student.classMembers && student.classMembers.length > 0 ? (
+                                                student.classMembers.map((member, idx) => (
+                                                    <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                        {member.class.title}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-slate-400 text-xs italic">Chưa vào lớp</span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">

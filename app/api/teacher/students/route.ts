@@ -73,6 +73,15 @@ export async function GET() {
                 name: true,
                 email: true,
                 createdAt: true,
+                classMembers: {
+                    include: {
+                        class: {
+                            select: {
+                                title: true
+                            }
+                        }
+                    }
+                }
                 // Do not return password
             }
         });
