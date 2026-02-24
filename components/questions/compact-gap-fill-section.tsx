@@ -153,7 +153,7 @@ export const CompactGapFillSection = ({
                 // We can just return the joined string, but we need a flag to know it's synthetic 
                 // (to add the border styling).
                 // Hack: prepend a special flag that we check in render
-                return "[[SYNTHETIC]]" + syntheticParts.join("\n\n");
+                return "[[SYNTHETIC]]" + syntheticParts.join("<br/><br/>");
             }
         }
 
