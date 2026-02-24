@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { AudioManager } from "@/components/audio-manager";
-import { Editor } from "@/components/editor";
+import { TipTapEditor } from "@/components/editor/tiptap-editor";
 import { supabase } from "@/lib/supabase";
 import showdown from "showdown";
 
@@ -1196,8 +1196,8 @@ export default function AssignmentEditorPage() {
                                                 /* Rich Text Mode (Normal Text) */
                                                 <div className="space-y-1">
                                                     {/* Markdown Fix: Convert Markdown to HTML for Editor */}
-                                                    <Editor
-                                                        value={editingSection.passage
+                                                    <TipTapEditor
+                                                        content={editingSection.passage
                                                             .replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>') // Bold
                                                             .replace(/__([\s\S]*?)__/g, '<u>$1</u>')             // Underline
                                                             .replace(/\*([\s\S]*?)\*/g, '<em>$1</em>')           // Italic

@@ -3,7 +3,6 @@
 import { useState, useRef } from "react";
 import { X, Upload, FileSpreadsheet, Loader2, Download, AlertCircle, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
-import * as XLSX from "xlsx";
 
 interface ImportStudentModalProps {
     isOpen: boolean;
@@ -14,6 +13,7 @@ interface ImportStudentModalProps {
 export default function ImportStudentModal({ isOpen, onClose, onSuccess }: ImportStudentModalProps) {
     const [file, setFile] = useState<File | null>(null);
     const [isImporting, setIsImporting] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
     const [results, setResults] = useState<{
         success: number;
         failed: number;
@@ -21,27 +21,28 @@ export default function ImportStudentModal({ isOpen, onClose, onSuccess }: Impor
     } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleDownloadTemplate = () => {
-        // Create template workbook
-        const wb = XLSX.utils.book_new();
-        const templateData = [
-            { name: "Nguyễn Văn A", email: "nguyenvana@example.com", password: "matkhau123", class: "Lớp 10A" },
-            { name: "Trần Thị B", email: "tranthib@example.com", password: "matkhau456", class: "Lớp 10A" },
-            { name: "Lê Văn C", email: "levanc@example.com", password: "matkhau789", class: "Lớp 10B" },
-        ];
-        const ws = XLSX.utils.json_to_sheet(templateData);
-
-        // Set column widths
-        ws["!cols"] = [
-            { wch: 25 }, // name
-            { wch: 30 }, // email
-            { wch: 15 }, // password
-            { wch: 20 }, // class
-        ];
-
-        XLSX.utils.book_append_sheet(wb, ws, "Danh sách học viên");
-        XLSX.writeFile(wb, "mau-nhap-hoc-vien.xlsx");
-        toast.success("Đã tải xuống template!");
+    const handleDownloadTemplate = async () => {
+        setIsDownloading(true);
+        try {
+            const response = await fetch("/api/teacher/students/template");
+            if (!response.ok) {
+                throw new Error("Failed to download template");
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "mau-nhap-hoc-vien.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            toast.success("Đã tải xuống template!");
+        } catch {
+            toast.error("Lỗi khi tải template");
+        } finally {
+            setIsDownloading(false);
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,10 +136,20 @@ export default function ImportStudentModal({ isOpen, onClose, onSuccess }: Impor
                                 </p>
                                 <button
                                     onClick={handleDownloadTemplate}
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 text-sm font-medium text-slate-700 rounded-lg transition"
+                                    disabled={isDownloading}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 disabled:opacity-50 text-sm font-medium text-slate-700 rounded-lg transition"
                                 >
-                                    <Download className="w-4 h-4" />
-                                    Tải Template (.xlsx)
+                                    {isDownloading ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Đang tải...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="w-4 h-4" />
+                                            Tải Template (.xlsx)
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
