@@ -8,6 +8,7 @@ import {
     BookOpen,
     Users,
 } from "lucide-react";
+import { BackButton } from "@/components/back-button";
 import { PublishActions } from "./_components/publish-actions";
 import { CreateAssignmentButton } from "./_components/create-assignment-button";
 import { AssignmentsList } from "./_components/assignments-list";
@@ -60,13 +61,7 @@ export default async function ClassIdPage({
         <div className="p-6 bg-slate-50 min-h-full">
             {/* Header */}
             <div className="mb-8">
-                <Link
-                    href="/teacher/classes"
-                    className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 mb-4 transition"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    Quay lại
-                </Link>
+                <BackButton className="mb-4 inline-flex" />
 
                 <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4">

@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { ClassSidebar } from "./_components/class-sidebar";
 import Link from "next/link";
 import { ArrowLeft, GraduationCap } from "lucide-react";
+import { BackButton } from "@/components/back-button";
 
 export default async function ClassLayout({
     children,
@@ -75,13 +76,7 @@ export default async function ClassLayout({
                 {/* Top Navigation */}
                 <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
                     <div className="flex items-center gap-4">
-                        <Link
-                            href="/student"
-                            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            Quay lại
-                        </Link>
+                        <BackButton />
                         <div className="h-6 w-px bg-slate-200"></div>
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
