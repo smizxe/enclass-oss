@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 const classSchema = z.object({
@@ -34,6 +35,9 @@ export async function PATCH(
             },
         });
 
+        revalidateTag(`teacher-dashboard:${session.user.id}`, "max");
+        revalidateTag(`teacher-classes:${session.user.id}`, "max");
+
         return NextResponse.json(classObj);
     } catch (error) {
         console.error("[CLASS_ID_PATCH]", error);
@@ -47,6 +51,35 @@ export async function GET(
 ) {
     try {
         const { id } = await params;
+        const { searchParams } = new URL(req.url);
+        const view = searchParams.get("view");
+
+        if (view === "grading") {
+            const classObj = await prisma.class.findUnique({
+                where: {
+                    id: id,
+                },
+                include: {
+                    assignments: {
+                        orderBy: {
+                            orderIndex: "asc",
+                        },
+                        select: {
+                            id: true,
+                            title: true,
+                            type: true,
+                            classId: true
+                        }
+                    },
+                    _count: {
+                        select: { members: true }
+                    }
+                }
+            });
+
+            return NextResponse.json(classObj);
+        }
+
         const classObj = await prisma.class.findUnique({
             where: {
                 id: id,

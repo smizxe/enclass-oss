@@ -10,7 +10,7 @@ import {
     ChevronRight,
     GraduationCap
 } from "lucide-react";
-import { getStudentDashboardData } from "../data";
+import { getStudentClasses } from "../data";
 
 export default async function StudentClassesPage() {
     const session = await getServerSession(authOptions);
@@ -19,8 +19,7 @@ export default async function StudentClassesPage() {
         return redirect("/");
     }
 
-    const data = await getStudentDashboardData();
-    const classes = data?.classes || [];
+    const classes = (await getStudentClasses()) || [];
 
     return (
         <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 min-h-full">

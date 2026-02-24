@@ -48,8 +48,18 @@ export default async function StudentHistoryPage() {
         include: {
             assignment: {
                 include: {
-                    class: true,
-                    questions: true
+                    class: {
+                        select: {
+                            id: true,
+                            title: true
+                        }
+                    },
+                    questions: {
+                        select: {
+                            type: true,
+                            points: true
+                        }
+                    }
                 }
             },
             submissions: {

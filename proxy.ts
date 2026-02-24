@@ -8,7 +8,6 @@ export default withAuth({
                 return token?.role === "TEACHER";
             }
             if (path.startsWith("/student")) {
-                // Allow teachers to view student pages? Maybe. For now strict.
                 return token?.role === "STUDENT" || token?.role === "TEACHER";
             }
             return !!token;

@@ -1,82 +1,41 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getTeacherDashboardData } from "./data";
 import {
     PlusCircle,
     BookOpen,
     Users,
     TrendingUp,
-    Loader2,
     ChevronRight,
     Clock
 } from "lucide-react";
 
-interface ClassItem {
-    id: string;
-    title: string;
-    description: string | null;
-    published: boolean;
-    createdAt: string;
-}
+export default async function TeacherDashboard() {
+    const session = await getServerSession(authOptions);
 
-export default function TeacherDashboard() {
-    const [classes, setClasses] = useState<ClassItem[]>([]);
-    const [stats, setStats] = useState({ totalClasses: 0, activeClasses: 0, totalStudents: 0 });
-    const [loading, setLoading] = useState(true);
+    if (!session || session.user.role !== "TEACHER") {
+        return redirect("/");
+    }
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [classesRes, statsRes] = await Promise.all([
-                    fetch("/api/teacher/classes"),
-                    fetch("/api/teacher/stats")
-                ]);
-
-                if (classesRes.ok) {
-                    const data = await classesRes.json();
-                    setClasses(data);
-                }
-
-                if (statsRes.ok) {
-                    const data = await statsRes.json();
-                    setStats(data);
-                }
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, []);
-
-    const publishedCount = classes.filter(c => c.published).length;
-    // We can use stats.totalClasses/activeClasses if we want server-side count accuracy
-    // or keep using client-side calculation from "classes" array if we are sure it's all of them.
-    // Let's use stats for consistency if available, otherwise fallback.
-    const displayTotal = stats.totalClasses || classes.length;
-    const displayActive = stats.activeClasses || publishedCount;
-    const displayStudents = stats.totalStudents;
+    const { classes, stats } = await getTeacherDashboardData(session.user.id);
 
     return (
         <div className="p-6 bg-slate-50 min-h-full">
-            {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Xin chào, Thầy Điệp! 👋</h1>
-                    <p className="text-slate-500 mt-1">Quản lý lớp học và theo dõi học viên.</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Xin chao, Thay Diep!</h1>
+                    <p className="text-slate-500 mt-1">Quan ly lop hoc va theo doi hoc vien.</p>
                 </div>
                 <Link href="/teacher/classes/create">
                     <button className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition shadow-lg shadow-indigo-600/25">
                         <PlusCircle className="w-4 h-4" />
-                        Tạo lớp học mới
+                        Tao lop hoc moi
                     </button>
                 </Link>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
@@ -84,11 +43,11 @@ export default function TeacherDashboard() {
                             <BookOpen className="w-6 h-6 text-indigo-600" />
                         </div>
                         <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
-                            Tổng cộng
+                            Tong cong
                         </span>
                     </div>
-                    <div className="text-3xl font-bold text-slate-900">{displayTotal}</div>
-                    <div className="text-sm text-slate-500 mt-1">Lớp học</div>
+                    <div className="text-3xl font-bold text-slate-900">{stats.totalClasses}</div>
+                    <div className="text-sm text-slate-500 mt-1">Lop hoc</div>
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -97,11 +56,11 @@ export default function TeacherDashboard() {
                             <TrendingUp className="w-6 h-6 text-emerald-600" />
                         </div>
                         <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-                            Hoạt động
+                            Hoat dong
                         </span>
                     </div>
-                    <div className="text-3xl font-bold text-slate-900">{displayActive}</div>
-                    <div className="text-sm text-slate-500 mt-1">Đã kích hoạt</div>
+                    <div className="text-3xl font-bold text-slate-900">{stats.activeClasses}</div>
+                    <div className="text-sm text-slate-500 mt-1">Da kich hoat</div>
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -110,37 +69,32 @@ export default function TeacherDashboard() {
                             <Users className="w-6 h-6 text-orange-600" />
                         </div>
                         <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
-                            Học viên
+                            Hoc vien
                         </span>
                     </div>
-                    <div className="text-3xl font-bold text-slate-900">{displayStudents}</div>
-                    <div className="text-sm text-slate-500 mt-1">Tổng số học viên</div>
+                    <div className="text-3xl font-bold text-slate-900">{stats.totalStudents}</div>
+                    <div className="text-sm text-slate-500 mt-1">Tong so hoc vien</div>
                 </div>
             </div>
 
-            {/* Classes List */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <h2 className="font-semibold text-slate-900">Danh sách lớp học</h2>
+                    <h2 className="font-semibold text-slate-900">Danh sach lop hoc</h2>
                     <Link href="/teacher/classes" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
-                        Xem tất cả
+                        Xem tat ca
                     </Link>
                 </div>
 
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-                    </div>
-                ) : classes.length === 0 ? (
+                {classes.length === 0 ? (
                     <div className="text-center py-12">
                         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <BookOpen className="w-8 h-8 text-slate-400" />
                         </div>
-                        <h3 className="font-medium text-slate-900 mb-1">Chưa có lớp học nào</h3>
-                        <p className="text-sm text-slate-500 mb-4">Bắt đầu bằng cách tạo lớp học đầu tiên.</p>
+                        <h3 className="font-medium text-slate-900 mb-1">Chua co lop hoc nao</h3>
+                        <p className="text-sm text-slate-500 mb-4">Bat dau bang cach tao lop hoc dau tien.</p>
                         <Link href="/teacher/classes/create">
                             <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
-                                Tạo lớp học
+                                Tao lop hoc
                             </button>
                         </Link>
                     </div>
@@ -162,11 +116,11 @@ export default function TeacherDashboard() {
                                             ? "bg-emerald-50 text-emerald-700"
                                             : "bg-yellow-50 text-yellow-700"
                                             }`}>
-                                            {classItem.published ? "Đang mở" : "Chưa kích hoạt"}
+                                            {classItem.published ? "Dang mo" : "Chua kich hoat"}
                                         </span>
                                     </div>
                                     <p className="text-sm text-slate-500 truncate">
-                                        {classItem.description || "Chưa có mô tả"}
+                                        {classItem.description || "Chua co mo ta"}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-4 text-sm text-slate-400">

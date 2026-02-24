@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 // POST: Submit answers for an assignment
 export async function POST(
@@ -258,6 +259,10 @@ export async function POST(
                 score: bestScore  // Save BEST score to AssignmentProgress
             }
         });
+
+        revalidateTag(`student-dashboard:${session.user.id}`, "max");
+        revalidateTag(`student-classes:${session.user.id}`, "max");
+        revalidateTag(`student-progress:${session.user.id}`, "max");
 
         return NextResponse.json({
             success: true,

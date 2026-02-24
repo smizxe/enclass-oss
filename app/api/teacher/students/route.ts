@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { hash } from "bcryptjs";
 
@@ -45,6 +46,9 @@ export async function POST(req: Request) {
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password: _password, ...result } = student;
+
+        revalidateTag(`teacher-students:${session.user.id}`, "max");
+        revalidateTag(`teacher-dashboard:${session.user.id}`, "max");
 
         return NextResponse.json(result);
     } catch (error) {

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 const courseSchema = z.object({
@@ -26,6 +27,9 @@ export async function POST(req: Request) {
                 teacherId: session.user.id,
             },
         });
+
+        revalidateTag(`teacher-dashboard:${session.user.id}`, "max");
+        revalidateTag(`teacher-classes:${session.user.id}`, "max");
 
         return NextResponse.json(classObj);
     } catch (error) {

@@ -2,7 +2,7 @@ import { StudentSidebar } from "@/components/layout/student-sidebar";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getStudentDashboardData } from "./data";
+import { getStudentProgressCounts } from "./data";
 
 export default async function StudentDashboardLayout({
     children,
@@ -15,11 +15,9 @@ export default async function StudentDashboardLayout({
         return redirect("/");
     }
 
-    const data = await getStudentDashboardData();
-
-    // Default values if data is null (e.g. error or not student)
-    const totalAssignments = data?.stats.totalAssignments || 0;
-    const completedAssignments = data?.stats.totalCompleted || 0;
+    const counts = await getStudentProgressCounts();
+    const totalAssignments = counts?.totalAssignments || 0;
+    const completedAssignments = counts?.completedAssignments || 0;
 
     return (
         <div className="h-full relative">

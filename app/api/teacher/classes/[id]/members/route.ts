@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 export async function POST(
     req: Request,
@@ -44,6 +45,13 @@ export async function POST(
                 userId: student.id
             }
         });
+
+        revalidateTag(`teacher-dashboard:${session.user.id}`, "max");
+        revalidateTag(`teacher-classes:${session.user.id}`, "max");
+        revalidateTag(`teacher-students:${session.user.id}`, "max");
+        revalidateTag(`student-dashboard:${student.id}`, "max");
+        revalidateTag(`student-classes:${student.id}`, "max");
+        revalidateTag(`student-progress:${student.id}`, "max");
 
         return NextResponse.json({ success: true });
     } catch (error) {
