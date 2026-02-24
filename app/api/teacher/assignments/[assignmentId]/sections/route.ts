@@ -58,6 +58,9 @@ export async function PATCH(
                 if (body.sectionAudio !== undefined) {
                     parsedContent.sectionAudio = body.sectionAudio;
                 }
+                if (body.sectionVideo !== undefined) {
+                    parsedContent.sectionVideo = body.sectionVideo;
+                }
                 if (body.sectionImages !== undefined) {
                     parsedContent.sectionImages = body.sectionImages;
                 }
