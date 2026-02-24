@@ -136,6 +136,18 @@ export default function AssignmentEditorPage() {
     const [deadline, setDeadline] = useState("");
     const [deadlineChanged, setDeadlineChanged] = useState(false);
 
+    // Pass Percentage Setting State
+    const [localPassPercent, setLocalPassPercent] = useState<number | null>(null);
+    const [passPercentEnabled, setPassPercentEnabled] = useState(false);
+    const [passPercentChanged, setPassPercentChanged] = useState(false);
+
+    // Prerequisite Assignment Setting State
+    const [prerequisiteId, setPrerequisiteId] = useState<string | null>(null);
+    const [prerequisiteChanged, setPrerequisiteChanged] = useState(false);
+    const [classAssignments, setClassAssignments] = useState<{ id: string, title: string }[]>([]);
+    const [prereqSearch, setPrereqSearch] = useState("");
+    const [showPrereqDropdown, setShowPrereqDropdown] = useState(false);
+
     const classId = id;
 
     const fetchQuestions = useCallback(async () => {
@@ -170,6 +182,17 @@ export default function AssignmentEditorPage() {
                     const pad = (n: number) => n.toString().padStart(2, '0');
                     setDeadline(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
                 }
+                // Sync Pass Percentage
+                if (res.data.settings?.passPercent != null) {
+                    setLocalPassPercent(res.data.settings.passPercent);
+                    setPassPercentEnabled(true);
+                } else {
+                    setLocalPassPercent(null);
+                    setPassPercentEnabled(false);
+                }
+                // Sync Prerequisite
+                setPrerequisiteId(res.data.settings?.prerequisiteAssignmentId || null);
+
                 if (res.data.type === "ESSAY" && res.data.description) {
                     setEssayPrompt(res.data.description);
                 }
@@ -183,7 +206,17 @@ export default function AssignmentEditorPage() {
 
         fetchAssignment();
         fetchQuestions();
-    }, [assignmentId, fetchQuestions]);
+
+        // Fetch class assignments for prerequisite dropdown
+        const fetchClassAssignments = async () => {
+            try {
+                const res = await axios.get(`/api/teacher/classes/${id}`);
+                const assignments = res.data.assignments || [];
+                setClassAssignments(assignments.filter((a: any) => a.id !== assignmentId).map((a: any) => ({ id: a.id, title: a.title })));
+            } catch { /* ignore */ }
+        };
+        fetchClassAssignments();
+    }, [assignmentId, fetchQuestions, id]);
 
     // Group questions by Section
     const groupedQuestions = useMemo(() => {
@@ -734,6 +767,165 @@ export default function AssignmentEditorPage() {
                                                 deadline: deadline ? new Date(deadline).toISOString() : undefined
                                             });
                                             setDeadlineChanged(false);
+                                        }}
+                                        className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition shadow-sm animate-in fade-in slide-in-from-top-1"
+                                    >
+                                        Lưu thay đổi
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Pass Percentage Card */}
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                            <div className="flex gap-3">
+                                <div className={`p-2.5 rounded-lg h-fit transition-colors ${passPercentEnabled ? "bg-violet-50 text-violet-600" : "bg-slate-100 text-slate-500"}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900">Điểm tối thiểu qua bài</h3>
+                                    <p className="text-sm text-slate-500 mt-1 max-w-[280px]">
+                                        Học viên phải đạt đủ % điểm mới tính hoàn thành bài tập.
+                                    </p>
+                                    <p className={`text-xs font-medium mt-2 inline-block px-2 py-1 rounded ${passPercentEnabled ? "bg-violet-50 text-violet-600" : "bg-slate-100 text-slate-500"}`}>
+                                        {passPercentEnabled && localPassPercent != null
+                                            ? `≥ ${localPassPercent}% mới tính hoàn thành`
+                                            : "Không yêu cầu điểm tối thiểu"
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-2">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={passPercentEnabled}
+                                        onChange={(e) => {
+                                            const enabled = e.target.checked;
+                                            setPassPercentEnabled(enabled);
+                                            if (enabled && localPassPercent == null) {
+                                                setLocalPassPercent(50);
+                                            }
+                                            setPassPercentChanged(true);
+                                        }}
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                                </label>
+
+                                {passPercentEnabled && (
+                                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                                        <input
+                                            type="range"
+                                            min={10}
+                                            max={100}
+                                            step={5}
+                                            value={localPassPercent || 50}
+                                            onChange={(e) => {
+                                                setLocalPassPercent(parseInt(e.target.value));
+                                                setPassPercentChanged(true);
+                                            }}
+                                            className="w-24 accent-violet-600"
+                                        />
+                                        <span className="text-sm font-bold text-violet-600 w-10 text-right">{localPassPercent || 50}%</span>
+                                    </div>
+                                )}
+
+                                {passPercentChanged && (
+                                    <button
+                                        onClick={() => {
+                                            onUpdateSettings({
+                                                ...assignment?.settings,
+                                                passPercent: passPercentEnabled ? (localPassPercent || 50) : undefined
+                                            });
+                                            setPassPercentChanged(false);
+                                        }}
+                                        className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition shadow-sm animate-in fade-in slide-in-from-top-1"
+                                    >
+                                        Lưu thay đổi
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Prerequisite Assignment Card */}
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                            <div className="flex gap-3">
+                                <div className={`p-2.5 rounded-lg h-fit transition-colors ${prerequisiteId ? "bg-orange-50 text-orange-600" : "bg-slate-100 text-slate-500"}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900">Yêu cầu bài tập trước</h3>
+                                    <p className="text-sm text-slate-500 mt-1 max-w-[280px]">
+                                        Khóa bài tập này cho đến khi học viên hoàn thành một bài tập khác.
+                                    </p>
+                                    <p className={`text-xs font-medium mt-2 inline-block px-2 py-1 rounded ${prerequisiteId ? "bg-orange-50 text-orange-600" : "bg-slate-100 text-slate-500"}`}>
+                                        {prerequisiteId
+                                            ? `🔒 Phải hoàn thành: ${classAssignments.find(a => a.id === prerequisiteId)?.title || "..."}`
+                                            : "Không yêu cầu"
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-2 relative">
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Tìm bài tập..."
+                                        value={prereqSearch}
+                                        onChange={(e) => { setPrereqSearch(e.target.value); setShowPrereqDropdown(true); }}
+                                        onFocus={() => setShowPrereqDropdown(true)}
+                                        className="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition bg-slate-50 w-52"
+                                    />
+                                    {showPrereqDropdown && (
+                                        <div className="absolute top-full mt-1 right-0 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto">
+                                            {classAssignments
+                                                .filter(a => a.title.toLowerCase().includes(prereqSearch.toLowerCase()))
+                                                .map(a => (
+                                                    <button
+                                                        key={a.id}
+                                                        onClick={() => {
+                                                            setPrerequisiteId(a.id);
+                                                            setPrereqSearch(a.title);
+                                                            setShowPrereqDropdown(false);
+                                                            setPrerequisiteChanged(true);
+                                                        }}
+                                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-orange-50 transition truncate ${prerequisiteId === a.id ? "bg-orange-50 text-orange-700 font-medium" : "text-slate-700"}`}
+                                                    >
+                                                        {a.title}
+                                                    </button>
+                                                ))
+                                            }
+                                            {classAssignments.filter(a => a.title.toLowerCase().includes(prereqSearch.toLowerCase())).length === 0 && (
+                                                <div className="px-3 py-2 text-sm text-slate-400">Không tìm thấy</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {prerequisiteId && (
+                                    <button
+                                        onClick={() => { setPrerequisiteId(null); setPrereqSearch(""); setPrerequisiteChanged(true); }}
+                                        className="text-xs text-red-500 hover:text-red-700 transition"
+                                    >
+                                        Xóa yêu cầu
+                                    </button>
+                                )}
+
+                                {prerequisiteChanged && (
+                                    <button
+                                        onClick={() => {
+                                            onUpdateSettings({
+                                                ...assignment?.settings,
+                                                prerequisiteAssignmentId: prerequisiteId || undefined
+                                            });
+                                            setPrerequisiteChanged(false);
                                         }}
                                         className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition shadow-sm animate-in fade-in slide-in-from-top-1"
                                     >

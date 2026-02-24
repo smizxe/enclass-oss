@@ -14,7 +14,9 @@ import {
     Folder,
     PanelLeftClose,
     PanelLeftOpen,
-    Sparkles
+    Sparkles,
+    Lock,
+    X
 } from "lucide-react";
 
 interface ClassSidebarProps {
@@ -31,6 +33,7 @@ export const ClassSidebar = ({
         new Set(classItem.assignmentGroups?.map((g: any) => g.id) || [])
     );
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [lockModal, setLockModal] = useState<{ prereqTitle: string; prereqId: string } | null>(null);
 
     const toggleGroup = (groupId: string) => {
         if (isCollapsed) return;
@@ -61,29 +64,61 @@ export const ClassSidebar = ({
         }
     };
 
+    // Helper: Check if assignment is locked due to prerequisite
+    const isAssignmentLocked = (assignment: any): { locked: boolean; prereqTitle: string; prereqId: string } => {
+        const prereqId = (assignment.settings as any)?.prerequisiteAssignmentId;
+        if (!prereqId) return { locked: false, prereqTitle: "", prereqId: "" };
+
+        // Find the prerequisite assignment in the class's assignments list
+        const allAssignments = [
+            ...(classItem.assignments || []),
+            ...(classItem.assignmentGroups?.flatMap((g: any) => g.assignments || []) || [])
+        ];
+        const prereqAssignment = allAssignments.find((a: any) => a.id === prereqId);
+        if (!prereqAssignment) return { locked: false, prereqTitle: "", prereqId: "" };
+
+        const prereqCompleted = prereqAssignment.progress?.length > 0 &&
+            prereqAssignment.progress[0]?.status === "COMPLETED";
+
+        return {
+            locked: !prereqCompleted,
+            prereqTitle: prereqAssignment.title || "bài tập trước",
+            prereqId
+        };
+    };
+
     const renderAssignmentItem = (assignment: any, index: number) => {
         const isActive = pathname?.includes(assignment.id);
         const isCompleted = assignment.progress?.length > 0 &&
             assignment.progress[0]?.status === "COMPLETED";
-        const AssignmentIcon = isCompleted ? CheckCircle : getAssignmentIcon(assignment.type);
+        const lockStatus = isAssignmentLocked(assignment);
+        const AssignmentIcon = lockStatus.locked ? Lock : isCompleted ? CheckCircle : getAssignmentIcon(assignment.type);
 
         if (isCollapsed) {
             return (
                 <button
                     key={assignment.id}
-                    onClick={() => onClick(assignment.id)}
+                    onClick={() => {
+                        if (lockStatus.locked) {
+                            setLockModal({ prereqTitle: lockStatus.prereqTitle, prereqId: lockStatus.prereqId });
+                        } else {
+                            onClick(assignment.id);
+                        }
+                    }}
                     className={cn(
                         "w-full flex items-center justify-center py-3 mx-0 mb-2 rounded-xl transition-all duration-300",
-                        isActive
-                            ? "bg-white text-indigo-600 shadow-lg shadow-indigo-900/20 scale-105"
-                            : "hover:bg-white/10 text-indigo-200 hover:text-white",
-                        isCompleted && !isActive && "opacity-60"
+                        lockStatus.locked
+                            ? "opacity-40 cursor-not-allowed"
+                            : isActive
+                                ? "bg-white text-indigo-600 shadow-lg shadow-indigo-900/20 scale-105"
+                                : "hover:bg-white/10 text-indigo-200 hover:text-white",
+                        isCompleted && !isActive && !lockStatus.locked && "opacity-60"
                     )}
-                    title={assignment.title}
+                    title={lockStatus.locked ? `🔒 Phải hoàn thành: ${lockStatus.prereqTitle}` : assignment.title}
                 >
                     <AssignmentIcon className={cn(
                         "w-5 h-5",
-                        isActive ? "text-indigo-600" : isCompleted ? "text-emerald-400" : "text-indigo-300"
+                        lockStatus.locked ? "text-slate-400" : isActive ? "text-indigo-600" : isCompleted ? "text-emerald-400" : "text-indigo-300"
                     )} />
                 </button>
             );
@@ -92,41 +127,59 @@ export const ClassSidebar = ({
         return (
             <button
                 key={assignment.id}
-                onClick={() => onClick(assignment.id)}
+                onClick={() => {
+                    if (lockStatus.locked) {
+                        setLockModal({ prereqTitle: lockStatus.prereqTitle, prereqId: lockStatus.prereqId });
+                    } else {
+                        onClick(assignment.id);
+                    }
+                }}
                 className={cn(
                     "w-full flex items-center gap-3 px-4 py-3 mx-2 rounded-xl text-left transition-all duration-300 max-w-[95%] mb-2 backdrop-blur-sm",
-                    isActive
-                        ? "bg-white text-indigo-700 shadow-[0_8px_30px_rgb(0,0,0,0.12)] scale-[1.02] font-semibold border border-white/50"
-                        : "hover:bg-white/10 text-indigo-100/90 border border-transparent hover:border-white/10",
-                    isCompleted && !isActive && "opacity-75"
+                    lockStatus.locked
+                        ? "opacity-50 cursor-not-allowed border border-transparent"
+                        : isActive
+                            ? "bg-white text-indigo-700 shadow-[0_8px_30px_rgb(0,0,0,0.12)] scale-[1.02] font-semibold border border-white/50"
+                            : "hover:bg-white/10 text-indigo-100/90 border border-transparent hover:border-white/10",
+                    isCompleted && !isActive && !lockStatus.locked && "opacity-75"
                 )}
             >
                 <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors shadow-sm",
-                    isCompleted
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                        : isActive
-                            ? "bg-indigo-100 text-indigo-600"
-                            : "bg-indigo-800/50 text-indigo-300 border border-indigo-700/50"
+                    lockStatus.locked
+                        ? "bg-slate-700/50 text-slate-400 border border-slate-600/50"
+                        : isCompleted
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                            : isActive
+                                ? "bg-indigo-100 text-indigo-600"
+                                : "bg-indigo-800/50 text-indigo-300 border border-indigo-700/50"
                 )}>
-                    {isCompleted ? <CheckCircle className="w-4 h-4" /> : index + 1}
+                    {lockStatus.locked ? <Lock className="w-3.5 h-3.5" /> : isCompleted ? <CheckCircle className="w-4 h-4" /> : index + 1}
                 </div>
 
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                         <AssignmentIcon className={cn(
                             "w-4 h-4 shrink-0",
-                            isActive ? "text-indigo-500" : isCompleted ? "text-emerald-400" : "text-indigo-400"
+                            lockStatus.locked ? "text-slate-500" : isActive ? "text-indigo-500" : isCompleted ? "text-emerald-400" : "text-indigo-400"
                         )} />
                         <span className={cn(
                             "text-sm truncate",
-                            isActive ? "text-indigo-900" : "text-indigo-50"
+                            lockStatus.locked ? "text-slate-400" : isActive ? "text-indigo-900" : "text-indigo-50"
                         )}>
                             {assignment.title}
                         </span>
                     </div>
+                    {/* Lock info badge */}
+                    {lockStatus.locked && (
+                        <div className="flex items-center gap-1 mt-1 ml-6">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-slate-600/30 text-slate-400 truncate max-w-[180px]">
+                                🔒 Hoàn thành: {lockStatus.prereqTitle}
+                            </span>
+                        </div>
+                    )}
                     {/* Time Limit & Deadline Badges */}
-                    {(() => {
+                    {!lockStatus.locked && (() => {
                         const settings = assignment.settings as { timeLimitMinutes?: number; deadline?: string } | null;
                         const hasTimer = settings?.timeLimitMinutes && settings.timeLimitMinutes > 0;
                         const hasDeadline = settings?.deadline;
@@ -326,6 +379,48 @@ export const ClassSidebar = ({
                     background: rgba(255, 255, 255, 0.2);
                 }
             `}</style>
+
+            {/* Lock Modal */}
+            {lockModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-[360px] max-w-[90vw] animate-in zoom-in-95 fade-in duration-200">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 bg-orange-50 rounded-lg">
+                                    <Lock className="w-5 h-5 text-orange-600" />
+                                </div>
+                                <h3 className="font-bold text-slate-900">Bài tập bị khóa</h3>
+                            </div>
+                            <button
+                                onClick={() => setLockModal(null)}
+                                className="p-1 rounded-lg hover:bg-slate-100 transition"
+                            >
+                                <X className="w-4 h-4 text-slate-400" />
+                            </button>
+                        </div>
+                        <p className="text-sm text-slate-600 mb-4">
+                            Bạn cần hoàn thành bài tập <span className="font-semibold text-orange-600">&quot;{lockModal.prereqTitle}&quot;</span> trước khi có thể làm bài tập này.
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    router.push(`/learn/${classItem.id}/assignments/${lockModal.prereqId}`);
+                                    setLockModal(null);
+                                }}
+                                className="flex-1 bg-indigo-600 text-white text-sm font-medium py-2.5 px-4 rounded-xl hover:bg-indigo-700 transition shadow-sm"
+                            >
+                                Đi đến bài tập
+                            </button>
+                            <button
+                                onClick={() => setLockModal(null)}
+                                className="px-4 py-2.5 text-sm text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition"
+                            >
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

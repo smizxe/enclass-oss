@@ -156,15 +156,27 @@ export async function GET(req: NextRequest) {
                         }
                     });
 
-                    // Also update AssignmentProgress best score
+                    // Also update AssignmentProgress best score and check pass percentage
                     const allSubmissions = await prisma.submission.findMany({
                         where: { assignmentProgressId: submission.assignmentProgressId },
                         select: { score: true }
                     });
                     const bestScore = Math.max(...allSubmissions.map(s => s.score || 0), newScore);
+
+                    // Re-check pass percentage after AI grading
+                    const assignmentSettings = submission.assignmentProgress.assignment.settings as { passPercent?: number } | null;
+                    const passPercent = assignmentSettings?.passPercent;
+                    // Compute total possible points
+                    const totalPoints = questions.filter(q => q.type !== "SECTION_HEADER").reduce((sum, q) => sum + q.points, 0);
+                    let finalStatus = "COMPLETED";
+                    if (passPercent && totalPoints > 0) {
+                        const scorePercent = (newScore / totalPoints) * 100;
+                        finalStatus = scorePercent >= passPercent ? "COMPLETED" : "NOT_PASSED";
+                    }
+
                     await prisma.assignmentProgress.update({
                         where: { id: submission.assignmentProgressId },
-                        data: { score: bestScore }
+                        data: { score: bestScore, status: finalStatus }
                     });
 
                     // Send done event

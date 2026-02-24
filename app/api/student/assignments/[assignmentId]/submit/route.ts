@@ -42,9 +42,20 @@ export async function POST(
             return new NextResponse("Assignment not found", { status: 404 });
         }
 
-        // Get max attempts from settings
-        const settings = assignment.settings as { maxAttempts?: number } | null;
+        // Get settings from assignment
+        const settings = assignment.settings as { maxAttempts?: number; passPercent?: number; prerequisiteAssignmentId?: string } | null;
         const maxAttempts = settings?.maxAttempts || 1;
+
+        // Check prerequisite assignment
+        const prereqId = settings?.prerequisiteAssignmentId;
+        if (prereqId) {
+            const prereqProgress = await prisma.assignmentProgress.findUnique({
+                where: { userId_assignmentId: { userId: session.user.id, assignmentId: prereqId } }
+            });
+            if (!prereqProgress || prereqProgress.status !== "COMPLETED") {
+                return new NextResponse("Bạn phải hoàn thành bài tập trước đó.", { status: 403 });
+            }
+        }
 
         // Check existing progress and submissions
         const existingProgress = await prisma.assignmentProgress.findUnique({
@@ -266,7 +277,23 @@ export async function POST(
         }
 
         // Check assignment type to determine status
-        const newStatus = "COMPLETED";
+        // If passPercent is set, check if score meets the threshold
+        const passPercent = settings?.passPercent;
+        const hasPendingAi = pendingAiQuestionIds.length > 0;
+        let newStatus: string;
+        if (hasPendingAi) {
+            // If there are AI questions pending, temporarily set as COMPLETED
+            // The final pass/fail check will be done after AI grading in ai-stream route
+            newStatus = passPercent ? "IN_PROGRESS" : "COMPLETED";
+        } else {
+            // All questions are auto-graded, check pass percentage now
+            if (passPercent && totalScore > 0) {
+                const scorePercent = (earnedScore / totalScore) * 100;
+                newStatus = scorePercent >= passPercent ? "COMPLETED" : "NOT_PASSED";
+            } else {
+                newStatus = "COMPLETED";
+            }
+        }
 
         // Create submission with attemptNumber
         const submission = await prisma.submission.create({
