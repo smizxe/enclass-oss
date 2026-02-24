@@ -37,7 +37,9 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
     const [title, setTitle] = useState("");
     const [error, setError] = useState("");
     const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
+
     const [expandedExplanations, setExpandedExplanations] = useState<Set<string>>(new Set());
+    const [foundQuestionsCount, setFoundQuestionsCount] = useState(0);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -57,7 +59,10 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
 
         setIsLoading(true);
         setError("");
+        setIsLoading(true);
+        setError("");
         setSections([]); // Clear previous results
+        setFoundQuestionsCount(0);
 
         const formData = new FormData();
         formData.append("file", file);
@@ -106,6 +111,12 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                             const { chunk: textChunk } = JSON.parse(dataContent);
                             fullResult += textChunk;
 
+                            // Update progress using regex counting
+                            const questionCount = (fullResult.match(/"questionNumber"\s*:/g) || []).length;
+                            if (questionCount > foundQuestionsCount) {
+                                setFoundQuestionsCount(questionCount);
+                            }
+
                             // Try to parse partial JSON for real-time preview if it closes any objects
                             // This is a naive heuristic but works for simple streaming updates
                             // For strict JSON, we might wait for full result, but to show "Real-time" 
@@ -128,7 +139,14 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
 
             // Final parse
             const cleanJson = fullResult.replace(/```json/g, "").replace(/```/g, "").trim();
-            const data = JSON.parse(cleanJson);
+            let data;
+            try {
+                data = JSON.parse(cleanJson);
+            } catch (e) {
+                console.error("Final JSON parse error:", e);
+                console.log("Full result was:", fullResult);
+                throw new Error("AI response was incomplete or invalid JSON. Please check the console for details.");
+            }
 
             if (data.sections && Array.isArray(data.sections)) {
                 setSections(data.sections);
@@ -280,7 +298,9 @@ export const ImportExamModal = ({ classId, onClose, onSuccess }: ImportExamModal
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-slate-600">
                                     <span className="font-bold text-indigo-600">{sections.length}</span> phần,{" "}
-                                    <span className="font-bold text-indigo-600">{totalQuestions}</span> câu hỏi
+                                    <span className="font-bold text-indigo-600">
+                                        {sections.length > 0 ? totalQuestions : foundQuestionsCount}
+                                    </span> câu hỏi
                                 </span>
                                 {isLoading && (
                                     <span className="flex items-center gap-2 text-indigo-600 font-medium text-xs bg-indigo-50 px-3 py-1 rounded-full animate-pulse">
