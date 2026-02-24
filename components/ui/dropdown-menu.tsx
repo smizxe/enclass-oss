@@ -95,10 +95,22 @@ const DropdownMenuItem = ({ children, onClick, className }: any) => {
     );
 };
 
+const DropdownMenuSeparator = ({ className }: { className?: string }) => {
+    return (
+        <div
+            className={cn(
+                "-mx-1 my-1 h-px bg-slate-200",
+                className
+            )}
+        />
+    );
+};
+
 // Simplified exports matching Shadcn structure for compatibility
 export {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
 };

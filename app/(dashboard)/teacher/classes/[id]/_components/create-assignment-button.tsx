@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, FileText, ClipboardList, PenTool, Loader2 } from "lucide-react";
+import { PlusCircle, FileText, ClipboardList, PenTool, Loader2, Upload } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
@@ -11,7 +11,9 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { ImportExamModal } from "./import-exam-modal";
 
 interface CreateAssignmentButtonProps {
     classId: string;
@@ -20,6 +22,7 @@ interface CreateAssignmentButtonProps {
 export const CreateAssignmentButton = ({ classId }: CreateAssignmentButtonProps) => {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
 
     const onClick = async (type: "LECTURE" | "QUIZ" | "ESSAY") => {
         try {
@@ -44,30 +47,45 @@ export const CreateAssignmentButton = ({ classId }: CreateAssignmentButtonProps)
     }
 
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <button
-                    disabled={isLoading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition disabled:opacity-50"
-                >
-                    {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PlusCircle className="w-3.5 h-3.5" />}
-                    Thêm bài tập
-                </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => onClick("LECTURE")} className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Bài giảng (Lecture)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onClick("QUIZ")} className="cursor-pointer">
-                    <ClipboardList className="w-4 h-4 mr-2" />
-                    Trắc nghiệm (Quiz)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onClick("ESSAY")} className="cursor-pointer">
-                    <PenTool className="w-4 h-4 mr-2" />
-                    Bài viết (Essay)
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <button
+                        disabled={isLoading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition disabled:opacity-50"
+                    >
+                        {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PlusCircle className="w-3.5 h-3.5" />}
+                        Thêm bài tập
+                    </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => onClick("LECTURE")} className="cursor-pointer">
+                        <FileText className="w-4 h-4 mr-2" />
+                        Bài giảng (Lecture)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onClick("QUIZ")} className="cursor-pointer">
+                        <ClipboardList className="w-4 h-4 mr-2" />
+                        Trắc nghiệm (Quiz)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onClick("ESSAY")} className="cursor-pointer">
+                        <PenTool className="w-4 h-4 mr-2" />
+                        Bài viết (Essay)
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShowImportModal(true)} className="cursor-pointer text-indigo-600">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Import từ file Word (AI)
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            {showImportModal && (
+                <ImportExamModal
+                    classId={classId}
+                    onClose={() => setShowImportModal(false)}
+                    onSuccess={() => router.refresh()}
+                />
+            )}
+        </>
     );
 };
