@@ -1409,7 +1409,13 @@ const McqQuestionSimple = ({
             {/* Question Text */}
             {displayData.text && (
                 <div className="font-medium text-slate-900 [&>p]:inline [&>strong]:font-bold [&>em]:italic">
-                    <ReactMarkdown>{displayData.text}</ReactMarkdown>
+                    <ReactMarkdown
+                        components={{
+                            p: ({ children }) => <div className="inline">{children}</div>
+                        }}
+                    >
+                        {displayData.text}
+                    </ReactMarkdown>
                 </div>
             )}
 

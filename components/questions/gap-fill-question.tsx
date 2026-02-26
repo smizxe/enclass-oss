@@ -99,7 +99,7 @@ export const GapFillQuestion = ({
                             );
                         }
                         // Render non-gap parts as HTML to preserve structure
-                        return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+                        return <div key={index} className="inline-block" dangerouslySetInnerHTML={{ __html: part }} />;
                     })}
                 </div>
 

@@ -192,7 +192,7 @@ export const CompactGapFillSection = ({
                                             remarkPlugins={[remarkGfm]}
                                             rehypePlugins={[rehypeRaw]}
                                             components={{
-                                                p: ({ children }) => <span className="inline">{children}</span>
+                                                p: ({ children }) => <div className="inline">{children}</div>
                                             }}
                                         >
                                             {q.parsed.text || ""}
@@ -309,8 +309,8 @@ export const CompactGapFillSection = ({
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeRaw]}
                             components={{
-                                // Render paragraphs as spans to stay inline when needed
-                                p: ({ children }) => <span>{children}</span>,
+                                // Render paragraphs as divs to stay inline when needed but allow block children
+                                p: ({ children }) => <div className="inline">{children}</div>,
                             }}
                         >
                             {part}
