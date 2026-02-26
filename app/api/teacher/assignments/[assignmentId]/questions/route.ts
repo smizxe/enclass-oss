@@ -19,7 +19,7 @@ export async function POST(
 
         const { assignmentId } = await params;
         const body = await req.json();
-        const { type, content, correctAnswer, points } = body;
+        const { type, content, correctAnswer, points, explanation } = body;
 
         // Verify ownership via Assignment -> Class -> Teacher
         const assignment = await prisma.assignment.findUnique({
@@ -46,6 +46,7 @@ export async function POST(
                 type,
                 content,
                 correctAnswer, // String
+                explanation,
                 points: points || 1,
                 orderIndex: nextOrderIndex
             }

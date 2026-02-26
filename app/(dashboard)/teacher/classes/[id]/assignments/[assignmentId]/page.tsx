@@ -1152,12 +1152,14 @@ export default function AssignmentEditorPage() {
                                                 <div className="mt-3 text-xs text-slate-400">
                                                     Điểm: {q.points} | Đáp án đúng: {q.correctAnswer}
                                                 </div>
-                                                {q.explanation && (
-                                                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
-                                                        <span className="font-bold">📝 Lời giải: </span>
-                                                        {q.explanation}
-                                                    </div>
-                                                )}
+                                                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+                                                    <span className="font-bold">📝 Lời giải: </span>
+                                                    {q.explanation ? (
+                                                        q.explanation
+                                                    ) : (
+                                                        <span className="italic opacity-60">Chưa có lời giải. Nhấn vào biểu tượng sửa để thêm.</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         );
                                     })}

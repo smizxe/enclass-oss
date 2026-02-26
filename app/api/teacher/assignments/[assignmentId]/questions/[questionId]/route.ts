@@ -59,7 +59,7 @@ export async function PATCH(
 
         const { assignmentId, questionId } = await params;
         const body = await req.json();
-        const { type, content, correctAnswer, points } = body;
+        const { type, content, correctAnswer, points, explanation } = body;
 
         // Verify ownership
         const assignment = await prisma.assignment.findUnique({
@@ -80,7 +80,8 @@ export async function PATCH(
                 type,
                 content,
                 correctAnswer,
-                points
+                points,
+                explanation
             }
         });
 
