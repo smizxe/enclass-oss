@@ -70,7 +70,7 @@ QUESTION TYPES:
 - ORDERING: items=["a. ...", "b. ..."], options=["A. a-b-c", "B. c-b-a", ...]
 - TRUE/FALSE/NOT GIVEN or YES/NO/NOT GIVEN: type="MCQ", options=["TRUE","FALSE","NOT GIVEN"] or ["YES","NO","NOT GIVEN"], correctAnswer="TRUE"/"FALSE"/"NOT GIVEN"
 - GAP_FILL: correctAnswer = exact fill text. In passage, mark blank position with {N} where N is questionNumber.
-- MCQ: options MUST include all choices. correctAnswer = letter (A/B/C/D)
+- MCQ: The "content" field MUST contain ONLY the question stem (the question sentence with blank). Do NOT include options like "A. xxx B. yyy C. zzz D. www" in the "content" field. The "options" array MUST contain the FULL TEXT of each choice (e.g., ["physicist", "physician", "physical", "physics"]), NOT just letters like ["A", "B", "C", "D"]. correctAnswer = letter (A/B/C/D).
 
 OUTPUT JSON:
 {
@@ -156,15 +156,53 @@ OUTPUT JSON:
         try {
             data = JSON.parse(jsonString);
 
-            // Post-process: Clean up duplicate option prefixes
+            // Post-process: Clean up options and extract inline options from content
             if (data.sections) {
                 for (const section of data.sections) {
                     for (const q of section.questions || []) {
                         if (q.options && Array.isArray(q.options)) {
+                            // Clean up duplicate letter prefixes first
                             q.options = q.options.map((opt: string) => {
                                 return opt.replace(/^([A-D])\.\s*\1\.\s*/i, '$1. ')
-                                    .replace(/^([A-D])\.\s*/i, '');
+                                    .replace(/^([A-D])\.\s*/i, '').trim();
                             });
+
+                            // Detect if AI returned only letters (A, B, C, D) as options
+                            // while the actual choices are embedded in the question content
+                            const allSingleLetters = q.options.every((opt: string) =>
+                                /^[A-Da-d]$/.test(opt.trim())
+                            );
+
+                            if (allSingleLetters && q.content) {
+                                // Try to extract options from content text
+                                // Pattern: "A. physicist B. physician C. physical D. physics"
+                                const inlinePattern = /\b([A-D])\.\s+([^A-D]*?)(?=\s+[A-D]\.\s|$)/g;
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                const matches: any[] = Array.from(q.content.matchAll(inlinePattern));
+
+                                if (matches.length >= 2) {
+                                    // Extract the actual option text
+                                    const extractedOptions = matches.map((m: any) => m[2].trim());
+
+                                    // Remove inline options from content (keep only the question stem)
+                                    const firstMatchIndex = q.content.indexOf(matches[0][0]);
+                                    if (firstMatchIndex > 0) {
+                                        q.content = q.content.substring(0, firstMatchIndex).trim();
+                                    }
+
+                                    q.options = extractedOptions;
+                                }
+                            }
+
+                            // Also handle case where options have full text but content still has inline options
+                            if (!allSingleLetters && q.content) {
+                                // Check if content ends with "A. xxx B. yyy C. zzz D. www" pattern
+                                const trailingPattern = /\s+[A-D]\.\s+\S+(?:\s+[A-D]\.\s+\S+){1,3}\s*$/;
+                                if (trailingPattern.test(q.content)) {
+                                    // Remove trailing options from content
+                                    q.content = q.content.replace(/\s+[A-D]\.\s+[^A-D]*(?:\s+[A-D]\.\s+[^A-D]*)*\s*$/, '').trim();
+                                }
+                            }
                         }
                     }
                 }
