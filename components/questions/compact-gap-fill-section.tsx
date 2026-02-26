@@ -14,6 +14,7 @@ interface CompactQuestion {
     correctAnswer: string;
     points: number;
     questionNumber?: number;
+    explanation?: string | null;
 }
 
 interface CompactGapFillSectionProps {
@@ -28,6 +29,7 @@ interface CompactGapFillSectionProps {
     }>;
     startIndex: number;
     fontSize?: number;
+    showAnswersAfterSubmit?: boolean;
     mode?: "student" | "teacher_preview";
 }
 
@@ -52,6 +54,7 @@ export const CompactGapFillSection = ({
     results,
     startIndex,
     fontSize = 16,
+    showAnswersAfterSubmit = true,
     mode = "student",
 }: CompactGapFillSectionProps) => {
     // Build a map: questionNumber -> question data
@@ -216,10 +219,30 @@ export const CompactGapFillSection = ({
                                                 placeholder="............"
                                                 disabled={disabled || !!result}
                                             />
-                                            {result && !result.isCorrect && (
+                                            {result && !result.isCorrect && showAnswersAfterSubmit !== false && (
                                                 <span className="text-sm text-red-600 font-medium">→ {result.correctAnswer}</span>
                                             )}
                                             {result?.isCorrect && <span className="text-emerald-600">✓</span>}
+                                        </div>
+                                    )}
+
+                                    {/* Exclude incorrect answers and explanations if showAnswersAfterSubmit is false */}
+                                    {result && !result.isCorrect && showAnswersAfterSubmit !== false && (
+                                        <div className="mt-1 flex gap-2">
+                                            Đáp án đúng:
+                                            <div className="flex gap-1 flex-wrap">
+                                                {q.correctAnswer.split(",").map((ans, i) => (
+                                                    <span key={i} className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-md border border-emerald-200">
+                                                        {ans.trim()}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {result && q.explanation && showAnswersAfterSubmit !== false && (
+                                        <div className="mt-2 text-slate-600 bg-white/50 p-2 rounded border border-slate-100 prose-sm">
+                                            <span className="font-semibold text-slate-700">Giải thích:</span>{" "}
+                                            <div className="inline"><ReactMarkdown>{q.explanation}</ReactMarkdown></div>
                                         </div>
                                     )}
                                 </div>

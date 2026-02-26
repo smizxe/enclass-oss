@@ -670,6 +670,58 @@ export default function AssignmentEditorPage() {
                         </div>
                     </div>
 
+                    {/* Show Answers Card */}
+                    <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between">
+                            <div className="flex gap-3">
+                                <div className={`p-2.5 rounded-lg h-fit transition-colors ${assignment?.settings?.showAnswersAfterSubmit !== false ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12h10" /><path d="M9 4v16" /><path d="m3 9 3 3-3 3" /><path d="M14 6h6" /><path d="M14 10h6" /><path d="M14 14h6" /><path d="M14 18h6" /></svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900">Hiển thị đáp án sau nộp bài</h3>
+                                    <p className="text-sm text-slate-500 mt-1 max-w-[280px]">
+                                        Cho phép học sinh xem đáp án đúng và lời giải sau khi nộp bài.
+                                    </p>
+                                    <div className={`text-xs font-medium mt-2 inline-block px-2 py-1 rounded transition-colors ${assignment?.settings?.showAnswersAfterSubmit !== false ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+                                        {assignment?.settings?.showAnswersAfterSubmit !== false
+                                            ? "Đang bật: Học sinh thấy đáp án chi tiết"
+                                            : "Đang tắt: Học sinh chỉ thấy điểm và đúng/sai"
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <label className="relative inline-flex items-center cursor-pointer mt-1">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={assignment?.settings?.showAnswersAfterSubmit !== false}
+                                    onChange={async (e) => {
+                                        const newVal = e.target.checked;
+                                        // Optimistic update
+                                        setAssignment(prev => prev ? {
+                                            ...prev,
+                                            settings: { ...(prev.settings || {}), showAnswersAfterSubmit: newVal }
+                                        } : null);
+                                        try {
+                                            await axios.patch(`/api/teacher/assignments/${assignmentId}`, {
+                                                settings: { ...(assignment?.settings || {}), showAnswersAfterSubmit: newVal }
+                                            });
+                                            toast.success(`Đã ${newVal ? "bật" : "tắt"} hiển thị đáp án`);
+                                        } catch {
+                                            toast.error("Lỗi cập nhật cài đặt");
+                                            setAssignment(prev => prev ? {
+                                                ...prev,
+                                                settings: { ...(prev.settings || {}), showAnswersAfterSubmit: !newVal }
+                                            } : null); // Revert
+                                        }
+                                    }}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
                     {/* Time Limit Card */}
                     <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between">

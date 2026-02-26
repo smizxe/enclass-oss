@@ -81,7 +81,8 @@ const SectionContent = ({
     startIndex,
     submissionResult,
     passageFontSize = 16,
-    questionFontSize = 16
+    questionFontSize = 16,
+    showAnswersAfterSubmit = true,
 }: {
     group: QuestionGroup,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,7 +94,8 @@ const SectionContent = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     submissionResult?: any,
     passageFontSize?: number,
-    questionFontSize?: number
+    questionFontSize?: number,
+    showAnswersAfterSubmit?: boolean
 }) => {
     return (
         <div className="space-y-8 pb-10">
@@ -212,6 +214,7 @@ const SectionContent = ({
                                             results={submissionResult?.results}
                                             startIndex={runStart}
                                             fontSize={questionFontSize}
+                                            showAnswersAfterSubmit={showAnswersAfterSubmit}
                                         />
                                     );
                                 }
@@ -273,6 +276,7 @@ const SectionContent = ({
                                                                 onChange={(val) => onAnswerChange(q.id, val)}
                                                                 result={result}
                                                                 isMultiSelect={!!(q.correctAnswer && q.correctAnswer.includes(","))}
+                                                                showAnswersAfterSubmit={showAnswersAfterSubmit}
                                                             />
                                                         )}
                                                         {q.type === "GAP_FILL" && (
@@ -283,6 +287,7 @@ const SectionContent = ({
                                                                 onChange={(val) => onAnswerChange(q.id, val)}
                                                                 disabled={!!result}
                                                                 result={result}
+                                                                showAnswersAfterSubmit={showAnswersAfterSubmit}
                                                             />
                                                         )}
                                                         {q.type === "SORTABLE" && (
@@ -1310,6 +1315,7 @@ export const QuizRunner = ({
                                     submissionResult={submissionResult}
                                     passageFontSize={passageFontSize}
                                     questionFontSize={questionFontSize}
+                                    showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
                                 />
                             </div>
 
@@ -1332,6 +1338,7 @@ export const QuizRunner = ({
                         submissionResult={submissionResult}
                         passageFontSize={passageFontSize}
                         questionFontSize={questionFontSize}
+                        showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
                     />
                 </div>
 
@@ -1350,13 +1357,13 @@ export const QuizRunner = ({
     );
 };
 
-// Simplified MCQ component that uses pre-parsed content (no passage - shown at section level)
 const McqQuestionSimple = ({
     question,
     value,
     onChange,
     result,
-    isMultiSelect
+    isMultiSelect,
+    showAnswersAfterSubmit = true,
 }: {
     question: ParsedQuestion;
     value: string | undefined;
@@ -1364,6 +1371,7 @@ const McqQuestionSimple = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     result?: any;
     isMultiSelect?: boolean;
+    showAnswersAfterSubmit?: boolean;
 }) => {
     const { parsed } = question;
 
@@ -1462,11 +1470,14 @@ const McqQuestionSimple = ({
                             isCorrectAnswer = correctAnswersList.includes(optionValue) || correctAnswersList.includes(optionLetter);
 
                             if (isCorrectAnswer) {
-                                // Correct Answer (always highlighted)
-                                resultClass = "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-200 text-emerald-800";
+                                // Correct Answer
+                                if (showAnswersAfterSubmit !== false) {
+                                    resultClass = "border-emerald-500 bg-emerald-100 ring-2 ring-emerald-200 text-emerald-800";
+                                } else {
+                                    resultClass = "opacity-60"; // Hide styling if not allowed to show
+                                }
                             } else if (isSelected && !result.isCorrect) {
-                                // Selected but Wrong (Note: In multi-select, entire question is marked correct/wrong, but we can show partials? Logic usually marks whole Q wrong if any wrong)
-                                // If this option was selected but is NOT correct
+                                // Selected but Wrong
                                 resultClass = "border-red-500 bg-red-100 ring-2 ring-red-200 text-red-800";
                             } else if (isSelected && isCorrectAnswer) {
                                 // Selected and Correct
@@ -1509,12 +1520,9 @@ const McqQuestionSimple = ({
                             >
                                 <div className={`mt-0.5 w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${isSelected
                                     ? (result ? (isCorrectAnswer ? "border-emerald-500 bg-emerald-500 text-white" : "border-red-500 bg-red-500 text-white") : "border-indigo-600 bg-indigo-600 text-white")
-                                    : (result && isCorrectAnswer ? "border-emerald-500 bg-emerald-500 text-emerald-100" : "border-slate-300 group-hover:border-indigo-400")
+                                    : (result && isCorrectAnswer && showAnswersAfterSubmit !== false ? "border-emerald-500 bg-emerald-500 text-emerald-100" : "border-slate-300 group-hover:border-indigo-400")
                                     }`}>
-                                    {/* Icon: Check if selected, or just dot. For Multi-select use Square style visually?
-                                        Actually, keeping Circle UI is fine, just behavior changes.
-                                        But Checkbox usually implies multi. Let's adapt icon.
-                                    */}
+                                    {/* Icon */}
                                     {isMultiSelect ? (
                                         isSelected ? <CheckCircle className="w-3.5 h-3.5" /> : null
                                     ) : (
@@ -1535,11 +1543,11 @@ const McqQuestionSimple = ({
                 <div className={`mt-3 p-3 rounded-lg flex flex-col gap-2 ${result.isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
                     <div>
                         <span className="font-bold">{result.isCorrect ? "Chính xác!" : "Chưa chính xác!"}</span>
-                        {!result.isCorrect && (
+                        {!result.isCorrect && showAnswersAfterSubmit !== false && (
                             <span className="ml-2">Đáp án đúng: <strong>{result.correctAnswer}</strong></span>
                         )}
                     </div>
-                    {question.explanation && (
+                    {question.explanation && showAnswersAfterSubmit !== false && (
                         <div className={`mt-1 pt-2 border-t text-sm ${result.isCorrect ? "border-emerald-200 text-emerald-800" : "border-red-200 text-red-800"}`}>
                             <strong>💡 Giải thích: </strong>
                             <div className="inline prose-sm"><ReactMarkdown>{question.explanation || ""}</ReactMarkdown></div>

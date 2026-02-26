@@ -21,6 +21,7 @@ interface GapFillQuestionProps {
         perGapResults?: { isCorrect: boolean; correctAnswer: string }[];
         score?: number;
     };
+    showAnswersAfterSubmit?: boolean;
 }
 
 export const GapFillQuestion = ({
@@ -28,7 +29,8 @@ export const GapFillQuestion = ({
     value,
     onChange,
     disabled,
-    result
+    result,
+    showAnswersAfterSubmit = true
 }: GapFillQuestionProps) => {
     // Get the actual text - either from parsed or directly from content
     const questionText = useMemo(() => {
@@ -90,7 +92,7 @@ export const GapFillQuestion = ({
                                         placeholder="............"
                                     />
                                     {/* Show correct answer inline if wrong */}
-                                    {gapResult && !gapResult.isCorrect && (
+                                    {gapResult && !gapResult.isCorrect && showAnswersAfterSubmit !== false && (
                                         <span className="ml-1 text-xs text-red-600 font-medium">
                                             → {gapResult.correctAnswer}
                                         </span>
@@ -111,7 +113,7 @@ export const GapFillQuestion = ({
                         ) : (
                             <span className="font-medium">
                                 📊 Kết quả: {result.score !== undefined ? `${result.score}` : (result.isCorrect ? "Đúng" : "Chưa đúng hết")}
-                                {result.correctAnswer && !result.perGapResults && (
+                                {result.correctAnswer && !result.perGapResults && showAnswersAfterSubmit !== false && (
                                     <span className="ml-2">— Đáp án: <strong>{result.correctAnswer}</strong></span>
                                 )}
                             </span>
