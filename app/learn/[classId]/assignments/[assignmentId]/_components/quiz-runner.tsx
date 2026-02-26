@@ -825,7 +825,22 @@ export const QuizRunner = ({
         if (mobileContainer) mobileContainer.scrollTop = 0;
     }, [activeSectionIndex]);
 
+    // Close appearance popup when clicking outside
+    // IMPORTANT: This hook MUST be placed before any early return statements
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (appearanceRef.current && !appearanceRef.current.contains(event.target as Node)) {
+                setIsAppearanceOpen(false);
+            }
+        };
 
+        if (isAppearanceOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isAppearanceOpen]);
 
     // ====== TIMER WARNING POPUP ======
     if (showTimerWarning && hasTimeLimit && !isSubmitted && !initialSubmission) {
@@ -969,22 +984,6 @@ export const QuizRunner = ({
         </div>
     );
 
-
-    // Close appearance popup when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (appearanceRef.current && !appearanceRef.current.contains(event.target as Node)) {
-                setIsAppearanceOpen(false);
-            }
-        };
-
-        if (isAppearanceOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isAppearanceOpen]);
 
     const AppearanceControl = (
         <div className="relative appearance-control" ref={appearanceRef}>
