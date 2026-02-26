@@ -30,6 +30,7 @@ interface Question {
     type: string;
     content: string;
     correctAnswer: string;
+    explanation?: string | null;
     points: number;
 }
 
@@ -86,6 +87,7 @@ export default function AssignmentEditorPage() {
         options: string[];
         correctAnswerIndexes: number[];
         correctAnswerText: string;
+        explanation?: string | null;
         points: number;
         sectionTitle: string;
         aiRubric?: string; // Added for AI Grading
@@ -95,6 +97,7 @@ export default function AssignmentEditorPage() {
         options: ["", "", "", ""],
         correctAnswerIndexes: [],
         correctAnswerText: "",
+        explanation: "",
         points: 1,
         sectionTitle: "",
         aiRubric: ""
@@ -364,6 +367,7 @@ export default function AssignmentEditorPage() {
             options: options,
             correctAnswerIndexes: indexes,
             correctAnswerText: answerText,
+            explanation: q.explanation || "",
             points: q.points,
             sectionTitle: existingSectionTitle,
             aiRubric: (parsed as any).aiRubric || ""
@@ -397,6 +401,7 @@ export default function AssignmentEditorPage() {
             type: newQuestion.type, // Use selected type
             content: JSON.stringify(contentObj),
             correctAnswer: correctAnswerChar,
+            explanation: newQuestion.explanation || null,
             points: newQuestion.points
         };
 
@@ -427,6 +432,7 @@ export default function AssignmentEditorPage() {
                 options: ["", "", "", ""],
                 correctAnswerIndexes: [],
                 correctAnswerText: "",
+                explanation: "",
                 points: 1,
                 sectionTitle: "",
                 aiRubric: ""
@@ -1146,6 +1152,12 @@ export default function AssignmentEditorPage() {
                                                 <div className="mt-3 text-xs text-slate-400">
                                                     Điểm: {q.points} | Đáp án đúng: {q.correctAnswer}
                                                 </div>
+                                                {q.explanation && (
+                                                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+                                                        <span className="font-bold">📝 Lời giải: </span>
+                                                        {q.explanation}
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -1294,6 +1306,19 @@ export default function AssignmentEditorPage() {
                                             />
                                         </div>
                                     )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Lời giải (Giải thích đáp án)</label>
+                                    <p className="text-xs text-slate-500 mb-2">
+                                        Hiển thị cho học viên xem sau khi nộp bài. AI tự động tạo khi import.
+                                    </p>
+                                    <Textarea
+                                        value={newQuestion.explanation || ""}
+                                        onChange={(e) => setNewQuestion({ ...newQuestion, explanation: e.target.value })}
+                                        className="min-h-[80px]"
+                                        placeholder="Ví dụ: Đáp án B đúng vì..."
+                                    />
                                 </div>
 
                                 {/* AI Grading Settings (for SPEAKING & WRITING) */}

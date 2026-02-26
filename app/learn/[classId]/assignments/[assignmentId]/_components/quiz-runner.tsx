@@ -46,6 +46,7 @@ interface ParsedQuestion {
     content: string;
     points: number;
     correctAnswer: string;
+    explanation?: string | null;
     parsed: {
         text: string;
         items?: string[];
@@ -1531,10 +1532,18 @@ const McqQuestionSimple = ({
 
             {/* Explanation / Result Text */}
             {result && (
-                <div className={`mt-3 p-3 rounded-lg ${result.isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
-                    <span className="font-bold">{result.isCorrect ? "Chính xác!" : "Chưa chính xác!"}</span>
-                    {!result.isCorrect && (
-                        <span className="ml-2">Đáp án đúng: <strong>{result.correctAnswer}</strong></span>
+                <div className={`mt-3 p-3 rounded-lg flex flex-col gap-2 ${result.isCorrect ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                    <div>
+                        <span className="font-bold">{result.isCorrect ? "Chính xác!" : "Chưa chính xác!"}</span>
+                        {!result.isCorrect && (
+                            <span className="ml-2">Đáp án đúng: <strong>{result.correctAnswer}</strong></span>
+                        )}
+                    </div>
+                    {question.explanation && (
+                        <div className={`mt-1 pt-2 border-t text-sm ${result.isCorrect ? "border-emerald-200 text-emerald-800" : "border-red-200 text-red-800"}`}>
+                            <strong>💡 Giải thích: </strong>
+                            <div className="inline prose-sm"><ReactMarkdown>{question.explanation || ""}</ReactMarkdown></div>
+                        </div>
                     )}
                 </div>
             )}
