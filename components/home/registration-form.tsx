@@ -106,26 +106,33 @@ export const RegistrationForm = () => {
                         </label>
                         <div className="grid grid-cols-2 gap-3">
                             <label className="cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="target"
-                                    value="IELTS"
-                                    defaultChecked
-                                    className="peer sr-only"
-                                />
+                                <input type="radio" name="target" value="IELTS" defaultChecked className="peer sr-only" />
                                 <div className="px-4 py-3 rounded-lg border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 text-slate-600 text-sm font-medium text-center transition hover:bg-slate-50">
                                     IELTS
                                 </div>
                             </label>
                             <label className="cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="target"
-                                    value="TOEIC"
-                                    className="peer sr-only"
-                                />
+                                <input type="radio" name="target" value="Thi vào 10" className="peer sr-only" />
                                 <div className="px-4 py-3 rounded-lg border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 text-slate-600 text-sm font-medium text-center transition hover:bg-slate-50">
-                                    TOEIC
+                                    Thi vào 10
+                                </div>
+                            </label>
+                            <label className="cursor-pointer">
+                                <input type="radio" name="target" value="Thi Chuyên Anh" className="peer sr-only" />
+                                <div className="px-4 py-3 rounded-lg border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 text-slate-600 text-sm font-medium text-center transition hover:bg-slate-50">
+                                    Thi Chuyên Anh
+                                </div>
+                            </label>
+                            <label className="cursor-pointer">
+                                <input type="radio" name="target" value="Thi TN THPT" className="peer sr-only" />
+                                <div className="px-4 py-3 rounded-lg border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 text-slate-600 text-sm font-medium text-center transition hover:bg-slate-50">
+                                    Thi TN THPT
+                                </div>
+                            </label>
+                            <label className="cursor-pointer col-span-2">
+                                <input type="radio" name="target" value="Thi Đánh giá năng lực" className="peer sr-only" />
+                                <div className="px-4 py-3 rounded-lg border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 text-slate-600 text-sm font-medium text-center transition hover:bg-slate-50">
+                                    Thi Đánh giá năng lực
                                 </div>
                             </label>
                         </div>

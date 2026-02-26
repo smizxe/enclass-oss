@@ -40,7 +40,7 @@ export default function HomePage() {
                     </h1>
 
                     <p className="text-lg text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-                        Không chỉ học trên lớp, học viên được cấp tài khoản VIP luyện đề IELTS/TOEIC trên giao diện thi thật. Chấm điểm tự động, giải thích chi tiết, cam kết tăng band điểm.
+                        Ngoài học chính trên lớp, học viên được cấp tài khoản VIP để luyện tập đa dạng các hình thức thi: IELTS, Thi vào 10, Thi Chuyên Anh, Thi Tốt nghiệp THPT, Thi Đánh giá năng lực... trên giao diện thi thật. Hệ thống website chấm điểm tức thì, giải thích chi tiết, và theo dõi tiến độ cá nhân sẽ mang lại trải nghiệm học tập khác biệt và hiệu quả.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -159,20 +159,20 @@ export default function HomePage() {
                     <p className="text-slate-500">Xem trước giao diện mà các bạn học viên đang sử dụng hàng ngày.</p>
                 </div>
 
-                <div className="flex gap-6 overflow-x-auto px-6 pb-12 snap-x snap-mandatory scrollbar-hide">
+                <div className="px-6 pb-12 max-w-5xl mx-auto">
                     {/* Card 1: Exam UI */}
-                    <div className="min-w-[300px] md:min-w-[700px] snap-center bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
+                    <div className="w-full bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
                         <div className="h-10 bg-slate-900 flex items-center px-4 justify-between">
                             <span className="text-white text-xs font-medium">IELTS Reading Simulation</span>
                             <span className="text-white text-xs font-mono bg-slate-700 px-2 py-1 rounded">58:20 left</span>
                         </div>
-                        <div className="p-0 flex h-[350px]">
-                            <div className="w-1/2 p-6 overflow-y-auto border-r border-slate-200 bg-slate-50 text-slate-600 text-sm leading-7">
+                        <div className="p-0 flex flex-col md:flex-row h-auto md:h-[350px]">
+                            <div className="w-full md:w-1/2 p-6 overflow-y-auto border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 text-slate-600 text-sm leading-7">
                                 <h4 className="font-bold text-slate-900 mb-3 text-lg">The Life of Bees</h4>
                                 <p className="mb-4">Bees are winged insects closely related to wasps and ants, known for their roles in pollination and, in the case of the best-known bee species, the western honey bee, for producing honey...</p>
                                 <p>Bees are found on every continent except Antarctica, in every habitat on the planet that contains insect-pollinated flowering plants.</p>
                             </div>
-                            <div className="w-1/2 p-6 overflow-y-auto">
+                            <div className="w-full md:w-1/2 p-6 overflow-y-auto">
                                 <div className="mb-4">
                                     <h5 className="text-sm font-bold text-slate-900 mb-2">Questions 1-3</h5>
                                     <p className="text-xs text-slate-500 mb-3">Choose the correct letter, A, B, C or D.</p>
@@ -192,51 +192,6 @@ export default function HomePage() {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 2: Leaderboard */}
-                    <div className="min-w-[300px] md:min-w-[500px] snap-center bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden flex flex-col">
-                        <div className="h-14 bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center px-6 gap-3">
-                            <Trophy className="w-6 h-6 text-white" />
-                            <span className="text-white font-bold text-lg">Bảng Vàng Tháng 10</span>
-                        </div>
-                        <div className="p-6 flex-1 bg-white">
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-4 p-3 rounded-xl bg-yellow-50 border border-yellow-100">
-                                    <div className="font-bold text-yellow-600 text-lg w-6">1</div>
-                                    <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
-                                        <Image src="https://api.dicebear.com/7.x/notionists/svg?seed=Annie" alt="Avatar" width={40} height={40} className="w-full h-full" unoptimized />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-sm font-bold text-slate-900">Trần Minh Tú</div>
-                                        <div className="text-xs text-slate-500">Lớp IELTS Fighter</div>
-                                    </div>
-                                    <div className="font-bold text-indigo-600">8.5</div>
-                                </div>
-                                <div className="flex items-center gap-4 p-3 rounded-xl border border-slate-100">
-                                    <div className="font-bold text-slate-400 text-lg w-6">2</div>
-                                    <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
-                                        <Image src="https://api.dicebear.com/7.x/notionists/svg?seed=Bob" alt="Avatar" width={40} height={40} className="w-full h-full" unoptimized />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-sm font-bold text-slate-900">Lê Hoàng</div>
-                                        <div className="text-xs text-slate-500">Lớp TOEIC 600+</div>
-                                    </div>
-                                    <div className="font-bold text-indigo-600">8.0</div>
-                                </div>
-                                <div className="flex items-center gap-4 p-3 rounded-xl border border-slate-100">
-                                    <div className="font-bold text-slate-400 text-lg w-6">3</div>
-                                    <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
-                                        <Image src="https://api.dicebear.com/7.x/notionists/svg?seed=Cait" alt="Avatar" width={40} height={40} className="w-full h-full" unoptimized />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-sm font-bold text-slate-900">Phạm Hương</div>
-                                        <div className="text-xs text-slate-500">Lớp Foundation</div>
-                                    </div>
-                                    <div className="font-bold text-indigo-600">7.5</div>
                                 </div>
                             </div>
                         </div>
@@ -286,7 +241,7 @@ export default function HomePage() {
                                 </li>
                                 <li className="flex items-center gap-3 text-white font-medium">
                                     <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                                    Cam kết đầu ra bằng văn bản
+                                    Hỗ trợ học lại miễn phí nếu không đạt
                                 </li>
                             </ul>
                         </div>
