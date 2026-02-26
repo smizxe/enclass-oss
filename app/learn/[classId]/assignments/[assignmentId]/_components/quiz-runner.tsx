@@ -825,17 +825,7 @@ export const QuizRunner = ({
         if (mobileContainer) mobileContainer.scrollTop = 0;
     }, [activeSectionIndex]);
 
-    if (assignment.questions.length === 0) {
-        return (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-3xl">📝</span>
-                </div>
-                <h3 className="font-medium text-slate-900 mb-1">Chưa có câu hỏi</h3>
-                <p className="text-sm text-slate-500">Bài tập này chưa có câu hỏi nào.</p>
-            </div>
-        );
-    }
+
 
     // ====== TIMER WARNING POPUP ======
     if (showTimerWarning && hasTimeLimit && !isSubmitted && !initialSubmission) {
@@ -881,6 +871,18 @@ export const QuizRunner = ({
                         </div>
                     </div>
                 </div>
+            </div>
+        );
+    }
+
+    if (assignment.questions.length === 0) {
+        return (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-3xl">📝</span>
+                </div>
+                <h3 className="font-medium text-slate-900 mb-1">Chưa có câu hỏi</h3>
+                <p className="text-sm text-slate-500">Bài tập này chưa có câu hỏi nào.</p>
             </div>
         );
     }
