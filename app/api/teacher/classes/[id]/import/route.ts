@@ -60,6 +60,7 @@ RULES:
     - Example notePassage: "**New Zealand's kākāpō**\\nA type of parrot:\\n• diet consists of fern fronds, various parts of a tree and {7}\\n• nests are created {8} in where eggs are laid."
     - The "content" field for each GAP_FILL question should still contain the surrounding context text.
     - This separates the reading passage (shown on the left) from the note form (shown on the right).
+11. **EXPLANATION (REQUIRED):** For EVERY question, you MUST provide a concise explanation in Vietnamese in the "explanation" field. The explanation should be 1-2 sentences explaining WHY the correct answer is correct. Be brief and educational. Example: "Đáp án B (physician) đúng vì 'physician' nghĩa là 'bác sĩ', phù hợp với ngữ cảnh nói về Albert Einstein là nhà vật lý học."
 
 FORMATTING:
 - Bold: **text**, Italic: *text*, Underline: __text__
@@ -92,7 +93,7 @@ OUTPUT JSON:
           "options": ["The history", "The purpose", "The location", "The ceremony"],
           "correctAnswer": "B",
           "predictedAnswer": false,
-          "explanation": ""
+          "explanation": "Đáp án B đúng vì đoạn văn chủ yếu nói về mục đích (the purpose) của sự kiện."
         }
       ]
     }
