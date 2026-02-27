@@ -14,7 +14,8 @@ import {
     GripVertical,
     ChevronDown,
     ChevronRight,
-    Folder
+    Folder,
+    Copy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EditAssignmentModal } from "./edit-assignment-modal";
 import { CreateGroupModal } from "./create-group-modal";
+import { CopyAssignmentModal } from "./copy-assignment-modal";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -46,6 +48,10 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
         id: string;
         title: string;
         settings?: any;
+    } | null>(null);
+    const [copyingAssignment, setCopyingAssignment] = useState<{
+        id: string;
+        title: string;
     } | null>(null);
 
     // UI State for expanded groups
@@ -286,6 +292,12 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                                 })}>
                                     <Pencil className="mr-2 h-4 w-4" /> Cài đặt
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setCopyingAssignment({
+                                    id: assignment.id,
+                                    title: assignment.title
+                                })}>
+                                    <Copy className="mr-2 h-4 w-4" /> Sao chép sang lớp khác
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleDelete(assignment.id)} className="text-red-600">
                                     <Trash2 className="mr-2 h-4 w-4" /> Xóa
                                 </DropdownMenuItem>
@@ -422,6 +434,16 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                         ));
                         router.refresh();
                     }}
+                />
+            )}
+
+            {copyingAssignment && (
+                <CopyAssignmentModal
+                    classId={classId}
+                    assignmentId={copyingAssignment.id}
+                    assignmentTitle={copyingAssignment.title}
+                    isOpen={!!copyingAssignment}
+                    onClose={() => setCopyingAssignment(null)}
                 />
             )}
         </div>
