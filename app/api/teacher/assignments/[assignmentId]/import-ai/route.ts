@@ -8,6 +8,10 @@ import {
     revalidateTeacherTags
 } from "@/lib/cache-invalidation";
 
+// Allow the function to run for the maximum time on Vercel (up to 5 mins on Pro)
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 

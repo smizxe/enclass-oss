@@ -5,6 +5,10 @@ import mammoth from "mammoth";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+// Allow the function to run for the maximum time on Vercel (up to 5 mins on Pro)
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
 export async function POST(
