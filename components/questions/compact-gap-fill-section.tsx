@@ -259,92 +259,100 @@ export const CompactGapFillSection = ({
         );
     }
 
-    // Split passage by {N} markers and render inline inputs
-    const parts = finalPassage.split(/(\{\d+\})/g);
+    // Replace {N} markers with HTML placeholder spans, then render entire passage
+    // through a SINGLE ReactMarkdown call. This preserves the paragraph structure,
+    // headings, bold, line breaks etc. from the original markdown.
+    const passageWithPlaceholders = useMemo(() => {
+        if (!finalPassage) return "";
+        // Replace {N} with a unique HTML span that ReactMarkdown (with rehypeRaw) will pass through.
+        // We use a data attribute to carry the question number.
+        return finalPassage.replace(
+            /\{(\d+)\}/g,
+            (_, num) => `<span data-gap-marker="${num}"></span>`
+        );
+    }, [finalPassage]);
+
+    // Custom component to render our gap marker spans as input fields
+    const GapMarkerSpan = useMemo(() => {
+        // eslint-disable-next-line react/display-name
+        return ({ node, ...props }: any) => {
+            const gapNum = props['data-gap-marker'];
+            if (gapNum === undefined || gapNum === null) {
+                // Regular span, render normally
+                return <span {...props} />;
+            }
+
+            const num = parseInt(gapNum);
+            const question = questionMap.get(num);
+
+            if (!question) {
+                return <span className="text-slate-400">[{num}]</span>;
+            }
+
+            if (mode === "teacher_preview") {
+                return (
+                    <span className="inline-flex items-center gap-1 mx-1 align-middle">
+                        <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 text-xs font-medium rounded select-none">
+                            {num}
+                        </span>
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200 select-none">
+                            {question.correctAnswer || "?"}
+                        </span>
+                    </span>
+                );
+            }
+
+            const result = results?.[question.id];
+            const currentValue = answers[question.id] || "";
+
+            return (
+                <span className="inline-flex items-center gap-1 mx-1 align-middle">
+                    <span className="text-xs font-bold text-indigo-500 select-none">
+                        {num}
+                    </span>
+                    <Input
+                        className={`w-32 sm:w-36 h-8 inline-flex text-sm ${result
+                            ? (result.isCorrect
+                                ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-medium"
+                                : "border-red-400 bg-red-50 text-red-700")
+                            : "border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
+                            }`}
+                        disabled={disabled || !!result}
+                        value={currentValue}
+                        onChange={(e) => onAnswerChange(question.id, e.target.value)}
+                        placeholder="............"
+                    />
+                    {result && !result.isCorrect && (
+                        <span className="text-xs text-red-600 font-medium whitespace-nowrap">
+                            → {result.correctAnswer}
+                        </span>
+                    )}
+                    {result?.isCorrect && (
+                        <span className="text-xs text-emerald-600">✓</span>
+                    )}
+                </span>
+            );
+        };
+    }, [questionMap, mode, results, answers, onAnswerChange, disabled]);
 
     return (
         <div
             className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5"
             style={{ fontSize: `${fontSize}px` }}
         >
-            {/* If Synthetic: Render Original Passage first, THEN the Reconstructed Note/Summary Block. */}
-            {/* If Synthetic: Render ONLY the Reconstructed Note/Summary Block. The Original Passage is already shown externally. */}
-
-            <div className={`leading-9 text-slate-800 ${isSynthetic ? 'border border-slate-300 rounded-xl p-6 bg-slate-50/50' : 'prose prose-sm max-w-none prose-headings:mb-2 prose-headings:mt-4 prose-p:mb-1 prose-ul:my-1 prose-li:my-0 [&_strong]:font-bold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2'}`}>
-                {parts.map((part, index) => {
-                    // Check if this part is a {N} marker
-                    const markerMatch = part.match(/^\{(\d+)\}$/);
-                    if (markerMatch) {
-                        const num = parseInt(markerMatch[1]);
-                        const question = questionMap.get(num);
-
-                        if (!question) {
-                            // No matching question, render as text
-                            return <span key={index} className="text-slate-400">[{num}]</span>;
-                        }
-
-                        if (mode === "teacher_preview") {
-                            return (
-                                <span key={index} className="inline-flex items-center gap-1 mx-1 align-middle">
-                                    <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 text-xs font-medium rounded select-none">
-                                        {num}
-                                    </span>
-                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200 select-none">
-                                        {question.correctAnswer || "?"}
-                                    </span>
-                                </span>
-                            );
-                        }
-
-                        const result = results?.[question.id];
-                        const currentValue = answers[question.id] || "";
-
-                        return (
-                            <span key={index} className="inline-flex items-center gap-1 mx-1 align-middle">
-                                <span className="text-xs font-bold text-indigo-500 select-none">
-                                    {num}
-                                </span>
-                                <Input
-                                    className={`w-32 sm:w-36 h-8 inline-flex text-sm ${result
-                                        ? (result.isCorrect
-                                            ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-medium"
-                                            : "border-red-400 bg-red-50 text-red-700")
-                                        : "border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
-                                        }`}
-                                    disabled={disabled || !!result}
-                                    value={currentValue}
-                                    onChange={(e) => onAnswerChange(question.id, e.target.value)}
-                                    placeholder="............"
-                                />
-                                {result && !result.isCorrect && (
-                                    <span className="text-xs text-red-600 font-medium whitespace-nowrap">
-                                        → {result.correctAnswer}
-                                    </span>
-                                )}
-                                {result?.isCorrect && (
-                                    <span className="text-xs text-emerald-600">✓</span>
-                                )}
-                            </span>
-                        );
-                    }
-
-                    // Render non-marker parts as markdown/HTML
-                    if (!part.trim()) return null;
-
-                    return (
-                        <ReactMarkdown
-                            key={index}
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeRaw]}
-                            components={{
-                                // Render paragraphs as divs to stay inline when needed but allow block children
-                                p: ({ children }) => <div className="inline">{children}</div>,
-                            }}
-                        >
-                            {part}
-                        </ReactMarkdown>
-                    );
-                })}
+            <div className={`leading-9 text-slate-800 ${isSynthetic
+                ? 'border border-slate-300 rounded-xl p-6 bg-slate-50/50'
+                : 'prose prose-sm max-w-none prose-headings:mb-2 prose-headings:mt-4 prose-p:mb-3 prose-ul:my-1 prose-li:my-0 [&_strong]:font-bold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2'
+                }`}>
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw]}
+                    components={{
+                        span: GapMarkerSpan,
+                    }}
+                >
+                    {passageWithPlaceholders}
+                </ReactMarkdown>
             </div>
         </div>
     );
