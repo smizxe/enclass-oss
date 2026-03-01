@@ -158,6 +158,34 @@ OUTPUT JSON:
 
         let data;
         try {
+            // --- JSON Repair Logic ---
+            // 1. Fix unescaped control characters inside JSON strings (newlines, tabs)
+            //    These commonly appear inside notePassage and passage fields from AI output.
+            jsonString = jsonString.replace(
+                /("(?:[^"\\]|\\.)*")/g,
+                (match) => {
+                    // Inside quoted strings, escape any raw control chars that aren't already escaped
+                    return match
+                        .replace(/(?<!\\)\t/g, '\\t')
+                        .replace(/(?<!\\)\r\n/g, '\\n')
+                        .replace(/(?<!\\)\r/g, '\\n')
+                        .replace(/(?<!\\)\n/g, '\\n');
+                }
+            );
+
+            // 2. Remove trailing commas before } or ] (common AI JSON error)
+            jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
+
+            // 3. Try to close truncated JSON (AI sometimes cuts off mid-response)
+            const openBraces = (jsonString.match(/{/g) || []).length;
+            const closeBraces = (jsonString.match(/}/g) || []).length;
+            const openBrackets = (jsonString.match(/\[/g) || []).length;
+            const closeBrackets = (jsonString.match(/\]/g) || []).length;
+
+            // Auto-close if truncated
+            for (let i = 0; i < openBrackets - closeBrackets; i++) jsonString += ']';
+            for (let i = 0; i < openBraces - closeBraces; i++) jsonString += '}';
+
             data = JSON.parse(jsonString);
 
             // Post-process: Clean up options and extract inline options from content
@@ -211,10 +239,13 @@ OUTPUT JSON:
                     }
                 }
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error("JSON Parse Error:", e);
-            console.log("Raw Output:", jsonString.substring(0, 1000));
-            return new NextResponse("Failed to parse AI response", { status: 500 });
+            console.log("Raw Output (first 2000 chars):", jsonString.substring(0, 2000));
+            return NextResponse.json(
+                { error: `JSON Parse Error: ${e.message}` },
+                { status: 500 }
+            );
         }
 
         return NextResponse.json(data);
