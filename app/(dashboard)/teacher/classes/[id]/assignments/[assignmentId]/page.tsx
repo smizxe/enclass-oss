@@ -1109,149 +1109,185 @@ export default function AssignmentEditorPage() {
                                     </div>
                                 )}
 
-                                {/* Compact Gap Fill Preview (Read-only for Teacher) */}
+                                {/* Compact Gap Fill Preview and regular questions (Teacher View) */}
                                 {(() => {
-                                    const allGapFill = group.questions.length > 0 && group.questions.every(q => q.type !== "SECTION_HEADER" ? q.type === "GAP_FILL" : true);
-                                    if (allGapFill && (group.notePassage || group.passage)) {
-                                        const compactQuestions = group.questions.filter(q => q.type !== "SECTION_HEADER").map((q, idx) => ({
-                                            id: q.id,
-                                            parsed: { text: q.parsed?.text || q.content },
-                                            correctAnswer: q.correctAnswer || "",
-                                            points: q.points || 1,
-                                            explanation: q.explanation
-                                        }));
-                                        return (
-                                            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 shadow-sm mt-4">
-                                                <div className="flex items-center gap-2 text-sm font-medium text-indigo-700 mb-4">
-                                                    <BookOpen className="w-4 h-4" />
-                                                    <span>Xem trước bài điền từ (Dành cho học viên):</span>
-                                                </div>
-                                                <CompactGapFillSection
-                                                    passage={group.notePassage || group.passage || ""}
-                                                    questions={compactQuestions}
-                                                    answers={{}}
-                                                    onAnswerChange={() => { }}
-                                                    startIndex={questionCounter} // the actual numbers starting index
-                                                    mode="teacher_preview"
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                })()}
+                                    // Filter out SECTION_HEADER
+                                    const realQuestions = group.questions.filter(q => q.type !== "SECTION_HEADER");
 
-                                {/* Questions in this section */}
-                                <div className="space-y-3">
-                                    {group.questions.filter(q => q.type !== "SECTION_HEADER").map((q) => {
-                                        const currentIndex = questionCounter++;
-                                        const parsed = q.parsed;
+                                    type QuestionRun = {
+                                        mode: "gap_fill" | "standard";
+                                        questions: typeof realQuestions;
+                                        startIdx: number;
+                                    };
 
-                                        // Fallback: If no items are present, try to extract them from the text
-                                        let displayText = parsed.text;
-                                        let displayItems = parsed.items || [];
+                                    const runs: QuestionRun[] = [];
+                                    let currentRun: QuestionRun | null = null;
 
-                                        if (displayItems.length === 0) {
-                                            // Attempt to extract "a. ... b. ..." pattern
-                                            const regex = /(?:^|\s)([a-e])\.\s+(.*?)(?=\s+[a-e]\.\s+|$)/g;
-                                            const matches = Array.from(parsed.text.matchAll(regex));
-
-                                            if (matches.length >= 2) {
-                                                displayItems = matches.map(m => `${m[1]}. ${m[2]}`);
-                                                // The intro is everything before the first item
-                                                const firstMatchIndex = parsed.text.indexOf(matches[0][0]);
-                                                displayText = parsed.text.substring(0, firstMatchIndex).trim();
-                                            }
+                                    realQuestions.forEach((q, idx) => {
+                                        const mode = (q.type || "").toUpperCase().includes("GAP") && (group.notePassage || group.passage) ? "gap_fill" : "standard";
+                                        if (!currentRun || currentRun.mode !== mode) {
+                                            currentRun = { mode, questions: [], startIdx: idx };
+                                            runs.push(currentRun);
                                         }
+                                        currentRun.questions.push(q);
+                                    });
 
-                                        return (
-                                            <div key={q.id} className="p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <span className="font-bold text-slate-700">Câu {currentIndex + 1} ({q.type})</span>
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => handleEditQuestion(q)}
-                                                            className="text-slate-400 hover:text-indigo-600 transition"
-                                                            title="Sửa câu hỏi"
-                                                        >
-                                                            <Pencil className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteQuestion(q.id)}
-                                                            className="text-slate-400 hover:text-red-500 transition"
-                                                            title="Xóa câu hỏi"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div className="text-slate-900 font-medium mb-3 [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:mb-1 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
-                                                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                                                        {(displayText || '').replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
-                                                    </ReactMarkdown>
-                                                </div>
+                                    return (
+                                        <>
+                                            {runs.map((run, runIdx) => {
+                                                const runStart = questionCounter;
+                                                // We don't increment questionCounter here for the whole run yet, 
+                                                // because we need to render each question and let the lower map increment it if standard,
+                                                // OR we increment it by run length if compact.
 
-                                                {/* Display Items for ORDERING questions */}
-                                                {displayItems.length > 0 && (
-                                                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2 mb-3">
-                                                        <div className="text-sm font-medium text-amber-700 mb-2">
-                                                            📝 Các câu cần sắp xếp:
-                                                        </div>
-                                                        {displayItems.map((item, index) => (
-                                                            <div
-                                                                key={index}
-                                                                className="text-sm text-slate-700 pl-3 py-2 border-l-4 border-amber-400 bg-white rounded-r-lg px-3 shadow-sm"
-                                                            >
-                                                                {item}
+                                                if (run.mode === "gap_fill" && (group.notePassage || group.passage)) {
+                                                    const compactQuestions = run.questions.map((q, idx) => ({
+                                                        id: q.id,
+                                                        parsed: { text: q.parsed?.text || q.content },
+                                                        correctAnswer: q.correctAnswer || "",
+                                                        points: q.points || 1,
+                                                        explanation: q.explanation
+                                                    }));
+
+                                                    // Advance counter for the gap fill questions to stay in sync
+                                                    questionCounter += run.questions.length;
+
+                                                    return (
+                                                        <div key={`run-${runIdx}`} className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 shadow-sm mt-4">
+                                                            <div className="flex items-center gap-2 text-sm font-medium text-indigo-700 mb-4">
+                                                                <BookOpen className="w-4 h-4" />
+                                                                <span>Xem trước bài điền từ (Dành cho học viên):</span>
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                            <CompactGapFillSection
+                                                                passage={group.notePassage || group.passage || ""}
+                                                                questions={compactQuestions}
+                                                                answers={{}}
+                                                                onAnswerChange={() => { }}
+                                                                startIndex={runStart}
+                                                                mode="teacher_preview"
+                                                            />
+                                                        </div>
+                                                    );
+                                                }
 
-                                                {/* Answer Options (for MCQ and ORDERING only - not for SPEAKING/WRITING) */}
-                                                {parsed.options && parsed.options.length > 0 && !["SPEAKING", "WRITING", "ESSAY"].includes(q.type) && (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                        {parsed.options.map((opt: string, i: number) => {
-                                                            const optionLetter = String.fromCharCode(65 + i);
-                                                            const val = (q.correctAnswer || "").trim();
-                                                            // Split by comma or semicolon to support multi-select answers
-                                                            const correctAnswers = val.split(/[,;]\s*/).map(s => s.trim()).filter(s => s.length > 0);
+                                                // Standard questions rendering (matches original code)
+                                                return (
+                                                    <div key={`run-${runIdx}`} className="space-y-3 mt-4">
+                                                        {run.questions.map((q) => {
+                                                            const currentIndex = questionCounter++;
+                                                            const parsed = q.parsed;
 
-                                                            const isCorrect = correctAnswers.some(ans => {
-                                                                return opt === ans ||
-                                                                    ans === optionLetter ||
-                                                                    (opt.startsWith(`${optionLetter}.`) && ans === optionLetter) ||
-                                                                    (ans.length > 0 && opt.includes(ans) && ans.length > 2);
-                                                            });
+                                                            // Fallback: If no items are present, try to extract them from the text
+                                                            let displayText = parsed.text;
+                                                            let displayItems = parsed.items || [];
+
+                                                            if (displayItems.length === 0) {
+                                                                // Attempt to extract "a. ... b. ..." pattern
+                                                                const regex = /(?:^|\s)([a-e])\.\s+(.*?)(?=\s+[a-e]\.\s+|$)/g;
+                                                                const matches = Array.from(parsed.text.matchAll(regex));
+
+                                                                if (matches.length >= 2) {
+                                                                    displayItems = matches.map(m => `${m[1]}. ${m[2]}`);
+                                                                    // The intro is everything before the first item
+                                                                    const firstMatchIndex = parsed.text.indexOf(matches[0][0]);
+                                                                    displayText = parsed.text.substring(0, firstMatchIndex).trim();
+                                                                }
+                                                            }
 
                                                             return (
-                                                                <div
-                                                                    key={i}
-                                                                    className={`p-2 rounded-lg border text-sm ${isCorrect
-                                                                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-bold"
-                                                                        : "border-slate-100 bg-slate-50 text-slate-600"
-                                                                        }`}
-                                                                >
-                                                                    {opt}
+                                                                <div key={q.id} className="p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <span className="font-bold text-slate-700">Câu {currentIndex + 1} ({q.type})</span>
+                                                                        <div className="flex gap-2">
+                                                                            <button
+                                                                                onClick={() => handleEditQuestion(q)}
+                                                                                className="text-slate-400 hover:text-indigo-600 transition"
+                                                                                title="Sửa câu hỏi"
+                                                                            >
+                                                                                <Pencil className="w-4 h-4" />
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleDeleteQuestion(q.id)}
+                                                                                className="text-slate-400 hover:text-red-500 transition"
+                                                                                title="Xóa câu hỏi"
+                                                                            >
+                                                                                <Trash2 className="w-4 h-4" />
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-slate-900 font-medium mb-3 [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:mb-1 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                                                                        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                                                                            {(displayText || '').replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
+                                                                        </ReactMarkdown>
+                                                                    </div>
+
+                                                                    {/* Display Items for ORDERING questions */}
+                                                                    {displayItems.length > 0 && (
+                                                                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2 mb-3">
+                                                                            <div className="text-sm font-medium text-amber-700 mb-2">
+                                                                                📝 Các câu cần sắp xếp:
+                                                                            </div>
+                                                                            {displayItems.map((item, index) => (
+                                                                                <div
+                                                                                    key={index}
+                                                                                    className="text-sm text-slate-700 pl-3 py-2 border-l-4 border-amber-400 bg-white rounded-r-lg px-3 shadow-sm"
+                                                                                >
+                                                                                    {item}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Answer Options (for MCQ and ORDERING only - not for SPEAKING/WRITING) */}
+                                                                    {parsed.options && parsed.options.length > 0 && !["SPEAKING", "WRITING", "ESSAY"].includes(q.type) && (
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                                            {parsed.options.map((opt: string, i: number) => {
+                                                                                const optionLetter = String.fromCharCode(65 + i);
+                                                                                const val = (q.correctAnswer || "").trim();
+                                                                                // Split by comma or semicolon to support multi-select answers
+                                                                                const correctAnswers = val.split(/[,;]\s*/).map(s => s.trim()).filter(s => s.length > 0);
+
+                                                                                const isCorrect = correctAnswers.some(ans => {
+                                                                                    return opt === ans ||
+                                                                                        ans === optionLetter ||
+                                                                                        (opt.startsWith(`${optionLetter}.`) && ans === optionLetter) ||
+                                                                                        (ans.length > 0 && opt.includes(ans) && ans.length > 2);
+                                                                                });
+
+                                                                                return (
+                                                                                    <div
+                                                                                        key={i}
+                                                                                        className={`p-2 rounded-lg border text-sm ${isCorrect
+                                                                                            ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-bold"
+                                                                                            : "border-slate-100 bg-slate-50 text-slate-600"
+                                                                                            }`}
+                                                                                    >
+                                                                                        {opt}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="mt-3 text-xs text-slate-400">
+                                                                        Điểm: {q.points} | Đáp án đúng: {q.correctAnswer}
+                                                                    </div>
+                                                                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+                                                                        <span className="font-bold">📝 Lời giải: </span>
+                                                                        {q.explanation ? (
+                                                                            q.explanation
+                                                                        ) : (
+                                                                            <span className="italic opacity-60">Chưa có lời giải. Nhấn vào biểu tượng sửa để thêm.</span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             );
                                                         })}
                                                     </div>
-                                                )}
-                                                <div className="mt-3 text-xs text-slate-400">
-                                                    Điểm: {q.points} | Đáp án đúng: {q.correctAnswer}
-                                                </div>
-                                                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
-                                                    <span className="font-bold">📝 Lời giải: </span>
-                                                    {q.explanation ? (
-                                                        q.explanation
-                                                    ) : (
-                                                        <span className="italic opacity-60">Chưa có lời giải. Nhấn vào biểu tượng sửa để thêm.</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                                );
+                                            })}
+                                        </>
+                                    );
+                                })()}
                             </div>
                         );
                     })}
