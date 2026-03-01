@@ -143,6 +143,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
     const [step, setStep] = useState<"upload" | "preview" | "saving">("upload");
     const [title, setTitle] = useState("");
     const [error, setError] = useState("");
+    const [selectedModel, setSelectedModel] = useState("gemini-3.1-pro-preview");
     const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
     const [expandedExplanations, setExpandedExplanations] = useState<Set<string>>(new Set());
 
@@ -239,7 +240,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
 
             const genAI = new GoogleGenerativeAI(apiKey);
             const model = genAI.getGenerativeModel({
-                model: "gemini-3.1-pro-preview",
+                model: selectedModel,
                 generationConfig: {
                     responseMimeType: "application/json",
                     temperature: 0.2,
@@ -435,14 +436,32 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                             )}
 
                             {!isLoading && (
-                                <div className="bg-slate-50 rounded-xl p-4">
-                                    <h3 className="font-medium text-slate-700 mb-2">Hướng dẫn</h3>
-                                    <ul className="text-sm text-slate-600 space-y-1">
-                                        <li>• Hỗ trợ định dạng đề thi TNPT (THPT Quốc gia)</li>
-                                        <li>• AI sẽ tự động nhận diện các phần (Reading, Gap Fill...)</li>
-                                        <li>• Bài đọc chung sẽ được nhóm với các câu hỏi liên quan</li>
-                                    </ul>
-                                </div>
+                                <>
+                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Chọn AI Model</label>
+                                        <select
+                                            value={selectedModel}
+                                            onChange={(e) => setSelectedModel(e.target.value)}
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
+                                        >
+                                            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (Mới nhất, Thông minh nhất)</option>
+                                            <option value="gemini-3.0-flash">Gemini 3.0 Flash (Nhanh)</option>
+                                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                        </select>
+                                        <p className="text-xs text-slate-500 mt-2 text-amber-600 flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3" /> Nếu model báo lỗi quá tải (503), hãy thử chọn model khác.
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-slate-50 rounded-xl p-4">
+                                        <h3 className="font-medium text-slate-700 mb-2">Hướng dẫn</h3>
+                                        <ul className="text-sm text-slate-600 space-y-1">
+                                            <li>• Hỗ trợ định dạng đề thi TNPT (THPT Quốc gia)</li>
+                                            <li>• AI sẽ tự động phân tích và trích xuất câu hỏi</li>
+                                            <li>• Bài đọc chung sẽ được nhóm với các câu hỏi liên quan</li>
+                                        </ul>
+                                    </div>
+                                </>
                             )}
                         </div>
                     )}
