@@ -1,19 +1,17 @@
 
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import mammoth from "mammoth";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// Allow the function to run for the maximum time on Vercel (up to 5 mins on Pro)
-export const maxDuration = 300;
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
-
-export async function POST(
-    req: Request
-) {
+/**
+ * POST: Extract text from uploaded file and return it with the AI prompt + API key.
+ * The actual Gemini AI call happens on the CLIENT side to bypass Vercel's 300s timeout.
+ */
+export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "TEACHER") {
         return new NextResponse("Unauthorized", { status: 401 });
@@ -29,15 +27,7 @@ export async function POST(
     const fileName = file.name.toLowerCase();
     const importType = formData.get("importType") as string || "MCQ";
 
-    // Optimized model config: JSON mode + low temperature for speed & accuracy
-    const model = genAI.getGenerativeModel({
-        model: "gemini-3.1-pro-preview",
-        generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.2,
-        }
-    });
-
+    // --- Build the AI prompt (kept 100% identical) ---
     let promptIntro = "You are an expert AI for digitizing English exams (IELTS Reading, Listening, TNPT format, and general English tests).";
     if (importType === "LISTENING") {
         promptIntro = "You are an expert at analyzing English exam papers, specifically IELTS LISTENING tests. The output MUST be grouped by Parts (Part 1, Part 2, etc.)";
@@ -111,154 +101,45 @@ OUTPUT JSON:
 }
 `;
 
-    // Prepare prompt parts based on file type
-    let promptParts: any[] = [];
-
-    if (fileName.endsWith(".pdf")) {
-        const arrayBuffer = await file.arrayBuffer();
-        const base64Data = Buffer.from(arrayBuffer).toString("base64");
-
-        promptParts = [
-            { text: promptBase },
-            {
-                inlineData: {
-                    mimeType: "application/pdf",
-                    data: base64Data
-                }
-            }
-        ];
-    } else if (fileName.endsWith(".docx")) {
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const result = await mammoth.extractRawText({ buffer });
-        const docxText = result.value;
-
-        promptParts = [
-            { text: promptBase + `\n\n**INPUT CONTENT:**\n"""\n${docxText.substring(0, 80000)}\n"""` }
-        ];
-    } else if (fileName.endsWith(".txt") || fileName.endsWith(".md")) {
-        const textContent = await file.text();
-        promptParts = [
-            { text: promptBase + `\n\n**INPUT CONTENT:**\n"""\n${textContent.substring(0, 80000)}\n"""` }
-        ];
-    } else {
-        return new NextResponse("Unsupported file format. Please upload .docx or .pdf", { status: 400 });
-    }
-
-    // Direct non-streaming call — faster than SSE since we need full JSON
+    // --- Extract text from the uploaded file ---
     try {
-        const result = await model.generateContent(promptParts);
-        const response = await result.response;
-        const fullText = response.text();
+        let extractedText = "";
+        let fileType: "pdf" | "docx" | "text" = "text";
 
-        // With responseMimeType: application/json, output should be clean JSON
-        // But still do safety extraction in case of edge cases
-        let jsonString = fullText.trim();
-        if (jsonString.startsWith("```")) {
-            jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
-        }
-        const firstBrace = jsonString.indexOf("{");
-        const lastBrace = jsonString.lastIndexOf("}");
-        if (firstBrace > 0 && lastBrace !== -1) {
-            jsonString = jsonString.substring(firstBrace, lastBrace + 1);
-        }
+        if (fileName.endsWith(".pdf")) {
+            // For PDF: send as base64 for client-side multimodal input
+            const arrayBuffer = await file.arrayBuffer();
+            const base64Data = Buffer.from(arrayBuffer).toString("base64");
 
-        let data;
-        try {
-            // --- JSON Repair Logic ---
-            // 1. Fix unescaped control characters inside JSON strings (newlines, tabs)
-            //    These commonly appear inside notePassage and passage fields from AI output.
-            jsonString = jsonString.replace(
-                /("(?:[^"\\]|\\.)*")/g,
-                (match) => {
-                    // Inside quoted strings, escape any raw control chars that aren't already escaped
-                    return match
-                        .replace(/(?<!\\)\t/g, '\\t')
-                        .replace(/(?<!\\)\r\n/g, '\\n')
-                        .replace(/(?<!\\)\r/g, '\\n')
-                        .replace(/(?<!\\)\n/g, '\\n');
-                }
-            );
-
-            // 2. Remove trailing commas before } or ] (common AI JSON error)
-            jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
-
-            // 3. Try to close truncated JSON (AI sometimes cuts off mid-response)
-            const openBraces = (jsonString.match(/{/g) || []).length;
-            const closeBraces = (jsonString.match(/}/g) || []).length;
-            const openBrackets = (jsonString.match(/\[/g) || []).length;
-            const closeBrackets = (jsonString.match(/\]/g) || []).length;
-
-            // Auto-close if truncated
-            for (let i = 0; i < openBrackets - closeBrackets; i++) jsonString += ']';
-            for (let i = 0; i < openBraces - closeBraces; i++) jsonString += '}';
-
-            data = JSON.parse(jsonString);
-
-            // Post-process: Clean up options and extract inline options from content
-            if (data.sections) {
-                for (const section of data.sections) {
-                    for (const q of section.questions || []) {
-                        if (q.options && Array.isArray(q.options)) {
-                            // Clean up duplicate letter prefixes first
-                            q.options = q.options.map((opt: string) => {
-                                return opt.replace(/^([A-D])\.\s*\1\.\s*/i, '$1. ')
-                                    .replace(/^([A-D])\.\s*/i, '').trim();
-                            });
-
-                            // Detect if AI returned only letters (A, B, C, D) as options
-                            // while the actual choices are embedded in the question content
-                            const allSingleLetters = q.options.every((opt: string) =>
-                                /^[A-Da-d]$/.test(opt.trim())
-                            );
-
-                            if (allSingleLetters && q.content) {
-                                // Try to extract options from content text
-                                // Pattern: "A. physicist B. physician C. physical D. physics"
-                                const inlinePattern = /\b([A-D])\.\s+([^A-D]*?)(?=\s+[A-D]\.\s|$)/g;
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                const matches: any[] = Array.from(q.content.matchAll(inlinePattern));
-
-                                if (matches.length >= 2) {
-                                    // Extract the actual option text
-                                    const extractedOptions = matches.map((m: any) => m[2].trim());
-
-                                    // Remove inline options from content (keep only the question stem)
-                                    const firstMatchIndex = q.content.indexOf(matches[0][0]);
-                                    if (firstMatchIndex > 0) {
-                                        q.content = q.content.substring(0, firstMatchIndex).trim();
-                                    }
-
-                                    q.options = extractedOptions;
-                                }
-                            }
-
-                            // Also handle case where options have full text but content still has inline options
-                            if (!allSingleLetters && q.content) {
-                                // Check if content ends with "A. xxx B. yyy C. zzz D. www" pattern
-                                const trailingPattern = /\s+[A-D]\.\s+\S+(?:\s+[A-D]\.\s+\S+){1,3}\s*$/;
-                                if (trailingPattern.test(q.content)) {
-                                    // Remove trailing options from content
-                                    q.content = q.content.replace(/\s+[A-D]\.\s+[^A-D]*(?:\s+[A-D]\.\s+[^A-D]*)*\s*$/, '').trim();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (e: any) {
-            console.error("JSON Parse Error:", e);
-            console.log("Raw Output (first 2000 chars):", jsonString.substring(0, 2000));
-            return NextResponse.json(
-                { error: `JSON Parse Error: ${e.message}` },
-                { status: 500 }
-            );
+            return NextResponse.json({
+                prompt: promptBase,
+                fileType: "pdf",
+                base64Data,
+                apiKey: process.env.GOOGLE_API_KEY || "",
+            });
+        } else if (fileName.endsWith(".docx")) {
+            const arrayBuffer = await file.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const result = await mammoth.extractRawText({ buffer });
+            extractedText = result.value;
+            fileType = "docx";
+        } else if (fileName.endsWith(".txt") || fileName.endsWith(".md")) {
+            extractedText = await file.text();
+            fileType = "text";
+        } else {
+            return new NextResponse("Unsupported file format. Please upload .docx or .pdf", { status: 400 });
         }
 
-        return NextResponse.json(data);
+        // For text-based files (DOCX, TXT): return extracted text
+        return NextResponse.json({
+            prompt: promptBase,
+            fileType,
+            extractedText: extractedText.substring(0, 80000),
+            apiKey: process.env.GOOGLE_API_KEY || "",
+        });
 
     } catch (error) {
-        console.log("[IMPORT_EXAM_ERROR]", error);
-        return new NextResponse("Internal Error", { status: 500 });
+        console.log("[IMPORT_EXTRACT_ERROR]", error);
+        return new NextResponse("Error extracting text from file", { status: 500 });
     }
 }

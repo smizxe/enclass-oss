@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Upload, FileText, X, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from "axios";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
@@ -36,16 +37,104 @@ interface ImportExamModalProps {
     onSuccess: () => void;
 }
 
-// Staged progress configuration
+// Staged progress configuration — extended for client-side AI processing
 const PROGRESS_STAGES = [
-    { progress: 10, message: "Đang tải file lên...", duration: 2000 },
-    { progress: 25, message: "Đang khởi tạo AI...", duration: 3000 },
-    { progress: 40, message: "Đang phân tích nội dung...", duration: 8000 },
-    { progress: 55, message: "Đang trích xuất câu hỏi...", duration: 15000 },
-    { progress: 70, message: "Đang xử lý đáp án...", duration: 20000 },
-    { progress: 85, message: "Đang kiểm tra kết quả...", duration: 15000 },
-    { progress: 92, message: "Đang hoàn tất...", duration: 30000 },
+    { progress: 5, message: "Đang tải file lên server...", duration: 1500 },
+    { progress: 15, message: "Đang trích xuất nội dung file...", duration: 2000 },
+    { progress: 25, message: "Đang gửi nội dung tới AI...", duration: 3000 },
+    { progress: 35, message: "AI đang đọc và phân tích đề thi...", duration: 10000 },
+    { progress: 45, message: "AI đang trích xuất câu hỏi...", duration: 15000 },
+    { progress: 55, message: "AI đang xử lý đáp án...", duration: 20000 },
+    { progress: 65, message: "AI đang viết lời giải...", duration: 25000 },
+    { progress: 75, message: "AI đang kiểm tra lại kết quả...", duration: 30000 },
+    { progress: 85, message: "AI đang hoàn tất JSON...", duration: 40000 },
+    { progress: 92, message: "Đang xử lý kết quả...", duration: 60000 },
 ];
+
+/**
+ * Client-side JSON repair: fix common AI output issues
+ */
+function repairAndParseJSON(rawText: string) {
+    let jsonString = rawText.trim();
+
+    // Strip markdown code fences
+    if (jsonString.startsWith("```")) {
+        jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
+    }
+
+    // Extract JSON object
+    const firstBrace = jsonString.indexOf("{");
+    const lastBrace = jsonString.lastIndexOf("}");
+    if (firstBrace > 0 && lastBrace !== -1) {
+        jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+    }
+
+    // Fix unescaped control characters inside JSON strings
+    jsonString = jsonString.replace(
+        /("(?:[^"\\]|\\.)*")/g,
+        (match) => {
+            return match
+                .replace(/(?<!\\)\t/g, '\\t')
+                .replace(/(?<!\\)\r\n/g, '\\n')
+                .replace(/(?<!\\)\r/g, '\\n')
+                .replace(/(?<!\\)\n/g, '\\n');
+        }
+    );
+
+    // Remove trailing commas before } or ]
+    jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
+
+    // Auto-close truncated JSON
+    const openBraces = (jsonString.match(/{/g) || []).length;
+    const closeBraces = (jsonString.match(/}/g) || []).length;
+    const openBrackets = (jsonString.match(/\[/g) || []).length;
+    const closeBrackets = (jsonString.match(/\]/g) || []).length;
+    for (let i = 0; i < openBrackets - closeBrackets; i++) jsonString += ']';
+    for (let i = 0; i < openBraces - closeBraces; i++) jsonString += '}';
+
+    const data = JSON.parse(jsonString);
+
+    // Post-process: Clean up options
+    if (data.sections) {
+        for (const section of data.sections) {
+            for (const q of section.questions || []) {
+                if (q.options && Array.isArray(q.options)) {
+                    q.options = q.options.map((opt: string) => {
+                        return opt.replace(/^([A-D])\.\s*\1\.\s*/i, '$1. ')
+                            .replace(/^([A-D])\.\s*/i, '').trim();
+                    });
+
+                    const allSingleLetters = q.options.every((opt: string) =>
+                        /^[A-Da-d]$/.test(opt.trim())
+                    );
+
+                    if (allSingleLetters && q.content) {
+                        const inlinePattern = /\b([A-D])\.\s+([^A-D]*?)(?=\s+[A-D]\.\s|$)/g;
+                        const matches: RegExpExecArray[] = Array.from(q.content.matchAll(inlinePattern));
+
+                        if (matches.length >= 2) {
+                            const extractedOptions = matches.map((m: RegExpExecArray) => m[2].trim());
+                            const firstMatchIndex = q.content.indexOf(matches[0][0]);
+                            if (firstMatchIndex > 0) {
+                                q.content = q.content.substring(0, firstMatchIndex).trim();
+                            }
+                            q.options = extractedOptions;
+                        }
+                    }
+
+                    if (!allSingleLetters && q.content) {
+                        const trailingPattern = /\s+[A-D]\.\s+\S+(?:\s+[A-D]\.\s+\S+){1,3}\s*$/;
+                        if (trailingPattern.test(q.content)) {
+                            q.content = q.content.replace(/\s+[A-D]\.\s+[^A-D]*(?:\s+[A-D]\.\s+[^A-D]*)*\s*$/, '').trim();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return data;
+}
 
 export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSuccess }: ImportExamModalProps) => {
     const [file, setFile] = useState<File | null>(null);
@@ -108,30 +197,84 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
         }
     };
 
+    /**
+     * New 2-phase upload:
+     * Phase 1: Server extracts text from file (fast, ~2s)
+     * Phase 2: Browser calls Gemini AI directly (no Vercel timeout!)
+     */
     const handleUpload = async () => {
         if (!file) return;
 
         setIsLoading(true);
         setError("");
         setProgressPercent(0);
-        setProgressMessage("Đang tải file lên...");
+        setProgressMessage("Đang tải file lên server...");
 
         const formData = new FormData();
         formData.append("file", file);
         formData.append("importType", importType);
 
         try {
-            const response = await fetch(`/api/teacher/classes/${classId}/import`, {
+            // === PHASE 1: Server extracts text (fast) ===
+            const extractResponse = await fetch(`/api/teacher/classes/${classId}/import`, {
                 method: "POST",
                 body: formData,
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || "Lỗi khi phân tích file");
+            if (!extractResponse.ok) {
+                const errorText = await extractResponse.text();
+                throw new Error(errorText || "Lỗi khi trích xuất file");
             }
 
-            const data = await response.json();
+            const extractData = await extractResponse.json();
+            const { prompt, fileType, extractedText, base64Data, apiKey } = extractData;
+
+            if (!apiKey) {
+                throw new Error("Không nhận được API Key từ server. Vui lòng liên hệ quản trị viên.");
+            }
+
+            // === PHASE 2: Browser calls Gemini directly (NO timeout!) ===
+            setProgressPercent(25);
+            setProgressMessage("Đang gửi nội dung tới AI...");
+
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({
+                model: "gemini-3.1-pro-preview",
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    temperature: 0.2,
+                },
+            });
+
+            // Build prompt parts based on file type
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let promptParts: any[] = [];
+
+            if (fileType === "pdf") {
+                promptParts = [
+                    { text: prompt },
+                    { inlineData: { mimeType: "application/pdf", data: base64Data } },
+                ];
+            } else {
+                // DOCX or TXT — text already extracted by server
+                promptParts = [
+                    { text: prompt + `\n\n**INPUT CONTENT:**\n"""\n${extractedText}\n"""` },
+                ];
+            }
+
+            setProgressPercent(35);
+            setProgressMessage("AI đang đọc và phân tích đề thi...");
+
+            // Call Gemini from the browser — unlimited time!
+            const result = await model.generateContent(promptParts);
+            const response = result.response;
+            const fullText = response.text();
+
+            // === PHASE 3: Parse and repair JSON ===
+            setProgressPercent(90);
+            setProgressMessage("Đang xử lý kết quả...");
+
+            const data = repairAndParseJSON(fullText);
 
             if (data.sections && Array.isArray(data.sections)) {
                 setSections(data.sections);
@@ -143,19 +286,19 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                     passageTranslation: null,
                     questions: data.map((q: Question, i: number) => ({
                         ...q,
-                        questionNumber: i + 1
-                    }))
+                        questionNumber: i + 1,
+                    })),
                 }]);
             } else {
                 setSections([]);
             }
             setStep("preview");
+
         } catch (err: unknown) {
             console.error(err);
             const errorMsg = err instanceof Error ? err.message : "Lỗi khi phân tích file. Vui lòng thử lại.";
             setError(errorMsg);
         } finally {
-            // Show 100% briefly before resetting
             setProgressPercent(100);
             setProgressMessage("Hoàn tất!");
             setTimeout(() => {
