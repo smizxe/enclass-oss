@@ -79,31 +79,35 @@ export async function POST(req: Request) {
 
                 const emailLower = row.email.toString().trim().toLowerCase();
 
+                let studentId: string;
+
                 // Check if email already exists
                 const existingUser = await prisma.user.findUnique({
                     where: { email: emailLower }
                 });
 
                 if (existingUser) {
-                    results.failed++;
-                    results.errors.push(`Email exists: ${row.email}`);
-                    continue;
+                    studentId = existingUser.id;
+                } else {
+                    // Hash password
+                    const hashedPassword = await hash(row.password.toString(), 12);
+
+                    // Create student
+                    const student = await prisma.user.create({
+                        data: {
+                            name: row.name.toString().trim(),
+                            email: emailLower,
+                            password: hashedPassword,
+                            role: "STUDENT",
+                            createdById: session.user.id
+                        }
+                    });
+                    studentId = student.id;
                 }
 
-                // Hash password
-                const hashedPassword = await hash(row.password.toString(), 12);
-
-                // Create student
-                const student = await prisma.user.create({
-                    data: {
-                        name: row.name.toString().trim(),
-                        email: emailLower,
-                        password: hashedPassword,
-                        role: "STUDENT",
-                        createdById: session.user.id
-                    }
-                });
-                touchedStudentIds.push(student.id);
+                if (!touchedStudentIds.includes(studentId)) {
+                    touchedStudentIds.push(studentId);
+                }
 
                 // Handle class assignment
                 if (row.class && row.class.toString().trim()) {
@@ -142,12 +146,24 @@ export async function POST(req: Request) {
                     }
 
                     if (classId) {
-                        await prisma.classMember.create({
-                            data: {
-                                userId: student.id,
-                                classId: classId
+                        // Check if already a member
+                        const existingMember = await prisma.classMember.findUnique({
+                            where: {
+                                userId_classId: {
+                                    userId: studentId,
+                                    classId: classId
+                                }
                             }
                         });
+
+                        if (!existingMember) {
+                            await prisma.classMember.create({
+                                data: {
+                                    userId: studentId,
+                                    classId: classId
+                                }
+                            });
+                        }
                     }
                 }
 

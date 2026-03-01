@@ -1405,6 +1405,9 @@ export default function AssignmentEditorPage() {
                                         className="w-full px-3 py-2 border rounded-lg bg-white"
                                     >
                                         <option value="MCQ">Trắc nghiệm (MCQ)</option>
+                                        <option value="MATCHING_INFORMATION">Nối thông tin (Matching Information)</option>
+                                        <option value="MATCHING_PARAGRAPH_HEADINGS">Nối tiêu đề đoạn văn (Matching Headings)</option>
+                                        <option value="MATCHING_FEATURES">Nối đặc điểm (Matching Features)</option>
                                         <option value="GAP_FILL">Điền vào chỗ trống (Gap Fill)</option>
                                         <option value="SPEAKING">Luyện nói (AI Speaking)</option>
                                         <option value="WRITING">Luyện viết (AI Writing/Essay)</option>
@@ -1464,39 +1467,61 @@ export default function AssignmentEditorPage() {
                                     </div>
                                 )}
 
-                                {/* Only show Options inputs for MCQ */}
-                                {newQuestion.type === "MCQ" && (
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {newQuestion.options.map((opt, idx) => (
-                                            <div key={idx}>
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <label className="text-xs font-medium">Đáp án {String.fromCharCode(65 + idx)}</label>
+                                {/* Show Options inputs for MCQ and MATCHING types */}
+                                {["MCQ", "MATCHING_INFORMATION", "MATCHING_PARAGRAPH_HEADINGS", "MATCHING_FEATURES", "MULTIPLE_CHOICE"].includes(newQuestion.type || "") && (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {newQuestion.options.map((opt, idx) => (
+                                                <div key={idx}>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <label className="text-xs font-medium">Đáp án {String.fromCharCode(65 + idx)}</label>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={newQuestion.correctAnswerIndexes.includes(idx)}
+                                                            onChange={() => {
+                                                                const current = newQuestion.correctAnswerIndexes;
+                                                                const newIndexes = current.includes(idx)
+                                                                    ? current.filter(i => i !== idx)
+                                                                    : [...current, idx];
+                                                                setNewQuestion({ ...newQuestion, correctAnswerIndexes: newIndexes });
+                                                            }}
+                                                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                        />
+                                                    </div>
                                                     <input
-                                                        type="checkbox"
-                                                        checked={newQuestion.correctAnswerIndexes.includes(idx)}
-                                                        onChange={() => {
-                                                            const current = newQuestion.correctAnswerIndexes;
-                                                            const newIndexes = current.includes(idx)
-                                                                ? current.filter(i => i !== idx)
-                                                                : [...current, idx];
-                                                            setNewQuestion({ ...newQuestion, correctAnswerIndexes: newIndexes });
+                                                        type="text"
+                                                        value={opt}
+                                                        onChange={(e) => {
+                                                            const newOpts = [...newQuestion.options];
+                                                            newOpts[idx] = e.target.value;
+                                                            setNewQuestion({ ...newQuestion, options: newOpts });
                                                         }}
-                                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                        placeholder={`Nhập đáp án ${String.fromCharCode(65 + idx)}`}
                                                     />
                                                 </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Manual Answer Input for MATCHING types */}
+                                        {newQuestion.type?.startsWith("MATCHING") && (
+                                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                                <label className="block text-sm font-medium mb-1 text-amber-900">
+                                                    Đáp án đúng (nhập tay nếu không dùng Checkbox trên)
+                                                </label>
                                                 <input
                                                     type="text"
-                                                    value={opt}
-                                                    onChange={(e) => {
-                                                        const newOpts = [...newQuestion.options];
-                                                        newOpts[idx] = e.target.value;
-                                                        setNewQuestion({ ...newQuestion, options: newOpts });
-                                                    }}
-                                                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                    value={newQuestion.correctAnswerText || ""}
+                                                    onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswerText: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm bg-white"
+                                                    placeholder="VD: A, B, C (hoặc G như đề IELTS)"
                                                 />
+                                                <p className="text-xs text-amber-700 mt-1">
+                                                    * Dành cho các câu hỏi dạng Nối thông tin/Nối đoạn văn (A-G, A-F) không có danh sách Options cố định. Hãy nhập trực tiếp chữ cái đáp án vào đây.
+                                                </p>
                                             </div>
-                                        ))}
-                                    </div>
+                                        )}
+                                    </>
                                 )}
                                 <div className="flex justify-end gap-3 mt-4">
                                     <button onClick={() => setIsAddingQuestion(false)} className="px-4 py-2 text-slate-500">Hủy</button>
@@ -1729,27 +1754,6 @@ export default function AssignmentEditorPage() {
                     </div>
                 )}
             </div>
-            {/* Lightbox Modal */}
-            {lightboxImage && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
-                    onClick={() => setLightboxImage(null)}
-                >
-                    <button
-                        onClick={() => setLightboxImage(null)}
-                        className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                        src={lightboxImage}
-                        alt="Preview"
-                        className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                    />
-                </div>
-            )}
         </div>
-    );
+    )
 }
