@@ -84,13 +84,18 @@ export const CompactGapFillSection = ({
 
         for (const [num] of questionMap) {
             // Pattern: number followed by dots or underscores (with optional spaces)
+            // STRICT: require the number to appear at start of line or after whitespace,
+            // followed by a SIGNIFICANT sequence of dots/underscores (at least 4 chars)
+            // to avoid false positives with numbers appearing in normal text.
             // No 'g' flag: each question number should appear once, and avoids .test()/.replace() lastIndex bug
             const patterns = [
-                new RegExp(`(\\b${num})\\s*[\\.…]{3,}`),
-                new RegExp(`(\\b${num})\\s*_{3,}`),
+                new RegExp(`(?:^|\\n|\\s)(${num})\\s*[\\.…]{4,}`, 'm'),
+                new RegExp(`(?:^|\\n|\\s)(${num})\\s*_{4,}`, 'm'),
             ];
             for (const pattern of patterns) {
-                const replaced = processed.replace(pattern, `{${num}}`);
+                const replaced = processed.replace(pattern, (match, numStr) => {
+                    return match.replace(`${numStr}`, '').replace(/[\.…_\s]+/g, '') + ` {${num}}`;
+                });
                 if (replaced !== processed) {
                     processed = replaced;
                     foundMarkers = true;

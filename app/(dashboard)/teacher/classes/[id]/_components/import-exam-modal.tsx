@@ -6,6 +6,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import remarkGfm from "remark-gfm";
 import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
 
 interface Question {
@@ -423,9 +424,9 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                                                 )}
                                                                             </div>
                                                                             {q.content && (
-                                                                                <div className="mt-2 text-sm text-slate-800 [&_strong]:font-bold [&_em]:italic [&_p]:mb-1">
-                                                                                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                                                                        {q.content.replace(/\\n/g, '\n')}
+                                                                                <div className="mt-2 text-sm text-slate-800 [&_strong]:font-bold [&_em]:italic [&_p]:mb-2">
+                                                                                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                                                                                        {q.content.replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
                                                                                     </ReactMarkdown>
                                                                                 </div>
                                                                             )}

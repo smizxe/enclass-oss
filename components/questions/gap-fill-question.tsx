@@ -131,18 +131,20 @@ export const GapFillQuestion = ({
         <div className="space-y-4">
             {/* Question text with blanks shown */}
             <div className="text-slate-800 leading-relaxed">
-                {hasUnderscoreGaps ? (
-                    questionText.split(/(_____+)/g).map((part: string, index: number) => {
+                {hasUnderscoreGaps ? (() => {
+                    let gapCounter = 0;
+                    return questionText.split(/(_____+)/g).map((part: string, index: number) => {
                         if (part.match(/^_+$/)) {
+                            gapCounter++;
                             return (
-                                <span key={index} className="inline-block mx-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded font-mono">
-                                    ({index + 1})
+                                <span key={index} className="inline-block mx-1 px-3 py-0.5 bg-indigo-50 text-indigo-600 rounded-md border border-indigo-200 font-medium text-sm">
+                                    ............
                                 </span>
                             );
                         }
                         return <span key={index}>{part}</span>;
-                    })
-                ) : (
+                    });
+                })() : (
                     <span>{questionText}</span>
                 )}
             </div>

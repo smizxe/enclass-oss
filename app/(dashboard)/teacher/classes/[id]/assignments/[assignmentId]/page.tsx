@@ -1148,9 +1148,9 @@ export default function AssignmentEditorPage() {
                                                         </button>
                                                     </div>
                                                 </div>
-                                                <div className="text-slate-900 font-medium mb-3 [&_strong]:font-bold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
-                                                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                                        {displayText}
+                                                <div className="text-slate-900 font-medium mb-3 [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                                                        {(displayText || '').replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
                                                     </ReactMarkdown>
                                                 </div>
 
