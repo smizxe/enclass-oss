@@ -23,6 +23,7 @@ interface Section {
     title: string;
     type: string;
     passage?: string | null;
+    notePassage?: string | null;
     passageTable?: string | null;
     passageTranslation?: string | null;
     questions: Question[];
@@ -355,7 +356,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                         return type.includes("GAP") && type.includes("FILL");
                                                     });
 
-                                                    if (allGapFill && section.passage) {
+                                                    if (allGapFill && (section.notePassage || section.passage)) {
                                                         // Map to CompactQuestion format
                                                         const compactQuestions = section.questions.map((q, idx) => ({
                                                             id: `preview-${sIndex}-${idx}`,
@@ -372,7 +373,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                                     Bài đọc dạng điền từ (Compact View)
                                                                 </div>
                                                                 <CompactGapFillSection
-                                                                    passage={section.passage}
+                                                                    passage={section.notePassage || section.passage || ""}
                                                                     questions={compactQuestions}
                                                                     answers={{}}
                                                                     onAnswerChange={() => { }}

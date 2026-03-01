@@ -47,25 +47,28 @@ RULES:
 2. Count extracted questions to match the document's numbering — ensure NOTHING is missing.
 3. Scan the document (especially last pages) for "Answer Key", "Đáp án", "KEY", "Answers", "ĐÁP ÁN". If found, use those answers. If NOT found, predict answers and set "predictedAnswer": true.
 4. For GAP_FILL: correctAnswer = the EXACT word(s) that fill the blank. Never leave it empty.
-5. EVERY section with reading questions MUST include the FULL reading passage in "passage". The "passage" field must contain ONLY the reading passage text — do NOT include task instructions, note structures, or question text in "passage". If multiple question groups share one passage, DUPLICATE the full passage into each group.
+5. EVERY section with reading questions MUST include the FULL reading passage in "passage". The "passage" field must contain ONLY the reading passage text — do NOT include task instructions, note structures, or question text in "passage".
 6. Preserve ALL task instructions ("Choose TWO letters", "Write NO MORE THAN TWO WORDS", etc.) in the first question's "content" field.
 7. Each question's "content" must be COMPLETE — include all text, bullet points, mini-passages. Use \\n for line breaks. Never truncate.
-8. If a section has BOTH text AND a table/form: text → "passage", HTML table → "passageTable".
+8. If a section has BOTH text AND a table/form: text → "passage", HTML table → "passageTable" (or "notePassage" if it's a gap-fill table). **Crucially**: Preserve original formatting.
 9. No duplicate questions. Each question appears ONCE.
 10. **GAP_FILL NOTE/SUMMARY COMPLETION (CRITICAL):** For note completion, table completion, summary completion, diagram labeling, or ANY section where blanks appear inside structured text:
-    - Put the READING PASSAGE in "passage" (as normal, no markers).
-    - Put the NOTE/SUMMARY/DIAGRAM structure (with blanks) in a SEPARATE field called "notePassage".
+    - Put the main READING PASSAGE in "passage" (as normal, no markers).
+    - Put the NOTE/SUMMARY/TABLE structure (with blanks) in a SEPARATE field called "notePassage". DO NOT put the note table into the first question's "content"!
     - In "notePassage", embed markers {N} at the EXACT position of each blank (N = question number).
-    - Use \\n for line breaks between bullet points/items in "notePassage" to preserve the original layout.
-    - Example notePassage: "**New Zealand's kākāpō**\\nA type of parrot:\\n• diet consists of fern fronds, various parts of a tree and {7}\\n• nests are created {8} in where eggs are laid."
-    - The "content" field for each GAP_FILL question should still contain the surrounding context text.
-    - This separates the reading passage (shown on the left) from the note form (shown on the right).
-11. **EXPLANATION (REQUIRED):** For EVERY question, you MUST provide a concise explanation in Vietnamese in the "explanation" field. The explanation should be 1-2 sentences explaining WHY the correct answer is correct. Be brief and educational. Example: "Đáp án B (physician) đúng vì 'physician' nghĩa là 'bác sĩ', phù hợp với ngữ cảnh nói về Albert Einstein là nhà vật lý học."
+    - Use \\n for line breaks to preserve the original layout perfectly.
+    - KEEP FULL FORMATTING: If the note has headings, bullet points, or bold text, YOU MUST PRESERVE THEM EXACTLY. DO NOT STRIP FORMATTING.
+    - Example notePassage: "### **New Zealand's kākāpō**\\n**A type of parrot:**\\n• diet consists of fern fronds, various parts of a tree and {7}\\n• nests are created {8} in where eggs are laid."
+    - The "content" field for each GAP_FILL question should still contain the surrounding context text (or be empty if the notePassage already covers it).
+11. **EXPLANATION (REQUIRED):** For EVERY question, you MUST provide a concise explanation in Vietnamese in the "explanation" field.
 
-FORMATTING:
-- Bold: **text**, Italic: *text*, Underline: __text__
-- Tables: HTML format (<table border="1" style="border-collapse: collapse; width: 100%;">...</table>)
-- Line breaks: \\n
+FORMATTING (CRITICAL - DO NOT IGNORE):
+- You MUST preserve original text formatting perfectly using Markdown.
+- Headings/Titles: Use Markdown headings (# Heading 1, ## Heading 2, ### Heading 3). DO NOT output plain text for titles.
+- Bold: **text**, Italic: *text*, Underline: <u>text</u>
+- Lists: Preserve bullet points (•, -, *) and numbered lists (1., 2.).
+- Tables: HTML format (<table border="1" style="border-collapse: collapse; width: 100%;">...</table>). Ensure table headers and alignment are preserved.
+- Line breaks: Use \\n for EVERY line break from the original document. Do not merge paragraphs!
 
 QUESTION TYPES:
 - ORDERING: items=["a. ...", "b. ..."], options=["A. a-b-c", "B. c-b-a", ...]

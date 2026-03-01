@@ -19,6 +19,7 @@ import {
     ArrowDown,
     X
 } from "lucide-react";
+import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
 import { Textarea } from "@/components/ui/textarea";
 import { AudioManager } from "@/components/audio-manager";
 import { TipTapEditor } from "@/components/editor/tiptap-editor";
@@ -40,6 +41,7 @@ interface ParsedContent {
     options?: string[];
     passage?: string;
     passageTable?: string;
+    notePassage?: string;
     passageTranslation?: string;
     sectionTitle?: string;
     sectionType?: string;
@@ -56,6 +58,7 @@ interface QuestionGroup {
     sectionImages?: string[];
     passage?: string;
     passageTable?: string;
+    notePassage?: string;
     passageTranslation?: string;
     questions: (Question & { parsed: ParsedContent })[];
 }
@@ -272,6 +275,8 @@ export default function AssignmentEditorPage() {
             // Sync Passage Info if the current question has passage info and the group doesn't (or update it)
             // Usually the first question carries the passage info, or all of them do.
             if (parsed.passage && !currentGroup.passage) currentGroup.passage = parsed.passage;
+            if (parsed.passageTable && !currentGroup.passageTable) currentGroup.passageTable = parsed.passageTable;
+            if (parsed.notePassage && !currentGroup.notePassage) currentGroup.notePassage = parsed.notePassage;
             if (parsed.passageTranslation && !currentGroup.passageTranslation) currentGroup.passageTranslation = parsed.passageTranslation;
             // Sync Audio & Video
             if (parsed.sectionAudio && !currentGroup.sectionAudio) currentGroup.sectionAudio = parsed.sectionAudio;
@@ -1103,6 +1108,37 @@ export default function AssignmentEditorPage() {
                                         )}
                                     </div>
                                 )}
+
+                                {/* Compact Gap Fill Preview (Read-only for Teacher) */}
+                                {(() => {
+                                    const allGapFill = group.questions.length > 0 && group.questions.every(q => q.type !== "SECTION_HEADER" ? q.type === "GAP_FILL" : true);
+                                    if (allGapFill && (group.notePassage || group.passage)) {
+                                        const compactQuestions = group.questions.filter(q => q.type !== "SECTION_HEADER").map((q, idx) => ({
+                                            id: q.id,
+                                            parsed: { text: q.parsed?.text || q.content },
+                                            correctAnswer: q.correctAnswer || "",
+                                            points: q.points || 1,
+                                            explanation: q.explanation
+                                        }));
+                                        return (
+                                            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 shadow-sm mt-4">
+                                                <div className="flex items-center gap-2 text-sm font-medium text-indigo-700 mb-4">
+                                                    <BookOpen className="w-4 h-4" />
+                                                    <span>Xem trước bài điền từ (Dành cho học viên):</span>
+                                                </div>
+                                                <CompactGapFillSection
+                                                    passage={group.notePassage || group.passage || ""}
+                                                    questions={compactQuestions}
+                                                    answers={{}}
+                                                    onAnswerChange={() => { }}
+                                                    startIndex={questionCounter} // the actual numbers starting index
+                                                    mode="teacher_preview"
+                                                />
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
 
                                 {/* Questions in this section */}
                                 <div className="space-y-3">
