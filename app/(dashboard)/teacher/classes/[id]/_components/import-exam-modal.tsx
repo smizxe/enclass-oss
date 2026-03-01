@@ -445,7 +445,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
                                         >
                                             <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (Mới nhất, Thông minh nhất)</option>
-                                            <option value="gemini-3.0-flash">Gemini 3.0 Flash (Nhanh)</option>
+                                            <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Nhanh)</option>
                                             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                         </select>
                                         <p className="text-xs text-slate-500 mt-2 text-amber-600 flex items-center gap-1">
