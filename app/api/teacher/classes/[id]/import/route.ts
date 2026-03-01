@@ -52,15 +52,18 @@ RULES:
 7. Each question's "content" must be COMPLETE — include all text, bullet points, mini-passages. Use \\n for line breaks. Never truncate.
 8. If a section has BOTH text AND a table/form: text → "passage", HTML table → "passageTable" (or "notePassage" if it's a gap-fill table). **Crucially**: Preserve original formatting.
 9. No duplicate questions. Each question appears ONCE.
-10. **GAP_FILL NOTE/SUMMARY COMPLETION (CRITICAL):** For note completion, table completion, summary completion, diagram labeling, or ANY section where blanks appear inside structured text:
-    - Put the main READING PASSAGE in "passage" (as normal, no markers).
-    - Put the NOTE/SUMMARY/TABLE structure (with blanks) in a SEPARATE field called "notePassage". DO NOT put the note table into the first question's "content"!
-    - In "notePassage", embed markers {N} at the EXACT position of each blank (N = question number).
+10. **GAP_FILL IN PASSAGE (CRITICAL):**
+    - If a reading passage has numbered blanks (e.g., "(10) ______" or "11. _____"), you MUST preserve the original text AND the blank numbers exactly as they appear in the passage.
+    - Example: "Are you passionate about (10) _____ causes?" should remain EXACTLY like that in the "passage" or "notePassage". DO NOT strip the number "(10)".
+    - You MUST also add the {N} marker NEXT to the blank so the system knows where it is.
+    - Example of correct format: "Are you passionate about (10) {10} causes?" or "11. {11} encouraging young people"
+11. **GAP_FILL NOTE/SUMMARY COMPLETION (CRITICAL):** For note completion, table completion, summary completion, diagram labeling:
+    - Put the main READING PASSAGE in "passage" (as normal).
+    - Put the NOTE/SUMMARY/TABLE structure (with blanks) in a SEPARATE field called "notePassage".
+    - In "notePassage", embed markers {N} at the EXACT position of each blank (N = question number) ALONG WITH the original number if it exists (e.g., "(10) {10}").
     - Use \\n for line breaks to preserve the original layout perfectly.
     - KEEP FULL FORMATTING: If the note has headings, bullet points, or bold text, YOU MUST PRESERVE THEM EXACTLY. DO NOT STRIP FORMATTING.
-    - Example notePassage: "### **New Zealand's kākāpō**\\n**A type of parrot:**\\n• diet consists of fern fronds, various parts of a tree and {7}\\n• nests are created {8} in where eggs are laid."
-    - The "content" field for each GAP_FILL question should still contain the surrounding context text (or be empty if the notePassage already covers it).
-11. **EXPLANATION (REQUIRED):** For EVERY question, you MUST provide a concise explanation in Vietnamese in the "explanation" field.
+12. **EXPLANATION (REQUIRED):** For EVERY question, you MUST provide a concise explanation in Vietnamese in the "explanation" field.
 
 FORMATTING (CRITICAL - DO NOT IGNORE):
 - You MUST preserve original text formatting perfectly using Markdown.
