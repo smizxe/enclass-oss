@@ -152,7 +152,7 @@ export async function POST(
 
         // Optimized model config: JSON mode + low temperature for speed & accuracy
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.1-pro-preview",
             generationConfig: {
                 responseMimeType: "application/json",
                 temperature: 0.2,

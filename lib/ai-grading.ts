@@ -26,7 +26,7 @@ export async function gradeSubmission(
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
 
         const isSpeaking = questionType === "SPEAKING";
         const isWriting = questionType === "WRITING" || questionType === "ESSAY";
@@ -145,7 +145,7 @@ export async function* gradeSubmissionStream(
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
 
         const isSpeaking = questionType === "SPEAKING";
         const isWriting = questionType === "WRITING" || questionType === "ESSAY";
