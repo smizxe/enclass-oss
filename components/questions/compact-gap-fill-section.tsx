@@ -264,12 +264,34 @@ export const CompactGapFillSection = ({
     // headings, bold, line breaks etc. from the original markdown.
     const passageWithPlaceholders = useMemo(() => {
         if (!finalPassage) return "";
-        // Replace {N} with a unique HTML span that ReactMarkdown (with rehypeRaw) will pass through.
-        // We use a data attribute to carry the question number.
-        return finalPassage.replace(
+
+        let normalized = finalPassage;
+
+        // 1. Convert literal "\\n" (backslash + n as text) to real newlines
+        //    AI sometimes outputs these, and JSON repair may preserve them as-is
+        normalized = normalized.replace(/\\n/g, '\n');
+
+        // 2. Normalize bullet points that are on the same line:
+        //    "text • bullet1 • bullet2" → "text\n• bullet1\n• bullet2"
+        //    But only when • appears mid-line (not at start)
+        normalized = normalized.replace(/\s+•\s+/g, '\n• ');
+
+        // 3. Ensure single newlines become paragraph breaks for ReactMarkdown:
+        //    ReactMarkdown (CommonMark) treats single \n as soft break (invisible).
+        //    We need \n\n for visible paragraph breaks.
+        //    But we should not double-up already-double newlines.
+        normalized = normalized
+            .replace(/\r\n/g, '\n')           // normalize CRLF
+            .replace(/\n{3,}/g, '\n\n')        // collapse 3+ newlines to 2
+            .replace(/(?<!\n)\n(?!\n)/g, '\n\n'); // single \n → double \n\n
+
+        // 4. Replace {N} with HTML span placeholder
+        normalized = normalized.replace(
             /\{(\d+)\}/g,
             (_, num) => `<span data-gap-marker="${num}"></span>`
         );
+
+        return normalized;
     }, [finalPassage]);
 
     // Custom component to render our gap marker spans as input fields
