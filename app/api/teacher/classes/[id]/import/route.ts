@@ -72,6 +72,7 @@ QUESTION TYPES:
 - TRUE/FALSE/NOT GIVEN or YES/NO/NOT GIVEN: type="MCQ", options=["TRUE","FALSE","NOT GIVEN"] or ["YES","NO","NOT GIVEN"], correctAnswer="TRUE"/"FALSE"/"NOT GIVEN"
 - GAP_FILL: correctAnswer = exact fill text. In passage, mark blank position with {N} where N is questionNumber.
 - MCQ: The "content" field MUST contain ONLY the question stem (the question sentence with blank). Do NOT include options like "A. xxx B. yyy C. zzz D. www" in the "content" field. The "options" array MUST contain the FULL TEXT of each choice (e.g., ["physicist", "physician", "physical", "physics"]), NOT just letters like ["A", "B", "C", "D"]. correctAnswer = letter (A/B/C/D).
+- PHONETICS/PRONUNCIATION/STRESS MCQ (CRITICAL): For questions about pronunciation or word stress (e.g., "the word whose underlined part differs", "the word that has different stress"), you MUST wrap the underlined letters/syllables in <u></u> tags within EACH option. Example: options=["sh<u>ow</u>", "p<u>o</u>st", "l<u>o</u>ck", "n<u>o</u>te"]. NEVER omit the <u> tags for these question types — students need to see which part is underlined.
 
 OUTPUT JSON:
 {
