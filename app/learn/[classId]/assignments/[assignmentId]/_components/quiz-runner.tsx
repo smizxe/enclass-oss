@@ -1155,70 +1155,68 @@ export const QuizRunner = ({
                 />
 
                 {/* MCQ / Gap-fill / Other Question Results Review */}
-                {showAnswers && (
-                    <div className="mt-8 space-y-2">
-                        <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
-                            <ClipboardList className="w-5 h-5 text-indigo-600" />
-                            Chi tiết bài làm
-                        </h3>
+                <div className="mt-8 space-y-2">
+                    <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2 mb-4">
+                        <ClipboardList className="w-5 h-5 text-indigo-600" />
+                        Chi tiết bài làm
+                    </h3>
 
-                        {/* Section tabs for multi-section tests */}
-                        {groupedQuestions.length > 1 && (
-                            <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar mb-4">
-                                {groupedQuestions.map((group, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => setActiveSectionIndex(idx)}
-                                        className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition border ${activeSectionIndex === idx
-                                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200"
-                                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                                            }`}
-                                    >
-                                        {group.sectionTitle.length > 20 ? group.sectionTitle.substring(0, 20) + "..." : group.sectionTitle}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Render active section with results */}
-                        <SectionContent
-                            group={groupedQuestions[activeSectionIndex]}
-                            answers={answers}
-                            onAnswerChange={() => { }} // Read-only after submission
-                            showPassage={true}
-                            startIndex={getSectionStartIndex(activeSectionIndex)}
-                            submissionResult={submissionResult}
-                            passageFontSize={passageFontSize}
-                            questionFontSize={questionFontSize}
-                            showAnswersAfterSubmit={showAnswers}
-                        />
-
-                        {/* Navigation for multi-section */}
-                        {groupedQuestions.length > 1 && (
-                            <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200 mt-4">
+                    {/* Section tabs for multi-section tests */}
+                    {groupedQuestions.length > 1 && (
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar mb-4">
+                            {groupedQuestions.map((group, idx) => (
                                 <button
-                                    onClick={() => setActiveSectionIndex(prev => Math.max(0, prev - 1))}
-                                    disabled={activeSectionIndex === 0}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 text-slate-600"
+                                    key={idx}
+                                    onClick={() => setActiveSectionIndex(idx)}
+                                    className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition border ${activeSectionIndex === idx
+                                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200"
+                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                        }`}
                                 >
-                                    <ChevronLeft className="w-4 h-4" />
-                                    Phần trước
+                                    {group.sectionTitle.length > 20 ? group.sectionTitle.substring(0, 20) + "..." : group.sectionTitle}
                                 </button>
-                                <div className="text-sm font-medium text-slate-600">
-                                    Phần {activeSectionIndex + 1} / {groupedQuestions.length}
-                                </div>
-                                <button
-                                    onClick={() => setActiveSectionIndex(prev => Math.min(groupedQuestions.length - 1, prev + 1))}
-                                    disabled={activeSectionIndex === groupedQuestions.length - 1}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white border border-slate-200 hover:bg-slate-50 text-indigo-600 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Tiếp theo
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Render active section with results */}
+                    <SectionContent
+                        group={groupedQuestions[activeSectionIndex]}
+                        answers={answers}
+                        onAnswerChange={() => { }} // Read-only after submission
+                        showPassage={true}
+                        startIndex={getSectionStartIndex(activeSectionIndex)}
+                        submissionResult={showAnswers ? submissionResult : undefined}
+                        passageFontSize={passageFontSize}
+                        questionFontSize={questionFontSize}
+                        showAnswersAfterSubmit={showAnswers}
+                    />
+
+                    {/* Navigation for multi-section */}
+                    {groupedQuestions.length > 1 && (
+                        <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200 mt-4">
+                            <button
+                                onClick={() => setActiveSectionIndex(prev => Math.max(0, prev - 1))}
+                                disabled={activeSectionIndex === 0}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 text-slate-600"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                                Phần trước
+                            </button>
+                            <div className="text-sm font-medium text-slate-600">
+                                Phần {activeSectionIndex + 1} / {groupedQuestions.length}
                             </div>
-                        )}
-                    </div>
-                )}
+                            <button
+                                onClick={() => setActiveSectionIndex(prev => Math.min(groupedQuestions.length - 1, prev + 1))}
+                                disabled={activeSectionIndex === groupedQuestions.length - 1}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white border border-slate-200 hover:bg-slate-50 text-indigo-600 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Tiếp theo
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 {/* Action Buttons */}
                 <div className="mt-8 flex justify-center gap-3">
