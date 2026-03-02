@@ -536,8 +536,10 @@ export const QuizRunner = ({
                 // PHASE 2: Start AI Streaming if there are pending questions
                 if (result.pendingAiQuestionIds && result.pendingAiQuestionIds.length > 0) {
                     startAiStream(result.submissionId, assignment.id);
-                } else if (assignment.settings?.showAnswersAfterSubmit !== false) {
-                    // Auto-redirect to results page for MCQ/READING if allowed
+                }
+
+                if (assignment.settings?.showAnswersAfterSubmit !== false) {
+                    // Auto-redirect to results page if allowed
                     toast("Đang chuyển đến trang kết quả...", { icon: '🔄' });
                     // Extract classId from pathname (e.g., /learn/cm2abcd/assignments/...)
                     const parts = window.location.pathname.split('/');
@@ -812,9 +814,8 @@ export const QuizRunner = ({
                 } else {
                     toast.success(`Nộp bài thành công! Điểm số: ${result.score}/${result.totalScore}`);
 
-                    // Auto-redirect to results page for MCQ/READING if allowed
-                    const hasPendingAi = result.pendingAiQuestionIds && result.pendingAiQuestionIds.length > 0;
-                    if (!hasPendingAi && assignment.settings?.showAnswersAfterSubmit !== false) {
+                    // Auto-redirect to results page if allowed
+                    if (assignment.settings?.showAnswersAfterSubmit !== false) {
                         toast("Đang chuyển đến trang kết quả...", { icon: '🔄' });
                         // Extract classId from pathname (e.g., /learn/cm2abcd/assignments/...)
                         const parts = window.location.pathname.split('/');
@@ -823,7 +824,7 @@ export const QuizRunner = ({
                         setTimeout(() => {
                             router.push(`/learn/${classId}/assignments/${assignment.id}/results/${result.submissionId}`);
                         }, 1500);
-                        return; // Prevent further state updates that might flash before redirect
+                        // We do NOT return here, so that startAiStream still gets called below
                     }
                 }
                 setIsSubmitted(true);
