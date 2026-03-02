@@ -537,18 +537,6 @@ export const QuizRunner = ({
                 if (result.pendingAiQuestionIds && result.pendingAiQuestionIds.length > 0) {
                     startAiStream(result.submissionId, assignment.id);
                 }
-
-                if (assignment.settings?.showAnswersAfterSubmit !== false) {
-                    // Auto-redirect to results page if allowed
-                    toast("Đang chuyển đến trang kết quả...", { icon: '🔄' });
-                    // Extract classId from pathname (e.g., /learn/cm2abcd/assignments/...)
-                    const parts = window.location.pathname.split('/');
-                    const classId = parts[2]; // /learn/[classId]/...
-
-                    setTimeout(() => {
-                        router.push(`/learn/${classId}/assignments/${assignment.id}/results/${result.submissionId}`);
-                    }, 1500);
-                }
             }
         } catch (error) {
             console.error("Auto-submit error:", error);
@@ -813,19 +801,6 @@ export const QuizRunner = ({
                     toast.success("Bài làm đã được nộp! Đang chờ giáo viên chấm điểm.");
                 } else {
                     toast.success(`Nộp bài thành công! Điểm số: ${result.score}/${result.totalScore}`);
-
-                    // Auto-redirect to results page if allowed
-                    if (assignment.settings?.showAnswersAfterSubmit !== false) {
-                        toast("Đang chuyển đến trang kết quả...", { icon: '🔄' });
-                        // Extract classId from pathname (e.g., /learn/cm2abcd/assignments/...)
-                        const parts = window.location.pathname.split('/');
-                        const classId = parts[2]; // /learn/[classId]/...
-
-                        setTimeout(() => {
-                            router.push(`/learn/${classId}/assignments/${assignment.id}/results/${result.submissionId}`);
-                        }, 1500);
-                        // We do NOT return here, so that startAiStream still gets called below
-                    }
                 }
                 setIsSubmitted(true);
                 // Clear timer from localStorage
