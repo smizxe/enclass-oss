@@ -536,6 +536,16 @@ export const QuizRunner = ({
                 // PHASE 2: Start AI Streaming if there are pending questions
                 if (result.pendingAiQuestionIds && result.pendingAiQuestionIds.length > 0) {
                     startAiStream(result.submissionId, assignment.id);
+                } else if (assignment.settings?.showAnswersAfterSubmit !== false) {
+                    // Auto-redirect to results page for MCQ/READING if allowed
+                    toast("Đang chuyển đến trang kết quả...", { icon: '🔄' });
+                    // Extract classId from pathname (e.g., /learn/cm2abcd/assignments/...)
+                    const parts = window.location.pathname.split('/');
+                    const classId = parts[2]; // /learn/[classId]/...
+
+                    setTimeout(() => {
+                        router.push(`/learn/${classId}/assignments/${assignment.id}/results/${result.submissionId}`);
+                    }, 1500);
                 }
             }
         } catch (error) {
@@ -801,6 +811,20 @@ export const QuizRunner = ({
                     toast.success("Bài làm đã được nộp! Đang chờ giáo viên chấm điểm.");
                 } else {
                     toast.success(`Nộp bài thành công! Điểm số: ${result.score}/${result.totalScore}`);
+
+                    // Auto-redirect to results page for MCQ/READING if allowed
+                    const hasPendingAi = result.pendingAiQuestionIds && result.pendingAiQuestionIds.length > 0;
+                    if (!hasPendingAi && assignment.settings?.showAnswersAfterSubmit !== false) {
+                        toast("Đang chuyển đến trang kết quả...", { icon: '🔄' });
+                        // Extract classId from pathname (e.g., /learn/cm2abcd/assignments/...)
+                        const parts = window.location.pathname.split('/');
+                        const classId = parts[2]; // /learn/[classId]/...
+
+                        setTimeout(() => {
+                            router.push(`/learn/${classId}/assignments/${assignment.id}/results/${result.submissionId}`);
+                        }, 1500);
+                        return; // Prevent further state updates that might flash before redirect
+                    }
                 }
                 setIsSubmitted(true);
                 // Clear timer from localStorage
