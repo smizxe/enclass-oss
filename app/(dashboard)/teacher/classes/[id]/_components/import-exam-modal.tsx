@@ -10,6 +10,13 @@ import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
 
+/** Strip duplicate (N) markers next to {N} — legacy data cleanup */
+function cleanPassageMarkers(text: string): string {
+    let cleaned = text.replace(/\((\d+)\)\s*\{(\1)\}/g, '{$2}');
+    cleaned = cleaned.replace(/(\d+)\.\s*\{(\1)\}/g, '{$2}');
+    return cleaned;
+}
+
 interface Question {
     questionNumber?: number;
     type: string;
@@ -541,7 +548,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                                     </div>
                                                                     <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:mb-1">
                                                                         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                                                                            {(section.passage || '').replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
+                                                                            {cleanPassageMarkers(section.passage || '').replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
                                                                         </ReactMarkdown>
                                                                     </div>
                                                                     {section.passageTable && !section.notePassage && (

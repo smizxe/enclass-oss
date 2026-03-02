@@ -16,6 +16,15 @@ interface PassageViewerProps {
     fontSize?: number;
 }
 
+/** Strip duplicate (N) markers next to {N} — legacy data cleanup */
+function cleanPassageMarkers(text: string): string {
+    // "(19) {19}" or "(19){19}" → "{19}"
+    let cleaned = text.replace(/\((\d+)\)\s*\{(\1)\}/g, '{$2}');
+    // "19. {19}" → "{19}"
+    cleaned = cleaned.replace(/(\d+)\.\s*\{(\1)\}/g, '{$2}');
+    return cleaned;
+}
+
 export const PassageViewer = ({
     sectionTitle,
     passage,
@@ -149,7 +158,7 @@ export const PassageViewer = ({
                                 remarkPlugins={[remarkGfm]}
                                 rehypePlugins={[rehypeRaw]}
                             >
-                                {passage || ""}
+                                {cleanPassageMarkers(passage || "")}
                             </ReactMarkdown>
                         </div>
 

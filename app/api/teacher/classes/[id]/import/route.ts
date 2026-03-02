@@ -47,14 +47,14 @@ RULES:
 8. If a section has BOTH text AND a table/form: text → "passage", HTML table → "passageTable" (or "notePassage" if it's a gap-fill table). **Crucially**: Preserve original formatting.
 9. No duplicate questions. Each question appears ONCE.
 10. **GAP_FILL IN PASSAGE (CRITICAL):**
-    - If a reading passage has numbered blanks (e.g., "(10) ______" or "11. _____"), you MUST preserve the original text AND the blank numbers exactly as they appear in the passage.
-    - Example: "Are you passionate about (10) _____ causes?" should remain EXACTLY like that in the "passage" or "notePassage". DO NOT strip the number "(10)".
-    - You MUST also add the {N} marker NEXT to the blank so the system knows where it is.
-    - Example of correct format: "Are you passionate about (10) {10} causes?" or "11. {11} encouraging young people"
+    - If a reading passage has numbered blanks (e.g., "(10) ______" or "11. _____"), you MUST REPLACE the original number AND blank with a SINGLE {N} marker.
+    - IMPORTANT: Do NOT keep BOTH formats. REPLACE "(10) ______" with just "{10}". Never output "(10) {10}" — that is WRONG and causes duplication.
+    - Example: "Are you passionate about (10) _____ causes?" → "Are you passionate about {10} causes?"
+    - Example: "11. _____ encouraging young people" → "{11} encouraging young people"
 11. **GAP_FILL NOTE/SUMMARY COMPLETION (CRITICAL):** For note completion, table completion, summary completion, diagram labeling:
     - Put the main READING PASSAGE in "passage" (as normal).
     - Put the NOTE/SUMMARY/TABLE structure (with blanks) in a SEPARATE field called "notePassage".
-    - In "notePassage", embed markers {N} at the EXACT position of each blank (N = question number) ALONG WITH the original number if it exists (e.g., "(10) {10}").
+    - In "notePassage", REPLACE each blank position with a SINGLE {N} marker (N = question number). Do NOT keep both "(N)" and "{N}" — only "{N}".
     - Use \\n for line breaks to preserve the original layout perfectly.
     - KEEP FULL FORMATTING: If the note has headings, bullet points, or bold text, YOU MUST PRESERVE THEM EXACTLY. DO NOT STRIP FORMATTING.
 12. **EXPLANATION (REQUIRED):** For EVERY question, you MUST provide a concise explanation in Vietnamese in the "explanation" field.

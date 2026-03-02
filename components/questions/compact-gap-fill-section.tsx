@@ -267,6 +267,12 @@ export const CompactGapFillSection = ({
 
         let normalized = finalPassage;
 
+        // 0. Strip duplicate (N) markers next to {N} markers (legacy data cleanup)
+        //    Handles patterns like "(19) {19}" or "(19){19}" → "{19}"
+        //    Also handles "19. {19}" → "{19}"
+        normalized = normalized.replace(/\((\d+)\)\s*\{(\1)\}/g, '{$2}');
+        normalized = normalized.replace(/(\d+)\.\s*\{(\1)\}/g, '{$2}');
+
         // 1. Convert literal "\\n" (backslash + n as text) to real newlines
         //    AI sometimes outputs these, and JSON repair may preserve them as-is
         normalized = normalized.replace(/\\n/g, '\n');

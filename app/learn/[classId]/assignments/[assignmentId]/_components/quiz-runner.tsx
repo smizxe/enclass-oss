@@ -19,6 +19,13 @@ import { StickyAudioPlayer } from "@/components/sticky-audio-player";
 import { PassageViewer } from "./passage-viewer";
 import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
 
+/** Strip duplicate (N) markers next to {N} — legacy data cleanup */
+function cleanPassageMarkers(text: string): string {
+    let cleaned = text.replace(/\((\d+)\)\s*\{(\1)\}/g, '{$2}');
+    cleaned = cleaned.replace(/(\d+)\.\s*\{(\1)\}/g, '{$2}');
+    return cleaned;
+}
+
 interface QuizRunnerProps {
     assignment: {
         id: string;
@@ -175,7 +182,7 @@ const SectionContent = ({
                                             remarkPlugins={[remarkGfm]}
                                             rehypePlugins={[rehypeRaw]}
                                         >
-                                            {(group.passage || "").replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
+                                            {(cleanPassageMarkers(group.passage || "")).replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
                                         </ReactMarkdown>
                                     </div>
                                     {group.passageTranslation && (
