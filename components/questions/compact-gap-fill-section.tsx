@@ -32,6 +32,7 @@ interface CompactGapFillSectionProps {
     fontSize?: number;
     showAnswersAfterSubmit?: boolean;
     mode?: "student" | "teacher_preview";
+    hidePassageText?: boolean;
 }
 
 /**
@@ -57,6 +58,7 @@ export const CompactGapFillSection = ({
     fontSize = 16,
     showAnswersAfterSubmit = true,
     mode = "student",
+    hidePassageText = false,
 }: CompactGapFillSectionProps) => {
     // Build a map: questionNumber -> question data
     const questionMap = useMemo(() => {
@@ -173,14 +175,16 @@ export const CompactGapFillSection = ({
     const isSynthetic = !!processedPassage && processedPassage.startsWith("[[SYNTHETIC]]");
     const finalPassage = isSynthetic ? processedPassage!.replace("[[SYNTHETIC]]", "") : processedPassage;
 
-    // If no markers found at all (and strict mode or synthetic failed), fallback to List View
-    if (!finalPassage) {
+    // If no markers found at all (and strict mode or synthetic failed), OR hidePassageText is true, fallback to List View
+    if (!finalPassage || hidePassageText) {
         return (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5" style={{ fontSize: `${fontSize}px` }}>
-                {/* Passage */}
-                <div className="leading-8 prose prose-sm max-w-none mb-8 pb-8 border-b border-slate-200">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{passage}</ReactMarkdown>
-                </div>
+                {/* Passage - hide when in split-pane mode (passage is shown on the left) */}
+                {!hidePassageText && (
+                    <div className="leading-8 prose prose-sm max-w-none mb-8 pb-8 border-b border-slate-200">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{passage}</ReactMarkdown>
+                    </div>
+                )}
 
                 {/* Questions List */}
                 {/* Questions List - Fallback View (Inline-like style) */}

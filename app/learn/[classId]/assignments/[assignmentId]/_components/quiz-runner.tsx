@@ -223,6 +223,7 @@ const SectionContent = ({
                                             startIndex={runStart}
                                             fontSize={questionFontSize}
                                             showAnswersAfterSubmit={showAnswersAfterSubmit}
+                                            hidePassageText={!showPassage}
                                         />
                                     );
                                 }
@@ -1371,78 +1372,41 @@ export const QuizRunner = ({
                 </div>
             </div>
 
-            {/* Desktop View: Full-width for gap-fill sections, Split pane for others */}
-            {(() => {
-                // Detect if current section is ALL gap_fill (compact mode)
-                const realQs = activeGroup.questions.filter((q: any) => q.type !== "SECTION_HEADER");
-                const isAllGapFill = realQs.length > 0 &&
-                    realQs.every((q: any) => (q.type || "").toUpperCase().includes("GAP")) &&
-                    !!(activeGroup.notePassage || activeGroup.passage);
-
-                if (isAllGapFill) {
-                    // Full-width layout: CompactGapFillSection already embeds the passage inline
-                    return (
-                        <div className="flex-1 hidden lg:block overflow-hidden relative">
-                            <div className="h-full overflow-y-auto p-6 pb-20 scroll-smooth">
-                                <div className="max-w-4xl mx-auto animate-in slide-in-from-right-4 duration-300">
-                                    <SectionContent
-                                        group={activeGroup}
-                                        answers={answers}
-                                        onAnswerChange={onAnswerChange}
-                                        showPassage={false}
-                                        startIndex={currentSectionStartIndex}
-                                        submissionResult={submissionResult}
-                                        passageFontSize={passageFontSize}
-                                        questionFontSize={questionFontSize}
-                                        showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
-                                    />
-                                </div>
-                                <div className="max-w-4xl mx-auto mt-6">
-                                    <NavigationControls />
-                                </div>
-                            </div>
+            {/* Desktop Split View */}
+            <div className="flex-1 hidden lg:block overflow-hidden relative">
+                <ResizableSplitPane
+                    left={
+                        <div id="split-left" className="h-full overflow-y-auto p-6 pb-20 scroll-smooth">
+                            <PassageViewer
+                                sectionTitle={activeGroup.sectionTitle}
+                                passage={activeGroup.passage}
+                                passageTranslation={activeGroup.passageTranslation}
+                                sectionImages={activeGroup.sectionImages}
+                                sectionVideo={activeGroup.sectionVideo}
+                                fontSize={passageFontSize}
+                            />
                         </div>
-                    );
-                }
-
-                // Standard split pane for MCQ / mixed sections
-                return (
-                    <div className="flex-1 hidden lg:block overflow-hidden relative">
-                        <ResizableSplitPane
-                            left={
-                                <div id="split-left" className="h-full overflow-y-auto p-6 pb-20 scroll-smooth">
-                                    <PassageViewer
-                                        sectionTitle={activeGroup.sectionTitle}
-                                        passage={activeGroup.passage}
-                                        passageTranslation={activeGroup.passageTranslation}
-                                        sectionImages={activeGroup.sectionImages}
-                                        sectionVideo={activeGroup.sectionVideo}
-                                        fontSize={passageFontSize}
-                                    />
-                                </div>
-                            }
-                            right={
-                                <div id="split-right" className="h-full overflow-y-auto w-full p-6 flex flex-col scroll-smooth">
-                                    <div className="flex-1 animate-in slide-in-from-right-4 duration-300">
-                                        <SectionContent
-                                            group={activeGroup}
-                                            answers={answers}
-                                            onAnswerChange={onAnswerChange}
-                                            showPassage={false}
-                                            startIndex={currentSectionStartIndex}
-                                            submissionResult={submissionResult}
-                                            passageFontSize={passageFontSize}
-                                            questionFontSize={questionFontSize}
-                                            showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
-                                        />
-                                    </div>
-                                    <NavigationControls />
-                                </div>
-                            }
-                        />
-                    </div>
-                );
-            })()}
+                    }
+                    right={
+                        <div id="split-right" className="h-full overflow-y-auto w-full p-6 flex flex-col scroll-smooth">
+                            <div className="flex-1 animate-in slide-in-from-right-4 duration-300">
+                                <SectionContent
+                                    group={activeGroup}
+                                    answers={answers}
+                                    onAnswerChange={onAnswerChange}
+                                    showPassage={false}
+                                    startIndex={currentSectionStartIndex}
+                                    submissionResult={submissionResult}
+                                    passageFontSize={passageFontSize}
+                                    questionFontSize={questionFontSize}
+                                    showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
+                                />
+                            </div>
+                            <NavigationControls />
+                        </div>
+                    }
+                />
+            </div>
 
             {/* Mobile Stacked View */}
             <div id="mobile-container" className="flex-1 lg:hidden overflow-y-auto bg-slate-50 p-4 scroll-smooth">
