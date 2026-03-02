@@ -149,8 +149,34 @@ export async function POST(
                     const correctIndex = q.correctAnswer.charCodeAt(0) - 65; // 'A' -> 0, 'B' -> 1
                     if (correctIndex >= 0 && correctIndex < parsedContent.options.length) {
                         const correctOptionText = parsedContent.options[correctIndex];
+                        // Exact match
                         if (effectiveUserAnswer === correctOptionText) {
                             isCorrect = true;
+                        }
+                        // Trimmed match (handles whitespace differences)
+                        else if (effectiveUserAnswer?.trim() === correctOptionText?.trim()) {
+                            isCorrect = true;
+                        }
+                        // Strip HTML tags and compare (handles <u>text</u> vs text)
+                        else {
+                            const stripHtml = (s: string) => (s || "").replace(/<[^>]*>/g, "").trim();
+                            if (stripHtml(effectiveUserAnswer) === stripHtml(correctOptionText)) {
+                                isCorrect = true;
+                            }
+                        }
+                    }
+                    // 3. Fallback: Check if userAnswer text matches ANY option at the correct index position
+                    if (!isCorrect) {
+                        // Try matching by finding which option the user selected and compare index
+                        const selectedIndex = parsedContent.options.findIndex((opt: string) =>
+                            opt === effectiveUserAnswer ||
+                            opt?.trim() === effectiveUserAnswer?.trim()
+                        );
+                        if (selectedIndex >= 0) {
+                            const selectedLetter = String.fromCharCode(65 + selectedIndex);
+                            if (selectedLetter === q.correctAnswer) {
+                                isCorrect = true;
+                            }
                         }
                     }
                 }
