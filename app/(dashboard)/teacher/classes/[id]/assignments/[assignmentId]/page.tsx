@@ -1143,7 +1143,7 @@ export default function AssignmentEditorPage() {
                                                 if (run.mode === "gap_fill" && (group.notePassage || group.passage)) {
                                                     const compactQuestions = run.questions.map((q, idx) => ({
                                                         id: q.id,
-                                                        parsed: { text: q.parsed?.text || q.content },
+                                                        parsed: { text: q.parsed?.text ?? q.content },
                                                         correctAnswer: q.correctAnswer || "",
                                                         points: q.points || 1,
                                                         explanation: q.explanation
@@ -1166,6 +1166,36 @@ export default function AssignmentEditorPage() {
                                                                 startIndex={runStart}
                                                                 mode="teacher_preview"
                                                             />
+
+                                                            {/* Edit/Delete controls for compact gap-fill questions */}
+                                                            <div className="mt-5 border-t border-indigo-100 pt-4">
+                                                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 block">Quản lý câu hỏi điền từ:</span>
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                                    {run.questions.map((q, idx) => (
+                                                                        <div key={q.id} className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-200 shadow-sm hover:border-indigo-300 transition-colors">
+                                                                            <span className="text-sm font-medium text-slate-700">
+                                                                                Câu {runStart + idx + 1}: <span className="text-emerald-600 ml-1">{q.correctAnswer}</span>
+                                                                            </span>
+                                                                            <div className="flex gap-2">
+                                                                                <button
+                                                                                    onClick={() => handleEditQuestion(q)}
+                                                                                    className="text-slate-400 hover:text-indigo-600 transition"
+                                                                                    title="Sửa câu hỏi"
+                                                                                >
+                                                                                    <Pencil className="w-3.5 h-3.5" />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleDeleteQuestion(q.id)}
+                                                                                    className="text-slate-400 hover:text-red-500 transition"
+                                                                                    title="Xóa câu hỏi"
+                                                                                >
+                                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     );
                                                 }
