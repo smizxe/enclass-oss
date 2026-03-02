@@ -130,7 +130,7 @@ export const McqQuestion = ({
                                         disabled={disabled}
                                     />
                                     <Label htmlFor={`${question.id}-${index}`} className="flex-1 cursor-pointer font-normal text-slate-700">
-                                        {optionLabel}
+                                        <span dangerouslySetInnerHTML={{ __html: optionLabel }} />
                                     </Label>
                                 </div>
                             )
@@ -153,7 +153,7 @@ export const McqQuestion = ({
                                 <div key={index} className="flex items-center space-x-3 border border-slate-200 p-3 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition cursor-pointer">
                                     <RadioGroupItem value={optionValue} id={`${question.id}-${index}`} />
                                     <Label htmlFor={`${question.id}-${index}`} className="flex-1 cursor-pointer font-normal text-slate-700">
-                                        {optionLabel}
+                                        <span dangerouslySetInnerHTML={{ __html: optionLabel }} />
                                     </Label>
                                 </div>
                             )

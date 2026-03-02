@@ -1530,7 +1530,10 @@ const McqQuestionSimple = ({
                                     )}
                                 </div>
                                 <div className="flex-1">
-                                    <span className="font-medium">{option}</span>
+                                    <span
+                                        className="font-medium"
+                                        dangerouslySetInnerHTML={{ __html: String(option) }}
+                                    />
                                 </div>
                             </button>
                         );

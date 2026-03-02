@@ -1262,7 +1262,7 @@ export default function AssignmentEditorPage() {
                                                                                             : "border-slate-100 bg-slate-50 text-slate-600"
                                                                                             }`}
                                                                                     >
-                                                                                        {opt}
+                                                                                        <div dangerouslySetInnerHTML={{ __html: opt }} />
                                                                                     </div>
                                                                                 );
                                                                             })}
