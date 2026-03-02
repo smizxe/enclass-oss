@@ -89,6 +89,11 @@
     body {
         @apply bg-background text-foreground;
     }
+
+    /* Restore <u> underline stripped by Tailwind Preflight */
+    u {
+        text-decoration: underline;
+    }
 }
 
 body {
