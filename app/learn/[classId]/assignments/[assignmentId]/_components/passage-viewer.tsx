@@ -16,12 +16,14 @@ interface PassageViewerProps {
     fontSize?: number;
 }
 
-/** Strip duplicate (N) markers next to {N} — legacy data cleanup */
+/** Strip duplicate (N) markers next to {N} and normalize [N] to {N} — legacy data cleanup */
 function cleanPassageMarkers(text: string): string {
     // "(19) {19}" or "(19){19}" → "{19}"
     let cleaned = text.replace(/\((\d+)\)\s*\{(\1)\}/g, '{$2}');
     // "19. {19}" → "{19}"
     cleaned = cleaned.replace(/(\d+)\.\s*\{(\1)\}/g, '{$2}');
+    // "[19]" → "{19}" (normalize square brackets to curly braces)
+    cleaned = cleaned.replace(/\[(\d+)\]/g, '{$1}');
     return cleaned;
 }
 

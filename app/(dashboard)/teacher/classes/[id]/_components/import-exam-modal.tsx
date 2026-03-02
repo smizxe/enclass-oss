@@ -10,10 +10,12 @@ import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
 
-/** Strip duplicate (N) markers next to {N} — legacy data cleanup */
+/** Strip duplicate (N) markers next to {N} and normalize [N] to {N} — legacy data cleanup */
 function cleanPassageMarkers(text: string): string {
     let cleaned = text.replace(/\((\d+)\)\s*\{(\1)\}/g, '{$2}');
     cleaned = cleaned.replace(/(\d+)\.\s*\{(\1)\}/g, '{$2}');
+    // "[19]" → "{19}" (normalize square brackets to curly braces)
+    cleaned = cleaned.replace(/\[(\d+)\]/g, '{$1}');
     return cleaned;
 }
 
