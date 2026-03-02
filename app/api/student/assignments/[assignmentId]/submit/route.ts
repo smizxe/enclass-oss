@@ -295,6 +295,10 @@ export async function POST(
             }
         }
 
+        // Convert raw earnedScore into 10-point scale rounded to 0.25
+        const rawScore10 = totalScore > 0 ? (earnedScore / totalScore) * 10 : 0;
+        const scaledScore = Math.round(rawScore10 * 4) / 4;
+
         // Create submission with attemptNumber
         const submission = await prisma.submission.create({
             data: {
@@ -302,15 +306,15 @@ export async function POST(
                 assignmentProgressId: progress.id,
                 attemptNumber: nextAttemptNumber,  // Track which attempt this is
                 answers: JSON.stringify(answers),
-                score: earnedScore,
+                score: scaledScore, // Use scaled score
                 feedback: JSON.stringify(results)
             }
         });
 
-        // Calculate BEST score across all attempts
+        // Calculate BEST score across all attempts (now all are on 10-point scale)
         const allScores = [
             ...progress.submissions.map(s => s.score || 0),
-            earnedScore  // Include current submission
+            scaledScore  // Include current scaled score
         ];
         const bestScore = Math.max(...allScores);
 

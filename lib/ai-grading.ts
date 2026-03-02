@@ -14,7 +14,8 @@ export async function gradeSubmission(
     userAnswer: string,
     rubric: string,
     maxPoints: number,
-    contextPassage?: string
+    contextPassage?: string,
+    correctAnswer?: string
 ): Promise<{ score: number; feedback: string }> {
     if (!apiKey) {
         console.error("GOOGLE_API_KEY is missing");
@@ -44,6 +45,7 @@ ${contextPassage ? `
 ${contextPassage}
 """
 ` : ""}
+${correctAnswer ? `**ĐÁP ÁN ĐÚNG / GỢI Ý CHUẨN:** ${correctAnswer}\n*(Hãy dùng đáp án chuẩn này làm cơ sở đánh giá độ chính xác của câu trả lời học viên)*\n` : ""}
 **THANG ĐIỂM TỐI ĐA:** ${maxPoints} điểm
 **TIÊU CHÍ CHẤM:** ${rubric || "Chấm dựa trên ngữ pháp, từ vựng, sự mạch lạc và hoàn thành yêu cầu đề bài."}
 
@@ -131,7 +133,8 @@ export async function* gradeSubmissionStream(
     userAnswer: string,
     rubric: string,
     maxPoints: number,
-    contextPassage?: string
+    contextPassage?: string,
+    correctAnswer?: string
 ) {
     if (!apiKey) {
         console.error("GOOGLE_API_KEY is missing");
@@ -161,6 +164,7 @@ ${contextPassage ? `
 ${contextPassage}
 """
 ` : ""}
+${correctAnswer ? `**ĐÁP ÁN ĐÚNG / GỢI Ý CHUẨN:** ${correctAnswer}\n*(Hãy dùng đáp án chuẩn này làm cơ sở đánh giá độ chính xác của câu trả lời học viên)*\n` : ""}
 **THANG ĐIỂM TỐI ĐA:** ${maxPoints} điểm
 **TIÊU CHÍ CHẤM:** ${rubric || "Chấm dựa trên ngữ pháp, từ vựng, sự mạch lạc và hoàn thành yêu cầu đề bài."}
 

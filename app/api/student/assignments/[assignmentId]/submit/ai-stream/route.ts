@@ -92,7 +92,8 @@ export async function GET(req: NextRequest) {
                             userAnswer,
                             rubric,
                             q.points,
-                            contextPassage
+                            contextPassage,
+                            q.correctAnswer
                         );
 
                         let fullText = "";
@@ -145,8 +146,18 @@ export async function GET(req: NextRequest) {
                     }
 
                     // Done with all questions, update DB via Prisma
-                    const currentScore = submission.score || 0;
-                    const newScore = currentScore + totalScoreAddition;
+                    const currentRawEarned = (submission.score || 0) / 10 * questions.filter(q => !results[q.id]?.isPendingAi).reduce((sum, q) => sum + (q.points || 1), 0); // Reverse calculate approx raw earned previously, or just recalculate total earned so far
+
+                    let totalEarnedScore = 0;
+                    questions.forEach(q => {
+                        if (q.type !== "SECTION_HEADER") {
+                            totalEarnedScore += (results[q.id]?.score || 0);
+                        }
+                    });
+
+                    const totalPoints = questions.filter(q => q.type !== "SECTION_HEADER").reduce((sum, q) => sum + q.points, 0);
+                    const rawScore10 = totalPoints > 0 ? (totalEarnedScore / totalPoints) * 10 : 0;
+                    const newScore = Math.round(rawScore10 * 4) / 4;
 
                     await prisma.submission.update({
                         where: { id: submissionId },
@@ -166,11 +177,10 @@ export async function GET(req: NextRequest) {
                     // Re-check pass percentage after AI grading
                     const assignmentSettings = submission.assignmentProgress.assignment.settings as { passPercent?: number } | null;
                     const passPercent = assignmentSettings?.passPercent;
-                    // Compute total possible points
-                    const totalPoints = questions.filter(q => q.type !== "SECTION_HEADER").reduce((sum, q) => sum + q.points, 0);
+
                     let finalStatus = "COMPLETED";
                     if (passPercent && totalPoints > 0) {
-                        const scorePercent = (newScore / totalPoints) * 100;
+                        const scorePercent = (newScore / 10) * 100; // newScore is now out of 10
                         finalStatus = scorePercent >= passPercent ? "COMPLETED" : "NOT_PASSED";
                     }
 

@@ -97,14 +97,10 @@ function parseAIFeedbackForDisplay(feedback: string | null): string {
 
     const parsed = safeParseJSON(feedback, null);
 
-    // If it parses as an object, it means we have structured per-question feedback.
-    // Since the user confirmed AI won't generate general feedback, we should hide this section
-    // to avoid duplicating the per-question feedback or showing empty/irrelevant text.
     if (parsed && typeof parsed === 'object') {
         return "";
     }
 
-    // If it's not JSON (e.g. legacy plain text), return as is
     return feedback;
 }
 
@@ -119,7 +115,6 @@ function getQuestionAIFeedback(feedback: string | null, questionId: string): {
     const parsed = safeParseJSON(feedback);
     if (!parsed || typeof parsed !== 'object') return null;
 
-    // Check if feedback is keyed by question ID
     if (parsed[questionId]) {
         const qFeedback = parsed[questionId];
         return {
@@ -150,10 +145,36 @@ export default function GradeSubmissionPage() {
                 if (response.ok) {
                     const data = await response.json();
                     setSubmission(data);
-                    if (data.score !== null) {
+
+                    if (data.gradedById && data.score !== null) {
+                        setScore(data.score);
+                    } else if (data.assignmentProgress?.assignment) {
+                        const questions = data.assignmentProgress.assignment.questions || [];
+                        const answers = safeParseJSON(data.answers, {}) as Record<string, unknown>;
+                        let correct = 0;
+                        let total = questions.length;
+
+                        questions.forEach((q: any) => {
+                            const ans = answers[q.id];
+                            const qFeedback = getQuestionAIFeedback(data.feedback, q.id);
+                            let isCorrect = false;
+                            if (qFeedback && typeof qFeedback.isCorrect === 'boolean') {
+                                isCorrect = qFeedback.isCorrect;
+                            } else if (ans !== undefined && ans !== null && q.correctAnswer) {
+                                if (String(ans) === String(q.correctAnswer)) {
+                                    isCorrect = true;
+                                }
+                            }
+                            if (isCorrect) correct++;
+                        });
+
+                        const rawScore = total > 0 ? (correct / total) * 10 : 0;
+                        const autoScore = Math.round(rawScore * 4) / 4;
+                        setScore(autoScore);
+                    } else if (data.score !== null) {
                         setScore(data.score);
                     }
-                    // Load teacher's own feedback if exists
+
                     if (data.teacherFeedback) {
                         setTeacherFeedback(data.teacherFeedback);
                     }
@@ -168,13 +189,11 @@ export default function GradeSubmissionPage() {
         fetchSubmission();
     }, [submissionId]);
 
-    // Parse answers safely
     const parsedAnswers = useMemo(() => {
         if (!submission) return {};
         return safeParseJSON(submission.answers, {}) as Record<string, unknown>;
     }, [submission]);
 
-    // Get parsed AI feedback for display
     const aiFeedbackText = useMemo(() => {
         if (!submission?.feedback) return "";
         return parseAIFeedbackForDisplay(submission.feedback);
@@ -287,20 +306,43 @@ export default function GradeSubmissionPage() {
                         const isAudio = typeof answer === 'string' && isAudioUrl(answer);
                         const qFeedback = getQuestionAIFeedback(submission.feedback, question.id);
 
+                        let isCorrect: boolean | undefined = undefined;
+                        if (qFeedback && typeof qFeedback.isCorrect === 'boolean') {
+                            isCorrect = qFeedback.isCorrect;
+                        } else if (answer !== undefined && answer !== null && question.correctAnswer) {
+                            if (String(answer) === String(question.correctAnswer)) {
+                                isCorrect = true;
+                            } else if (String(answer).trim() !== "") {
+                                isCorrect = false;
+                            }
+                        }
+
+                        let cardColorClass = "bg-white border-slate-200";
+                        let headerBgClass = "bg-slate-50 border-slate-100";
+                        if (isCorrect === true) {
+                            cardColorClass = "bg-emerald-50/20 border-emerald-200";
+                            headerBgClass = "bg-emerald-100/40 border-emerald-200/60";
+                        } else if (isCorrect === false) {
+                            cardColorClass = "bg-red-50/20 border-red-200";
+                            headerBgClass = "bg-red-100/40 border-red-200/60";
+                        }
+
                         return (
-                            <div key={question.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                <div className="px-5 py-3 bg-slate-50 border-b border-slate-100">
+                            <div key={question.id} className={`rounded-xl border shadow-sm overflow-hidden transition-colors ${cardColorClass}`}>
+                                <div className={`px-5 py-3 border-b ${headerBgClass}`}>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             {isAudio ? (
-                                                <Volume2 className="w-4 h-4 text-indigo-500" />
+                                                <Volume2 className={`w-4 h-4 ${isCorrect === true ? 'text-emerald-600' : isCorrect === false ? 'text-red-500' : 'text-indigo-500'}`} />
                                             ) : (
-                                                <FileText className="w-4 h-4 text-slate-500" />
+                                                <FileText className={`w-4 h-4 ${isCorrect === true ? 'text-emerald-600' : isCorrect === false ? 'text-red-500' : 'text-slate-500'}`} />
                                             )}
-                                            <span className="font-medium text-slate-700">Câu {index + 1}</span>
-                                            <span className="text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-600">{question.type}</span>
+                                            <span className={`font-medium ${isCorrect === true ? 'text-emerald-800' : isCorrect === false ? 'text-red-800' : 'text-slate-700'}`}>Câu {index + 1}</span>
+                                            <span className="text-xs px-2 py-0.5 rounded bg-white/60 text-slate-600 border shadow-sm">{question.type}</span>
                                         </div>
-                                        <span className="text-sm text-slate-500">{question.points} điểm</span>
+                                        <span className={`text-sm font-medium ${isCorrect === true ? 'text-emerald-700' : isCorrect === false ? 'text-red-600' : 'text-slate-500'}`}>
+                                            {isCorrect === true ? `${question.points} điểm` : isCorrect === false ? "0 điểm" : `${question.points} điểm`}
+                                        </span>
                                     </div>
                                 </div>
                                 <div className="p-5 space-y-4">
@@ -315,28 +357,50 @@ export default function GradeSubmissionPage() {
                                         <div className="space-y-2">
                                             <div className="text-sm font-medium text-slate-500">Các lựa chọn:</div>
                                             <div className="grid gap-2">
-                                                {options.map((opt, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className={`px-3 py-2 rounded-lg border text-sm ${String(answer) === String(i) || String(answer) === opt
-                                                            ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                                                            : 'bg-slate-50 border-slate-200 text-slate-600'
-                                                            }`}
-                                                    >
-                                                        <span className="font-medium">{String.fromCharCode(65 + i)}.</span> {opt}
-                                                        {(String(answer) === String(i) || String(answer) === opt) && (
-                                                            <span className="ml-2 text-xs font-bold">(Đã chọn)</span>
-                                                        )}
-                                                    </div>
-                                                ))}
+                                                {options.map((opt, i) => {
+                                                    const isSelected = String(answer) === String(i) || String(answer) === String(opt);
+
+                                                    let isExpectedCorrect = false;
+                                                    if (qFeedback && qFeedback.correctAnswer) {
+                                                        isExpectedCorrect = String(qFeedback.correctAnswer) === String(i) || String(qFeedback.correctAnswer) === String(opt);
+                                                    } else if (question.correctAnswer !== undefined && question.correctAnswer !== null) {
+                                                        isExpectedCorrect = String(question.correctAnswer) === String(i) || String(question.correctAnswer) === String(opt);
+                                                    }
+
+                                                    let optClass = "bg-slate-50 border-slate-200 text-slate-600";
+                                                    if (isSelected && isExpectedCorrect) {
+                                                        optClass = "bg-emerald-50 border-emerald-400 text-emerald-800 ring-1 ring-emerald-400";
+                                                    } else if (isSelected && (!isExpectedCorrect && isCorrect === false)) {
+                                                        optClass = "bg-red-50 border-red-300 text-red-800";
+                                                    } else if (!isSelected && isExpectedCorrect && answer !== undefined) {
+                                                        optClass = "bg-emerald-50/50 border-emerald-300 text-emerald-700 border-dashed";
+                                                    } else if (isSelected) {
+                                                        optClass = "bg-indigo-50 border-indigo-200 text-indigo-700";
+                                                    }
+
+                                                    return (
+                                                        <div
+                                                            key={i}
+                                                            className={`px-3 py-2 rounded-lg border text-sm transition-colors ${optClass}`}
+                                                        >
+                                                            <span className="font-medium">{String.fromCharCode(65 + i)}.</span> {opt}
+                                                            {isSelected && (
+                                                                <span className="ml-2 text-xs font-bold">(Đã chọn)</span>
+                                                            )}
+                                                            {!isSelected && isExpectedCorrect && answer !== undefined && (
+                                                                <span className="ml-2 text-xs font-semibold text-emerald-600">(Đáp án đúng)</span>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                         </div>
                                     )}
 
                                     {/* Student Answer for non-MCQ */}
                                     {!options && (
-                                        <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
-                                            <div className="text-xs text-indigo-600 font-medium mb-2">Câu trả lời:</div>
+                                        <div className={`rounded-lg p-4 border ${isCorrect === true ? 'bg-emerald-50/50 border-emerald-100' : isCorrect === false ? 'bg-red-50/50 border-red-100' : 'bg-indigo-50 border-indigo-100'}`}>
+                                            <div className={`text-xs font-medium mb-2 ${isCorrect === true ? 'text-emerald-700' : isCorrect === false ? 'text-red-700' : 'text-indigo-600'}`}>Câu trả lời:</div>
                                             {isAudio ? (
                                                 <audio
                                                     controls
@@ -436,7 +500,7 @@ export default function GradeSubmissionPage() {
                                     type="number"
                                     min="0"
                                     max="10"
-                                    step="0.1"
+                                    step="0.25"
                                     value={score}
                                     onChange={(e) => setScore(parseFloat(e.target.value) || 0)}
                                     disabled={isSubmitting}
