@@ -58,6 +58,14 @@ RULES:
     - Use \\n for line breaks to preserve the original layout perfectly.
     - KEEP FULL FORMATTING: If the note has headings, bullet points, or bold text, YOU MUST PRESERVE THEM EXACTLY. DO NOT STRIP FORMATTING.
 12. **EXPLANATION (REQUIRED):** For EVERY question, you MUST provide a concise explanation in Vietnamese in the "explanation" field.
+13. **MATCHING / SENTENCE BANK EXERCISES (CRITICAL — DO NOT CONFUSE WITH MCQ):**
+    - If the exercise has a passage/dialogue with numbered blanks AND a separate list of sentences/phrases (A, B, C, D, E, F...) to choose from:
+      → This is GAP_FILL, **NOT** MCQ!
+    - Put the dialogue/passage (with {N} markers for blanks) in "passage".
+    - Put the sentence bank (A. ..., B. ..., C. ...) in "notePassage".
+    - Each question: type="GAP_FILL", correctAnswer = the LETTER of the matching sentence (e.g., "B", "E", "F").
+    - Example: A dialogue where Phong says {6} and the bank has "F. Let's play table tennis" → correctAnswer="F".
+    - **HOW TO DISTINGUISH:** If EVERY blank shares the SAME set of choices (a word/sentence bank) → GAP_FILL. If each question has its OWN unique set of 4 options → MCQ.
 
 FORMATTING (CRITICAL - DO NOT IGNORE):
 - You MUST preserve original text formatting perfectly using Markdown.
@@ -70,8 +78,9 @@ FORMATTING (CRITICAL - DO NOT IGNORE):
 QUESTION TYPES:
 - ORDERING: items=["a. ...", "b. ..."], options=["A. a-b-c", "B. c-b-a", ...]
 - TRUE/FALSE/NOT GIVEN or YES/NO/NOT GIVEN: type="MCQ", options=["TRUE","FALSE","NOT GIVEN"] or ["YES","NO","NOT GIVEN"], correctAnswer="TRUE"/"FALSE"/"NOT GIVEN"
-- GAP_FILL: correctAnswer = exact fill text. In passage, mark blank position with {N} where N is questionNumber.
-- MCQ: The "content" field MUST contain ONLY the question stem (the question sentence with blank). Do NOT include options like "A. xxx B. yyy C. zzz D. www" in the "content" field. The "options" array MUST contain the FULL TEXT of each choice (e.g., ["physicist", "physician", "physical", "physics"]), NOT just letters like ["A", "B", "C", "D"]. correctAnswer = letter (A/B/C/D).
+- GAP_FILL: correctAnswer = the exact fill text OR the letter from a word/sentence bank. In passage, mark blank position with {N} where N is questionNumber. NEVER use [N] brackets — always use {N} curly braces.
+- GAP_FILL with SENTENCE/WORD BANK: When multiple blanks share a common bank of options (A-F, A-H, etc.), use type="GAP_FILL" with correctAnswer = the letter. Put the bank in "notePassage". Do NOT make these MCQ!
+- MCQ: Each question has its OWN unique set of 3-5 options. The "content" field MUST contain ONLY the question stem (the question sentence with blank). Do NOT include options like "A. xxx B. yyy C. zzz D. www" in the "content" field. The "options" array MUST contain the FULL TEXT of each choice (e.g., ["physicist", "physician", "physical", "physics"]), NOT just letters like ["A", "B", "C", "D"]. correctAnswer = letter (A/B/C/D).
 - PHONETICS/PRONUNCIATION/STRESS MCQ (CRITICAL): For questions about pronunciation or word stress (e.g., "the word whose underlined part differs", "the word that has different stress"), you MUST wrap the underlined letters/syllables in <u></u> tags within EACH option. Example: options=["sh<u>ow</u>", "p<u>o</u>st", "l<u>o</u>ck", "n<u>o</u>te"]. NEVER omit the <u> tags for these question types — students need to see which part is underlined.
 
 OUTPUT JSON:
