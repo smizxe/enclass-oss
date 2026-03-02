@@ -138,10 +138,7 @@ const SectionContent = ({
                 {/* Render questions: group contiguous GAP_FILL runs for compact display, standard cards for others */}
                 {(() => {
                     // Helper: check if a question is GAP_FILL type (permissive)
-                    const isGapFill = (q: ParsedQuestion) => {
-                        const type = (q.type || "").toUpperCase();
-                        return type.includes("GAP") && type.includes("FILL");
-                    };
+
 
                     // Filter out SECTION_HEADER questions
                     const realQuestions = group.questions.filter(q => q.type !== "SECTION_HEADER");
@@ -157,7 +154,8 @@ const SectionContent = ({
                     let currentRun: QuestionRun | null = null;
 
                     realQuestions.forEach((q, idx) => {
-                        const mode = isGapFill(q) ? "gap_fill" : "standard";
+                        const type = (q.type || "").toUpperCase();
+                        const mode = type.includes("GAP") && (group.notePassage || group.passage) ? "gap_fill" : "standard";
                         if (!currentRun || currentRun.mode !== mode) {
                             currentRun = { mode, questions: [], startIdx: idx };
                             runs.push(currentRun);

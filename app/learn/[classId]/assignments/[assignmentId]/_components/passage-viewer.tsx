@@ -157,10 +157,10 @@ export const PassageViewer = ({
                             style={{ fontSize: `${fontSize}px` }}
                         >
                             <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
+                                remarkPlugins={[remarkGfm, remarkBreaks]}
                                 rehypePlugins={[rehypeRaw]}
                             >
-                                {cleanPassageMarkers(passage || "")}
+                                {cleanPassageMarkers(passage || "").replace(/\\n/g, '\n')}
                             </ReactMarkdown>
                         </div>
 
@@ -172,10 +172,10 @@ export const PassageViewer = ({
                                     style={{ fontSize: `${fontSize}px` }}
                                 >
                                     <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
+                                        remarkPlugins={[remarkGfm, remarkBreaks]}
                                         rehypePlugins={[rehypeRaw]}
                                     >
-                                        {passageTranslation}
+                                        {(passageTranslation || "").replace(/\\n/g, '\n')}
                                     </ReactMarkdown>
                                 </div>
                             </div>
