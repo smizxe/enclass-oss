@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
+
 import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
 
 /** Strip duplicate (N) markers next to {N} and normalize [N] to {N} — legacy data cleanup */
@@ -550,7 +550,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                                         Đoạn văn chung
                                                                     </div>
                                                                     <div className="text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none [&_p]:mb-2 [&_strong]:font-bold [&_em]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:mb-1">
-                                                                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeRaw]}>
+                                                                        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                                                                             {cleanPassageMarkers(section.passage || '').replace(/\\n/g, '\n')}
                                                                         </ReactMarkdown>
                                                                     </div>
@@ -612,7 +612,7 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                                                                     </div>
                                                                                     {q.content && (
                                                                                         <div className="mt-2 text-sm text-slate-800 [&_strong]:font-bold [&_em]:italic [&_p]:mb-2">
-                                                                                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeRaw]}>
+                                                                                            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                                                                                                 {q.content.replace(/\\n/g, '\n')}
                                                                                             </ReactMarkdown>
                                                                                         </div>
