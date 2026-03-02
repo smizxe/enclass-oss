@@ -126,15 +126,11 @@ export async function POST(
                 let effectiveUserAnswer = userAnswer;
 
                 if (isTestMode && optionMappings && optionMappings[q.id]) {
-                    // optionMappings[q.id] = [originalIndexOfPos0, originalIndexOfPos1, ...]
-                    // userAnswer is the text of selected option (after shuffle)
-                    // Find which shuffled position user selected, then map back to original index
                     const shuffledOptions = parsedContent.options;
                     const selectedShuffledIndex = shuffledOptions?.findIndex((opt: string) => opt === userAnswer);
 
                     if (selectedShuffledIndex !== undefined && selectedShuffledIndex >= 0 && optionMappings[q.id][selectedShuffledIndex] !== undefined) {
                         const originalIndex = optionMappings[q.id][selectedShuffledIndex];
-                        // Convert original index back to letter (A, B, C, D)
                         effectiveUserAnswer = String.fromCharCode(65 + originalIndex);
                     }
                 }
@@ -146,18 +142,15 @@ export async function POST(
                 }
                 // 2. Check if correctAnswer is a Letter Key (A, B, C...) and userAnswer is the corresponding text
                 else if (parsedContent.options && Array.isArray(parsedContent.options)) {
-                    const correctIndex = q.correctAnswer.charCodeAt(0) - 65; // 'A' -> 0, 'B' -> 1
+                    const correctIndex = q.correctAnswer.charCodeAt(0) - 65;
                     if (correctIndex >= 0 && correctIndex < parsedContent.options.length) {
                         const correctOptionText = parsedContent.options[correctIndex];
-                        // Exact match
                         if (effectiveUserAnswer === correctOptionText) {
                             isCorrect = true;
                         }
-                        // Trimmed match (handles whitespace differences)
                         else if (effectiveUserAnswer?.trim() === correctOptionText?.trim()) {
                             isCorrect = true;
                         }
-                        // Strip HTML tags and compare (handles <u>text</u> vs text)
                         else {
                             const stripHtml = (s: string) => (s || "").replace(/<[^>]*>/g, "").trim();
                             if (stripHtml(effectiveUserAnswer) === stripHtml(correctOptionText)) {
@@ -165,9 +158,8 @@ export async function POST(
                             }
                         }
                     }
-                    // 3. Fallback: Check if userAnswer text matches ANY option at the correct index position
+                    // 3. Fallback: index-based matching
                     if (!isCorrect) {
-                        // Try matching by finding which option the user selected and compare index
                         const selectedIndex = parsedContent.options.findIndex((opt: string) =>
                             opt === effectiveUserAnswer ||
                             opt?.trim() === effectiveUserAnswer?.trim()
