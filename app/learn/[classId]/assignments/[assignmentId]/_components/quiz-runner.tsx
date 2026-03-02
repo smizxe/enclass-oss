@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History, ClipboardList, FileText, Clock } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { ResizableSplitPane } from "@/components/ui/resizable-split-pane";
 import { AssignmentResult } from "./assignment-result";
 
@@ -181,10 +182,10 @@ const SectionContent = ({
                                     <div className="text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:mb-1 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
                                         style={{ fontSize: `${passageFontSize}px` }}>
                                         <ReactMarkdown
-                                            remarkPlugins={[remarkGfm]}
+                                            remarkPlugins={[remarkGfm, remarkBreaks]}
                                             rehypePlugins={[rehypeRaw]}
                                         >
-                                            {(cleanPassageMarkers(group.passage || "")).replace(/\\n/g, '\n').replace(/\n/g, '  \n')}
+                                            {(cleanPassageMarkers(group.passage || "")).replace(/\\n/g, '\n')}
                                         </ReactMarkdown>
                                     </div>
                                     {group.passageTranslation && (
@@ -192,10 +193,10 @@ const SectionContent = ({
                                             <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
                                             <div className="text-slate-600 italic leading-relaxed" style={{ fontSize: `${passageFontSize}px` }}>
                                                 <ReactMarkdown
-                                                    remarkPlugins={[remarkGfm]}
+                                                    remarkPlugins={[remarkGfm, remarkBreaks]}
                                                     rehypePlugins={[rehypeRaw]}
                                                 >
-                                                    {group.passageTranslation || ""}
+                                                    {(group.passageTranslation || "").replace(/\\n/g, '\n')}
                                                 </ReactMarkdown>
                                             </div>
                                         </div>

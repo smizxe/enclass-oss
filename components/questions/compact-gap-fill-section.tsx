@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 
 interface CompactQuestion {
@@ -280,16 +281,7 @@ export const CompactGapFillSection = ({
         // 2. Normalize bullet points that are on the same line:
         //    "text • bullet1 • bullet2" → "text\n• bullet1\n• bullet2"
         //    But only when • appears mid-line (not at start)
-        normalized = normalized.replace(/\s+•\s+/g, '\n• ');
-
-        // 3. Ensure single newlines become paragraph breaks for ReactMarkdown:
-        //    ReactMarkdown (CommonMark) treats single \n as soft break (invisible).
-        //    We need \n\n for visible paragraph breaks.
-        //    But we should not double-up already-double newlines.
-        normalized = normalized
-            .replace(/\r\n/g, '\n')           // normalize CRLF
-            .replace(/\n{3,}/g, '\n\n')        // collapse 3+ newlines to 2
-            .replace(/(?<!\n)\n(?!\n)/g, '\n\n'); // single \n → double \n\n
+        normalized = normalized.replace(/\s+•\s+/g, '\n\n• ');
 
         // 4. Replace {N} with HTML span placeholder
         normalized = normalized.replace(
@@ -373,7 +365,7 @@ export const CompactGapFillSection = ({
                 : 'prose prose-sm max-w-none prose-headings:mb-2 prose-headings:mt-4 prose-p:mb-3 prose-ul:my-1 prose-li:my-0 [&_strong]:font-bold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2'
                 }`}>
                 <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
+                    remarkPlugins={[remarkGfm, remarkBreaks]}
                     rehypePlugins={[rehypeRaw]}
                     components={{
                         span: GapMarkerSpan,
