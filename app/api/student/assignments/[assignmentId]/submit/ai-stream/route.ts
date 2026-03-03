@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
 
                         const rubric = parsedContent.aiRubric || "";
                         const questionText = parsedContent.text || "";
+                        const aiModel = parsedContent.aiModel || undefined;
 
                         // Get context passage if available
                         const contextPassage = parsedContent.passage || undefined;
@@ -93,7 +94,8 @@ export async function GET(req: NextRequest) {
                             rubric,
                             q.points,
                             contextPassage,
-                            q.correctAnswer
+                            q.correctAnswer,
+                            aiModel
                         );
 
                         let fullText = "";

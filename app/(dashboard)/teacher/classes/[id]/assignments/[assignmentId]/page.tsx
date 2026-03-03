@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
-
+import remarkBreaks from "remark-breaks";
 import {
     ArrowLeft,
     PlusCircle,
@@ -94,7 +94,8 @@ export default function AssignmentEditorPage() {
         explanation?: string | null;
         points: number;
         sectionTitle: string;
-        aiRubric?: string; // Added for AI Grading
+        aiRubric?: string;
+        aiModel?: string;
     }>({
         type: "MCQ",
         text: "",
@@ -104,7 +105,8 @@ export default function AssignmentEditorPage() {
         explanation: "",
         points: 1,
         sectionTitle: "",
-        aiRubric: ""
+        aiRubric: "",
+        aiModel: "gemini-3.1-pro-preview"
     });
 
     // Essay Prompt State
@@ -376,7 +378,8 @@ export default function AssignmentEditorPage() {
             explanation: q.explanation || "",
             points: q.points,
             sectionTitle: existingSectionTitle,
-            aiRubric: (parsed as any).aiRubric || ""
+            aiRubric: (parsed as any).aiRubric || "",
+            aiModel: (parsed as any).aiModel || "gemini-3.1-pro-preview"
         });
         setIsAddingQuestion(true);
     };
@@ -390,11 +393,15 @@ export default function AssignmentEditorPage() {
             text: newQuestion.text,
             options: newQuestion.options,
             sectionTitle: newQuestion.sectionTitle || "General",
-            aiRubric: newQuestion.aiRubric // Save AI Rubric
+            aiRubric: newQuestion.aiRubric,
+            aiModel: newQuestion.aiModel
         };
 
         let correctAnswerChar = "";
-        if (newQuestion.type === "MCQ") {
+        if (newQuestion.type === "SPEAKING" || newQuestion.type === "WRITING") {
+            // AI-graded: no predefined correct answer
+            correctAnswerChar = "";
+        } else if (newQuestion.type === "MCQ") {
             correctAnswerChar = newQuestion.correctAnswerIndexes.length > 0
                 ? newQuestion.correctAnswerIndexes.sort((a, b) => a - b).map(idx => String.fromCharCode(65 + idx)).join(",")
                 : "";
@@ -441,7 +448,8 @@ export default function AssignmentEditorPage() {
                 explanation: "",
                 points: 1,
                 sectionTitle: "",
-                aiRubric: ""
+                aiRubric: "",
+                aiModel: "gemini-3.1-pro-preview"
             });
             setEssayPrompt("");
             fetchQuestions();
@@ -1078,7 +1086,7 @@ export default function AssignmentEditorPage() {
                                             <div className="text-sm text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-blue-100 w-full [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:mb-1 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2">
                                                 {/* If passage looks like HTML (contains table or tags), render directly. Otherwise Markdown. */}
                                                 <ReactMarkdown
-                                                    remarkPlugins={[remarkGfm]}
+                                                    remarkPlugins={[remarkGfm, remarkBreaks]}
                                                     rehypePlugins={[rehypeRaw]}
                                                     components={{
                                                         // Ensure tables don't get stripped or messed up
@@ -1299,17 +1307,26 @@ export default function AssignmentEditorPage() {
                                                                             })}
                                                                         </div>
                                                                     )}
-                                                                    <div className="mt-3 text-xs text-slate-400">
-                                                                        Điểm: {q.points} | Đáp án đúng: {q.correctAnswer}
-                                                                    </div>
-                                                                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
-                                                                        <span className="font-bold">📝 Lời giải: </span>
-                                                                        {q.explanation ? (
-                                                                            q.explanation
-                                                                        ) : (
-                                                                            <span className="italic opacity-60">Chưa có lời giải. Nhấn vào biểu tượng sửa để thêm.</span>
-                                                                        )}
-                                                                    </div>
+                                                                    {["SPEAKING", "WRITING"].includes(q.type) ? (
+                                                                        <div className="mt-3 flex items-center gap-2">
+                                                                            <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-medium">🤖 AI Chấm điểm</span>
+                                                                            <span className="text-xs text-slate-400">Điểm: {q.points}</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <>
+                                                                            <div className="mt-3 text-xs text-slate-400">
+                                                                                Điểm: {q.points} | Đáp án đúng: {q.correctAnswer}
+                                                                            </div>
+                                                                            <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+                                                                                <span className="font-bold">📝 Lời giải: </span>
+                                                                                {q.explanation ? (
+                                                                                    q.explanation
+                                                                                ) : (
+                                                                                    <span className="italic opacity-60">Chưa có lời giải. Nhấn vào biểu tượng sửa để thêm.</span>
+                                                                                )}
+                                                                            </div>
+                                                                        </>
+                                                                    )}
                                                                 </div>
                                                             );
                                                         })}
@@ -1466,35 +1483,69 @@ export default function AssignmentEditorPage() {
                                             />
                                         </div>
                                     )}
+                                    {(newQuestion.type === "SPEAKING" || newQuestion.type === "WRITING") && (
+                                        <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                                            <p className="text-sm text-emerald-700 font-medium flex items-center gap-2">
+                                                🤖 Câu hỏi này sẽ được AI chấm điểm tự động
+                                            </p>
+                                            <p className="text-xs text-emerald-600 mt-1">
+                                                Học viên sẽ {newQuestion.type === "SPEAKING" ? "ghi âm câu trả lời" : "viết bài trả lời"} và AI sẽ đánh giá dựa trên tiêu chí chấm điểm (Rubric) bên dưới.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Lời giải (Giải thích đáp án)</label>
-                                    <p className="text-xs text-slate-500 mb-2">
-                                        Hiển thị cho học viên xem sau khi nộp bài. AI tự động tạo khi import.
-                                    </p>
-                                    <Textarea
-                                        value={newQuestion.explanation || ""}
-                                        onChange={(e) => setNewQuestion({ ...newQuestion, explanation: e.target.value })}
-                                        className="min-h-[80px]"
-                                        placeholder="Ví dụ: Đáp án B đúng vì..."
-                                    />
-                                </div>
+                                {/* Hide explanation field for SPEAKING/WRITING - AI provides feedback */}
+                                {newQuestion.type !== "SPEAKING" && newQuestion.type !== "WRITING" && (
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Lời giải (Giải thích đáp án)</label>
+                                        <p className="text-xs text-slate-500 mb-2">
+                                            Hiển thị cho học viên xem sau khi nộp bài. AI tự động tạo khi import.
+                                        </p>
+                                        <Textarea
+                                            value={newQuestion.explanation || ""}
+                                            onChange={(e) => setNewQuestion({ ...newQuestion, explanation: e.target.value })}
+                                            className="min-h-[80px]"
+                                            placeholder="Ví dụ: Đáp án B đúng vì..."
+                                        />
+                                    </div>
+                                )}
 
                                 {/* AI Grading Settings (for SPEAKING & WRITING) */}
                                 {(newQuestion.type === "SPEAKING" || newQuestion.type === "WRITING") && (
-                                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                        <p className="text-sm font-bold text-indigo-800 mb-2">🤖 Cấu hình AI Chấm điểm</p>
-                                        <label className="block text-sm font-medium mb-1">Hướng dẫn chấm (Rubric)</label>
-                                        <p className="text-xs text-slate-500 mb-2">
-                                            Nhập tiêu chí chấm điểm cho AI. Ví dụ: "Chấm theo thang 10. Chú trọng phát âm và trôi chảy..."
-                                        </p>
-                                        <Textarea
-                                            value={newQuestion.aiRubric || ""}
-                                            onChange={(e) => setNewQuestion({ ...newQuestion, aiRubric: e.target.value })}
-                                            placeholder="Nhập tiêu chí chấm điểm..."
-                                            className="min-h-[100px] bg-white"
-                                        />
+                                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 space-y-4">
+                                        <p className="text-sm font-bold text-indigo-800">🤖 Cấu hình AI Chấm điểm</p>
+
+                                        {/* Model Selection */}
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Chọn AI Model chấm bài</label>
+                                            <select
+                                                value={newQuestion.aiModel || "gemini-3.1-pro-preview"}
+                                                onChange={(e) => setNewQuestion({ ...newQuestion, aiModel: e.target.value })}
+                                                className="w-full px-3 py-2 border border-indigo-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 text-sm"
+                                            >
+                                                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (Thông minh nhất)</option>
+                                                <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Nhanh)</option>
+                                                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Ổn định)</option>
+                                            </select>
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                ℹ️ Nếu model báo lỗi quá tải (503), học viên có thể thử lại sau.
+                                            </p>
+                                        </div>
+
+                                        {/* Rubric */}
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Hướng dẫn chấm (Rubric)</label>
+                                            <p className="text-xs text-slate-500 mb-2">
+                                                Nhập tiêu chí chấm điểm cho AI. Ví dụ: "Chấm theo thang 10. Chú trọng phát âm và trôi chảy..."
+                                            </p>
+                                            <Textarea
+                                                value={newQuestion.aiRubric || ""}
+                                                onChange={(e) => setNewQuestion({ ...newQuestion, aiRubric: e.target.value })}
+                                                placeholder="Nhập tiêu chí chấm điểm..."
+                                                className="min-h-[100px] bg-white"
+                                            />
+                                        </div>
                                     </div>
                                 )}
 

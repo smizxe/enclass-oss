@@ -180,7 +180,7 @@ const SectionContent = ({
                                     <div className="text-slate-700 leading-relaxed bg-white rounded-xl p-4 border border-slate-100 prose prose-sm max-w-none [&_strong]:font-bold [&_em]:italic [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:mb-1 [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2"
                                         style={{ fontSize: `${passageFontSize}px` }}>
                                         <ReactMarkdown
-                                            remarkPlugins={[remarkGfm]}
+                                            remarkPlugins={[remarkGfm, remarkBreaks]}
                                             rehypePlugins={[rehypeRaw]}
                                         >
                                             {(cleanPassageMarkers(group.passage || "")).replace(/\\n/g, '\n')}
@@ -191,7 +191,7 @@ const SectionContent = ({
                                             <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
                                             <div className="text-slate-600 italic leading-relaxed" style={{ fontSize: `${passageFontSize}px` }}>
                                                 <ReactMarkdown
-                                                    remarkPlugins={[remarkGfm]}
+                                                    remarkPlugins={[remarkGfm, remarkBreaks]}
                                                     rehypePlugins={[rehypeRaw]}
                                                 >
                                                     {(group.passageTranslation || "").replace(/\\n/g, '\n')}
@@ -223,7 +223,6 @@ const SectionContent = ({
                                             startIndex={runStart}
                                             fontSize={questionFontSize}
                                             showAnswersAfterSubmit={showAnswersAfterSubmit}
-                                            hidePassageText={!showPassage}
                                         />
                                     );
                                 }
@@ -1375,6 +1374,7 @@ export const QuizRunner = ({
             {/* Desktop Split View */}
             <div className="flex-1 hidden lg:block overflow-hidden relative">
                 <ResizableSplitPane
+                    // Passage Pane (Left)
                     left={
                         <div id="split-left" className="h-full overflow-y-auto p-6 pb-20 scroll-smooth">
                             <PassageViewer
@@ -1387,6 +1387,7 @@ export const QuizRunner = ({
                             />
                         </div>
                     }
+                    // Questions Pane (Right)
                     right={
                         <div id="split-right" className="h-full overflow-y-auto w-full p-6 flex flex-col scroll-smooth">
                             <div className="flex-1 animate-in slide-in-from-right-4 duration-300">
@@ -1394,7 +1395,7 @@ export const QuizRunner = ({
                                     group={activeGroup}
                                     answers={answers}
                                     onAnswerChange={onAnswerChange}
-                                    showPassage={false}
+                                    showPassage={false} // Don't show passage on right side in Split View
                                     startIndex={currentSectionStartIndex}
                                     submissionResult={submissionResult}
                                     passageFontSize={passageFontSize}
@@ -1402,6 +1403,8 @@ export const QuizRunner = ({
                                     showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
                                 />
                             </div>
+
+                            {/* Navigation Footer */}
                             <NavigationControls />
                         </div>
                     }

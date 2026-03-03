@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BookOpen, Image as ImageIcon, X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 
 interface PassageViewerProps {
@@ -156,7 +157,7 @@ export const PassageViewer = ({
                             style={{ fontSize: `${fontSize}px` }}
                         >
                             <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
+                                remarkPlugins={[remarkGfm, remarkBreaks]}
                                 rehypePlugins={[rehypeRaw]}
                             >
                                 {cleanPassageMarkers(passage || "").replace(/\\n/g, '\n')}
@@ -171,7 +172,7 @@ export const PassageViewer = ({
                                     style={{ fontSize: `${fontSize}px` }}
                                 >
                                     <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
+                                        remarkPlugins={[remarkGfm, remarkBreaks]}
                                         rehypePlugins={[rehypeRaw]}
                                     >
                                         {(passageTranslation || "").replace(/\\n/g, '\n')}

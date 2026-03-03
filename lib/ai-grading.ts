@@ -15,7 +15,8 @@ export async function gradeSubmission(
     rubric: string,
     maxPoints: number,
     contextPassage?: string,
-    correctAnswer?: string
+    correctAnswer?: string,
+    modelId?: string
 ): Promise<{ score: number; feedback: string }> {
     if (!apiKey) {
         console.error("GOOGLE_API_KEY is missing");
@@ -27,7 +28,7 @@ export async function gradeSubmission(
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
+        const model = genAI.getGenerativeModel({ model: modelId || "gemini-3.1-pro-preview" });
 
         const isSpeaking = questionType === "SPEAKING";
         const isWriting = questionType === "WRITING" || questionType === "ESSAY";
@@ -134,7 +135,8 @@ export async function* gradeSubmissionStream(
     rubric: string,
     maxPoints: number,
     contextPassage?: string,
-    correctAnswer?: string
+    correctAnswer?: string,
+    modelId?: string
 ) {
     if (!apiKey) {
         console.error("GOOGLE_API_KEY is missing");
@@ -148,7 +150,7 @@ export async function* gradeSubmissionStream(
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
+        const model = genAI.getGenerativeModel({ model: modelId || "gemini-3.1-pro-preview" });
 
         const isSpeaking = questionType === "SPEAKING";
         const isWriting = questionType === "WRITING" || questionType === "ESSAY";
