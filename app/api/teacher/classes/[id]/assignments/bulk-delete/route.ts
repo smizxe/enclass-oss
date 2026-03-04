@@ -46,6 +46,24 @@ export async function POST(
             return new NextResponse("No assignments found", { status: 404 });
         }
 
+        // Delete in correct order to respect FK constraints
+        // 1. Delete Submissions linked to AssignmentProgress
+        await prisma.submission.deleteMany({
+            where: {
+                assignmentProgress: {
+                    assignmentId: { in: assignmentIds }
+                }
+            }
+        });
+
+        // 2. Delete AssignmentProgress records
+        await prisma.assignmentProgress.deleteMany({
+            where: {
+                assignmentId: { in: assignmentIds }
+            }
+        });
+
+        // 3. Delete the assignments themselves
         await prisma.assignment.deleteMany({
             where: {
                 id: { in: assignmentIds },

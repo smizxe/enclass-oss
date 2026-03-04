@@ -125,7 +125,7 @@ model AssignmentProgress {
   id            String   @id @default(cuid())
   userId        String
   assignmentId  String
-  assignment    Assignment @relation(fields: [assignmentId], references: [id])
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   
   status        String   @default("LOCKED")
   score         Float?
@@ -145,7 +145,7 @@ model Submission {
   userId               String
   user                 User     @relation(fields: [userId], references: [id])
   assignmentProgressId String
-  assignmentProgress   AssignmentProgress @relation(fields: [assignmentProgressId], references: [id])
+  assignmentProgress   AssignmentProgress @relation(fields: [assignmentProgressId], references: [id], onDelete: Cascade)
   
   attemptNumber        Int      @default(1)  // Which attempt this is (1, 2, 3...)
   answers              String

@@ -218,6 +218,16 @@ export async function DELETE(
             // Continue with deletion of assignment record even if storage cleanup fails partially
         }
 
+        // Delete in correct order to respect FK constraints
+        await prisma.submission.deleteMany({
+            where: {
+                assignmentProgress: { assignmentId }
+            }
+        });
+        await prisma.assignmentProgress.deleteMany({
+            where: { assignmentId }
+        });
+
         const deletedAssignment = await prisma.assignment.delete({
             where: {
                 id: assignmentId,
