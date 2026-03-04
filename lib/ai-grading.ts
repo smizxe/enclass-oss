@@ -239,9 +239,44 @@ async function gradeWithOpenAI(
     isWriting: boolean,
     maxPoints: number
 ): Promise<{ score: number; feedback: string }> {
+    // Check if model starts with gpt-4o or gpt-5 (they support native audio)
+    const supportsAudio = modelId.startsWith("gpt-4o") || modelId.startsWith("gpt-5");
+
+    if (isSpeaking && supportsAudio) {
+        // Use Native Audio Input
+        const { base64, mimeType } = await fetchAudioAsBase64(userAnswer);
+        const format = mimeType.split("/")[1] === "mpeg" ? "mp3" : "wav"; // OpenAI accepts wav or mp3
+
+        const completion = await openai.chat.completions.create({
+            model: modelId,
+            messages: [
+                { role: "system", content: systemPrompt },
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: "**BÀI NÓI CỦA HỌC VIÊN:** (File audio đính kèm)" },
+                        {
+                            type: "input_audio",
+                            input_audio: {
+                                data: base64,
+                                format: format as "wav" | "mp3"
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature: 0.3,
+        });
+
+        const responseText = completion.choices[0]?.message?.content || "";
+        return parseScoreFeedbackFormat(responseText, maxPoints);
+    }
+
+    // Fallback or Writing path
     let studentInput = "";
 
     if (isSpeaking) {
+        // Fallback to Whisper if model doesn't support audio
         const transcript = await transcribeAudioWithWhisper(userAnswer);
         studentInput = `**BÀI NÓI CỦA HỌC VIÊN (Phiên âm tự động):**\n"${transcript}"`;
     } else {
@@ -270,6 +305,43 @@ async function* streamWithOpenAI(
     isWriting: boolean,
     maxPoints: number
 ) {
+    const supportsAudio = modelId.startsWith("gpt-4o") || modelId.startsWith("gpt-5");
+
+    if (isSpeaking && supportsAudio) {
+        // Use Native Audio Input streaming
+        const { base64, mimeType } = await fetchAudioAsBase64(userAnswer);
+        const format = mimeType.split("/")[1] === "mpeg" ? "mp3" : "wav";
+
+        const stream = await openai.chat.completions.create({
+            model: modelId,
+            messages: [
+                { role: "system", content: systemPrompt },
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: "**BÀI NÓI CỦA HỌC VIÊN:** (File audio đính kèm)" },
+                        {
+                            type: "input_audio",
+                            input_audio: {
+                                data: base64,
+                                format: format as "wav" | "mp3"
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature: 0.3,
+            stream: true,
+        });
+
+        for await (const chunk of stream) {
+            const text = chunk.choices[0]?.delta?.content;
+            if (text) yield text;
+        }
+        return;
+    }
+
+    // Fallback or Writing path
     let studentInput = "";
 
     if (isSpeaking) {
