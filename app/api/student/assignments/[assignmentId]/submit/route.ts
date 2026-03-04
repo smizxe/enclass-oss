@@ -137,7 +137,7 @@ export async function POST(
 
                 // Robust checking for MCQ
                 // 1. Direct match (Letter == Letter)
-                let isCorrect = false;
+                isCorrect = false;
                 const correctAnswerRaw = q.correctAnswer || "";
                 const correctAnswersList = correctAnswerRaw.split(",").map(s => s.trim());
 
@@ -374,8 +374,10 @@ export async function POST(
             success: true,
             submissionId: submission.id,
             status: newStatus,
-            score: earnedScore,
-            totalScore: totalScore,
+            score: scaledScore, // Return 10-point scale
+            totalScore: 10,     // Total is always 10
+            rawEarnedScore: earnedScore, // Keep raw available just in case
+            rawTotalScore: totalScore,
             results: results,
             pendingAiQuestionIds: pendingAiQuestionIds
         });
