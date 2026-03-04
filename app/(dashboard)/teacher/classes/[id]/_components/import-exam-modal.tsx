@@ -218,6 +218,12 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
     const handleUpload = async () => {
         if (!file) return;
 
+        const useOpenAI = isOpenAIModel(selectedModel);
+        if (useOpenAI && file.name.toLowerCase().endsWith(".pdf")) {
+            toast.error("Models OpenAI hiện chưa hỗ trợ phân tích file PDF. Vui lòng đưa file Word (.docx) hoặc đổi sang model Google Gemini.");
+            return;
+        }
+
         setIsLoading(true);
         setError("");
         setProgressPercent(0);
