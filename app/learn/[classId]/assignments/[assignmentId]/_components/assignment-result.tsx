@@ -27,10 +27,7 @@ export function AssignmentResult({ submissionResult, questions, streamingFeedbac
 
     // Number of correct answers (fallback to 0)
     const countCorrect = Object.values(results).filter(r => r.isCorrect).length;
-
-    // Display raw score (e.g., 16/30) if available, otherwise fallback to calculated count
-    const displayRawEarned = rawEarnedScore !== undefined ? rawEarnedScore : countCorrect;
-    const displayRawTotal = rawTotalScore !== undefined ? rawTotalScore : Object.keys(results).length;
+    const totalQuestionsCount = Object.keys(results).length;
 
     return (
         <div className="space-y-8">
@@ -43,14 +40,14 @@ export function AssignmentResult({ submissionResult, questions, streamingFeedbac
                 <div className="flex justify-center gap-6 text-sm text-slate-600">
                     <div className="flex flex-col items-center">
                         <span className="font-semibold text-slate-900 text-lg">
-                            {Number.isInteger(score) ? score : score.toFixed(2)}/{totalScore}
+                            {Number.isInteger(score) ? score : score.toFixed(2)} / 10
                         </span>
                         <span>Điểm số</span>
                     </div>
                     <div className="w-px bg-slate-200"></div>
                     <div className="flex flex-col items-center">
                         <span className="font-semibold text-slate-900 text-lg">
-                            {displayRawEarned}/{displayRawTotal}
+                            {countCorrect} / {totalQuestionsCount}
                         </span>
                         <span>Câu đúng chính xác</span>
                     </div>
