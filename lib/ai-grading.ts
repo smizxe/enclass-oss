@@ -1,11 +1,15 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
+import { isOpenAIModel } from "./ai-models";
 
-const apiKey = process.env.GOOGLE_API_KEY;
-const genAI = new GoogleGenerativeAI(apiKey || "");
+const googleApiKey = process.env.GOOGLE_API_KEY;
+const openaiApiKey = process.env.OPENAI_API_KEY;
+const genAI = new GoogleGenerativeAI(googleApiKey || "");
+const openai = new OpenAI({ apiKey: openaiApiKey || "" });
 
 /**
- * Grade a student submission using Google Gemini AI
+ * Grade a student submission using AI (Google Gemini or OpenAI)
  * Supports SPEAKING (audio) and WRITING/ESSAY (text) question types
  */
 export async function gradeSubmission(
@@ -18,115 +22,39 @@ export async function gradeSubmission(
     correctAnswer?: string,
     modelId?: string
 ): Promise<{ score: number; feedback: string }> {
-    if (!apiKey) {
-        console.error("GOOGLE_API_KEY is missing");
-        return { score: 0, feedback: "Chưa cấu hình API Key cho AI chấm điểm." };
+    const effectiveModel = modelId || "gemini-3.1-pro-preview";
+    const useOpenAI = isOpenAIModel(effectiveModel);
+
+    if (useOpenAI && !openaiApiKey) {
+        return { score: 0, feedback: "Chưa cấu hình OPENAI_API_KEY." };
+    }
+    if (!useOpenAI && !googleApiKey) {
+        return { score: 0, feedback: "Chưa cấu hình GOOGLE_API_KEY." };
     }
 
     if (!userAnswer || userAnswer.trim() === "") {
         return { score: 0, feedback: "Học viên chưa nộp bài." };
     }
 
+    const isSpeaking = questionType === "SPEAKING";
+    const isWriting = questionType === "WRITING" || questionType === "ESSAY";
+
+    const systemPrompt = buildGradingPrompt(questionContent, contextPassage, correctAnswer, maxPoints, rubric);
+
     try {
-        const model = genAI.getGenerativeModel({ model: modelId || "gemini-3.1-pro-preview" });
-
-        const isSpeaking = questionType === "SPEAKING";
-        const isWriting = questionType === "WRITING" || questionType === "ESSAY";
-
-        // Build the prompt parts
-        const parts: any[] = [];
-
-        // System instruction prompt - encourage rich markdown formatting
-        const systemPrompt = `Bạn là một giáo viên tiếng Anh nghiêm khắc nhưng tận tâm. Hãy chấm điểm bài nộp của học viên.
-
-**ĐỀ BÀI:** ${questionContent}
-${contextPassage ? `
-**NGỮ CẢNH / BÀI ĐỌC:**
-"""
-${contextPassage}
-"""
-` : ""}
-${correctAnswer ? `**ĐÁP ÁN ĐÚNG / GỢI Ý CHUẨN:** ${correctAnswer}\n*(Hãy dùng đáp án chuẩn này làm cơ sở đánh giá độ chính xác của câu trả lời học viên)*\n` : ""}
-**THANG ĐIỂM TỐI ĐA:** ${maxPoints} điểm
-**TIÊU CHÍ CHẤM:** ${rubric || "Chấm dựa trên ngữ pháp, từ vựng, sự mạch lạc và hoàn thành yêu cầu đề bài."}
-
-**ĐỊNH DẠNG TRẢ VỀ:**
-Trả về theo định dạng sau (KHÔNG bọc trong code block, KHÔNG in lại bài làm của học viên):
-
-SCORE: [số điểm từ 0 đến ${maxPoints}]
-FEEDBACK:
-[Nhận xét chi tiết bằng tiếng Việt, có thể dùng markdown như:
-- **Bold** cho tiêu đề
-- *Italic* cho nhấn mạnh
-- Bullet points với dấu -
-- Numbered lists với 1. 2. 3.
-- Xuống dòng tự do để dễ đọc]
-
-Hãy đưa ra nhận xét thẳng thắn, chi tiết, bao gồm điểm mạnh, điểm yếu và gợi ý cải thiện. Tuyệt đối KHÔNG trích dẫn lại toàn bộ câu trả lời của học viên.`;
-
-        parts.push({ text: systemPrompt });
-
-        // Add student submission
-        if (isWriting) {
-            parts.push({ text: `**BÀI LÀM CỦA HỌC VIÊN:**\n"${userAnswer}"` });
-        } else if (isSpeaking) {
-            // Fetch and attach audio for speaking
-            try {
-                const response = await fetch(userAnswer);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch audio: ${response.status}`);
-                }
-                const arrayBuffer = await response.arrayBuffer();
-                const base64Audio = Buffer.from(arrayBuffer).toString("base64");
-
-                // Determine mime type from URL or default to webm
-                let mimeType = "audio/webm";
-                if (userAnswer.includes(".mp3")) mimeType = "audio/mpeg";
-                else if (userAnswer.includes(".ogg")) mimeType = "audio/ogg";
-                else if (userAnswer.includes(".wav")) mimeType = "audio/wav";
-
-                parts.push({
-                    inlineData: {
-                        mimeType: mimeType,
-                        data: base64Audio
-                    }
-                });
-                parts.push({ text: "**BÀI NÓI CỦA HỌC VIÊN:** (File âm thanh đính kèm ở trên)" });
-            } catch (e) {
-                console.error("Error fetching audio for AI grading:", e);
-                return {
-                    score: 0,
-                    feedback: "Lỗi khi tải file âm thanh để chấm điểm. Vui lòng thử lại hoặc liên hệ giáo viên."
-                };
-            }
+        if (useOpenAI) {
+            return await gradeWithOpenAI(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
+        } else {
+            return await gradeWithGemini(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
         }
-
-        // Call AI
-        const result = await model.generateContent(parts);
-        const responseText = result.response.text();
-
-        console.log("AI Raw Response:", responseText);
-
-        // Parse the SCORE: and FEEDBACK: format
-        const parsed = parseScoreFeedbackFormat(responseText, maxPoints);
-
-        return {
-            score: parsed.score,
-            feedback: parsed.feedback
-        };
-
     } catch (error) {
         console.error("AI Grading Error:", error);
-        return {
-            score: 0,
-            feedback: "Đã xảy ra lỗi khi AI chấm điểm. Giáo viên sẽ xem xét bài của bạn sau."
-        };
+        return { score: 0, feedback: "Đã xảy ra lỗi khi AI chấm điểm. Giáo viên sẽ xem xét bài của bạn sau." };
     }
 }
 
 /**
- * Grade a student submission using Google Gemini AI (Streaming Version)
- * Yields string chunks of the AI's feedback as it generates.
+ * Grade a student submission using AI (Streaming Version)
  */
 export async function* gradeSubmissionStream(
     questionType: string,
@@ -138,9 +66,15 @@ export async function* gradeSubmissionStream(
     correctAnswer?: string,
     modelId?: string
 ) {
-    if (!apiKey) {
-        console.error("GOOGLE_API_KEY is missing");
-        yield "Lỗi: Chưa cấu hình API Key cho AI chấm điểm.";
+    const effectiveModel = modelId || "gemini-3.1-pro-preview";
+    const useOpenAI = isOpenAIModel(effectiveModel);
+
+    if (useOpenAI && !openaiApiKey) {
+        yield "Lỗi: Chưa cấu hình OPENAI_API_KEY.";
+        return;
+    }
+    if (!useOpenAI && !googleApiKey) {
+        yield "Lỗi: Chưa cấu hình GOOGLE_API_KEY.";
         return;
     }
 
@@ -149,15 +83,33 @@ export async function* gradeSubmissionStream(
         return;
     }
 
+    const isSpeaking = questionType === "SPEAKING";
+    const isWriting = questionType === "WRITING" || questionType === "ESSAY";
+
+    const systemPrompt = buildGradingPrompt(questionContent, contextPassage, correctAnswer, maxPoints, rubric);
+
     try {
-        const model = genAI.getGenerativeModel({ model: modelId || "gemini-3.1-pro-preview" });
+        if (useOpenAI) {
+            yield* streamWithOpenAI(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
+        } else {
+            yield* streamWithGemini(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
+        }
+    } catch (error) {
+        console.error("AI Streaming Error:", error);
+        yield "\n[LỖI] Đã xảy ra lỗi khi kết nối với AI. Hệ thống không thể hoàn thành việc chấm điểm.";
+    }
+}
 
-        const isSpeaking = questionType === "SPEAKING";
-        const isWriting = questionType === "WRITING" || questionType === "ESSAY";
+// ============= SHARED HELPERS =============
 
-        const parts: any[] = [];
-
-        const systemPrompt = `Bạn là một giáo viên tiếng Anh nghiêm khắc nhưng tận tâm. Hãy chấm điểm bài nộp của học viên.
+function buildGradingPrompt(
+    questionContent: string,
+    contextPassage?: string,
+    correctAnswer?: string,
+    maxPoints: number = 1,
+    rubric?: string
+): string {
+    return `Bạn là một giáo viên tiếng Anh nghiêm khắc nhưng tận tâm. Hãy chấm điểm bài nộp của học viên.
 
 **ĐỀ BÀI:** ${questionContent}
 ${contextPassage ? `
@@ -183,58 +135,170 @@ FEEDBACK:
 - Xuống dòng tự do để dễ đọc]
 
 Hãy đưa ra nhận xét thẳng thắn, chi tiết, bao gồm điểm mạnh, điểm yếu và gợi ý cải thiện. Tuyệt đối KHÔNG trích dẫn lại toàn bộ câu trả lời của học viên.`;
+}
 
-        parts.push({ text: systemPrompt });
+async function fetchAudioAsBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch audio: ${response.status}`);
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-        if (isWriting) {
-            parts.push({ text: `**BÀI LÀM CỦA HỌC VIÊN:**\n"${userAnswer}"` });
-        } else if (isSpeaking) {
-            try {
-                const response = await fetch(userAnswer);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch audio: ${response.status}`);
-                }
-                const arrayBuffer = await response.arrayBuffer();
-                const base64Audio = Buffer.from(arrayBuffer).toString("base64");
+    let mimeType = "audio/webm";
+    if (url.includes(".mp3")) mimeType = "audio/mpeg";
+    else if (url.includes(".ogg")) mimeType = "audio/ogg";
+    else if (url.includes(".wav")) mimeType = "audio/wav";
 
-                let mimeType = "audio/webm";
-                if (userAnswer.includes(".mp3")) mimeType = "audio/mpeg";
-                else if (userAnswer.includes(".ogg")) mimeType = "audio/ogg";
-                else if (userAnswer.includes(".wav")) mimeType = "audio/wav";
+    return { base64, mimeType };
+}
 
-                parts.push({
-                    inlineData: {
-                        mimeType: mimeType,
-                        data: base64Audio
-                    }
-                });
-                parts.push({ text: "**BÀI NÓI CỦA HỌC VIÊN:** (File âm thanh đính kèm ở trên)" });
-            } catch (e) {
-                console.error("Error fetching audio for AI streaming:", e);
-                yield "Lỗi khi tải file âm thanh để chấm điểm. Vui lòng thử lại hoặc liên hệ giáo viên.";
-                return;
-            }
-        }
+// ============= GEMINI IMPLEMENTATION =============
 
-        // Call AI Streaming
-        const resultStream = await model.generateContentStream(parts);
+async function gradeWithGemini(
+    modelId: string,
+    systemPrompt: string,
+    questionType: string,
+    userAnswer: string,
+    isSpeaking: boolean,
+    isWriting: boolean,
+    maxPoints: number
+): Promise<{ score: number; feedback: string }> {
+    const model = genAI.getGenerativeModel({ model: modelId });
+    const parts: any[] = [{ text: systemPrompt }];
 
-        for await (const chunk of resultStream.stream) {
-            const chunkText = chunk.text();
-            if (chunkText) {
-                yield chunkText;
-            }
-        }
+    if (isWriting) {
+        parts.push({ text: `**BÀI LÀM CỦA HỌC VIÊN:**\n"${userAnswer}"` });
+    } else if (isSpeaking) {
+        const { base64, mimeType } = await fetchAudioAsBase64(userAnswer);
+        parts.push({ inlineData: { mimeType, data: base64 } });
+        parts.push({ text: "**BÀI NÓI CỦA HỌC VIÊN:** (File âm thanh đính kèm ở trên)" });
+    }
 
-    } catch (error) {
-        console.error("AI Streaming Error:", error);
-        yield "\n[LỖI] Đã xảy ra lỗi khi kết nối với AI. Hệ thống không thể hoàn thành việc chấm điểm.";
+    const result = await model.generateContent(parts);
+    const responseText = result.response.text();
+    return parseScoreFeedbackFormat(responseText, maxPoints);
+}
+
+async function* streamWithGemini(
+    modelId: string,
+    systemPrompt: string,
+    questionType: string,
+    userAnswer: string,
+    isSpeaking: boolean,
+    isWriting: boolean,
+    maxPoints: number
+) {
+    const model = genAI.getGenerativeModel({ model: modelId });
+    const parts: any[] = [{ text: systemPrompt }];
+
+    if (isWriting) {
+        parts.push({ text: `**BÀI LÀM CỦA HỌC VIÊN:**\n"${userAnswer}"` });
+    } else if (isSpeaking) {
+        const { base64, mimeType } = await fetchAudioAsBase64(userAnswer);
+        parts.push({ inlineData: { mimeType, data: base64 } });
+        parts.push({ text: "**BÀI NÓI CỦA HỌC VIÊN:** (File âm thanh đính kèm ở trên)" });
+    }
+
+    const resultStream = await model.generateContentStream(parts);
+    for await (const chunk of resultStream.stream) {
+        const text = chunk.text();
+        if (text) yield text;
     }
 }
 
+// ============= OPENAI IMPLEMENTATION =============
+
+async function transcribeAudioWithWhisper(audioUrl: string): Promise<string> {
+    const response = await fetch(audioUrl);
+    if (!response.ok) throw new Error(`Failed to fetch audio: ${response.status}`);
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Determine file extension
+    let ext = "webm";
+    if (audioUrl.includes(".mp3")) ext = "mp3";
+    else if (audioUrl.includes(".ogg")) ext = "ogg";
+    else if (audioUrl.includes(".wav")) ext = "wav";
+
+    const file = new File([buffer], `audio.${ext}`, { type: `audio/${ext}` });
+
+    const transcription = await openai.audio.transcriptions.create({
+        model: "whisper-1",
+        file: file,
+        language: "en",
+    });
+
+    return transcription.text;
+}
+
+async function gradeWithOpenAI(
+    modelId: string,
+    systemPrompt: string,
+    questionType: string,
+    userAnswer: string,
+    isSpeaking: boolean,
+    isWriting: boolean,
+    maxPoints: number
+): Promise<{ score: number; feedback: string }> {
+    let studentInput = "";
+
+    if (isSpeaking) {
+        const transcript = await transcribeAudioWithWhisper(userAnswer);
+        studentInput = `**BÀI NÓI CỦA HỌC VIÊN (Phiên âm tự động):**\n"${transcript}"`;
+    } else {
+        studentInput = `**BÀI LÀM CỦA HỌC VIÊN:**\n"${userAnswer}"`;
+    }
+
+    const completion = await openai.chat.completions.create({
+        model: modelId,
+        messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: studentInput }
+        ],
+        temperature: 0.3,
+    });
+
+    const responseText = completion.choices[0]?.message?.content || "";
+    return parseScoreFeedbackFormat(responseText, maxPoints);
+}
+
+async function* streamWithOpenAI(
+    modelId: string,
+    systemPrompt: string,
+    questionType: string,
+    userAnswer: string,
+    isSpeaking: boolean,
+    isWriting: boolean,
+    maxPoints: number
+) {
+    let studentInput = "";
+
+    if (isSpeaking) {
+        const transcript = await transcribeAudioWithWhisper(userAnswer);
+        studentInput = `**BÀI NÓI CỦA HỌC VIÊN (Phiên âm tự động):**\n"${transcript}"`;
+    } else {
+        studentInput = `**BÀI LÀM CỦA HỌC VIÊN:**\n"${userAnswer}"`;
+    }
+
+    const stream = await openai.chat.completions.create({
+        model: modelId,
+        messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: studentInput }
+        ],
+        temperature: 0.3,
+        stream: true,
+    });
+
+    for await (const chunk of stream) {
+        const text = chunk.choices[0]?.delta?.content;
+        if (text) yield text;
+    }
+}
+
+// ============= PARSERS =============
+
 /**
  * Parse the SCORE: and FEEDBACK: format from AI response
- * This format is simpler and allows rich markdown in feedback
  */
 export function parseScoreFeedbackFormat(responseText: string, maxPoints: number): { score: number; feedback: string } {
     const fallback = {
@@ -247,29 +311,23 @@ export function parseScoreFeedbackFormat(responseText: string, maxPoints: number
     }
 
     try {
-        // Try to find SCORE: pattern
         const scoreMatch = responseText.match(/SCORE\s*:\s*(\d+(?:\.\d+)?)/i);
         const score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
 
-        // Try to find FEEDBACK: pattern and get everything after it
         const feedbackMatch = responseText.match(/FEEDBACK\s*:\s*([\s\S]*)/i);
         let feedback = feedbackMatch ? feedbackMatch[1].trim() : "";
 
-        // If we didn't find the format, try JSON fallback
         if (!scoreMatch && !feedbackMatch) {
             return tryJsonFallback(responseText, maxPoints);
         }
 
-        // If no feedback found but we have score, use the rest of text
         if (!feedback && score > 0) {
-            // Get everything after the score line
             const afterScore = responseText.split(/SCORE\s*:\s*\d+(?:\.\d+)?/i)[1];
             if (afterScore) {
                 feedback = afterScore.replace(/^[:\s]+/, "").trim();
             }
         }
 
-        // If still no feedback, use everything as feedback
         if (!feedback) {
             feedback = responseText.replace(/SCORE\s*:\s*\d+(?:\.\d+)?/i, "").trim();
         }
@@ -285,9 +343,6 @@ export function parseScoreFeedbackFormat(responseText: string, maxPoints: number
     }
 }
 
-/**
- * Fallback: try to parse as JSON if the simple format failed
- */
 function tryJsonFallback(responseText: string, maxPoints: number): { score: number; feedback: string } {
     const fallback = {
         score: 0,
@@ -295,13 +350,11 @@ function tryJsonFallback(responseText: string, maxPoints: number): { score: numb
     };
 
     try {
-        // Clean up
         let cleaned = responseText
             .replace(/```json\s*/gi, "")
             .replace(/```\s*/g, "")
             .trim();
 
-        // Find JSON object
         const startIndex = cleaned.indexOf("{");
         const endIndex = cleaned.lastIndexOf("}");
 
@@ -310,7 +363,6 @@ function tryJsonFallback(responseText: string, maxPoints: number): { score: numb
             const parsed = JSON.parse(jsonStr);
 
             let feedback = parsed.feedback || "";
-            // Convert escaped newlines to real newlines
             feedback = feedback.replace(/\\n/g, "\n");
 
             return {
@@ -326,11 +378,8 @@ function tryJsonFallback(responseText: string, maxPoints: number): { score: numb
     }
 }
 
-/**
- * Validate and clamp score to valid range
- */
 function validateScore(score: any, maxPoints: number): number {
     const num = typeof score === "number" ? score : parseFloat(score);
     if (isNaN(num)) return 0;
-    return Math.max(0, Math.min(Math.round(num * 10) / 10, maxPoints)); // Allow 1 decimal place
+    return Math.max(0, Math.min(Math.round(num * 10) / 10, maxPoints));
 }

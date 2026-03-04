@@ -26,6 +26,7 @@ import { AudioManager } from "@/components/audio-manager";
 import { TipTapEditor } from "@/components/editor/tiptap-editor";
 import { supabase } from "@/lib/supabase";
 import showdown from "showdown";
+import { GEMINI_MODELS, OPENAI_MODELS } from "@/lib/ai-models";
 
 interface Question {
     id: string;
@@ -1524,9 +1525,16 @@ export default function AssignmentEditorPage() {
                                                 onChange={(e) => setNewQuestion({ ...newQuestion, aiModel: e.target.value })}
                                                 className="w-full px-3 py-2 border border-indigo-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 text-sm"
                                             >
-                                                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (Thông minh nhất)</option>
-                                                <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Nhanh)</option>
-                                                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Ổn định)</option>
+                                                <optgroup label="🟢 Google Gemini">
+                                                    {GEMINI_MODELS.map(m => (
+                                                        <option key={m.id} value={m.id}>{m.label}</option>
+                                                    ))}
+                                                </optgroup>
+                                                <optgroup label="🔵 OpenAI ChatGPT">
+                                                    {OPENAI_MODELS.map(m => (
+                                                        <option key={m.id} value={m.id}>{m.label}</option>
+                                                    ))}
+                                                </optgroup>
                                             </select>
                                             <p className="text-xs text-slate-500 mt-1">
                                                 ℹ️ Nếu model báo lỗi quá tải (503), học viên có thể thử lại sau.

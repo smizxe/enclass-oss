@@ -126,6 +126,7 @@ OUTPUT JSON:
                 fileType: "pdf",
                 base64Data,
                 apiKey: process.env.GOOGLE_API_KEY || "",
+                openaiApiKey: process.env.OPENAI_API_KEY || "",
             });
         } else if (fileName.endsWith(".docx")) {
             const arrayBuffer = await file.arrayBuffer();
@@ -146,6 +147,7 @@ OUTPUT JSON:
             fileType,
             extractedText: extractedText.substring(0, 80000),
             apiKey: process.env.GOOGLE_API_KEY || "",
+            openaiApiKey: process.env.OPENAI_API_KEY || "",
         });
 
     } catch (error) {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Upload, FileText, X, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import axios from "axios";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
@@ -10,6 +11,7 @@ import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
+import { GEMINI_MODELS, OPENAI_MODELS, isOpenAIModel } from "@/lib/ai-models";
 
 /** Strip duplicate (N) markers next to {N} and normalize [N] to {N} — legacy data cleanup */
 function cleanPassageMarkers(text: string): string {
@@ -238,48 +240,84 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
             }
 
             const extractData = await extractResponse.json();
-            const { prompt, fileType, extractedText, base64Data, apiKey } = extractData;
+            const { prompt, fileType, extractedText, base64Data, apiKey, openaiApiKey } = extractData;
 
-            if (!apiKey) {
-                throw new Error("Không nhận được API Key từ server. Vui lòng liên hệ quản trị viên.");
+            const useOpenAI = isOpenAIModel(selectedModel);
+
+            if (useOpenAI && !openaiApiKey) {
+                throw new Error("Không nhận được OpenAI API Key từ server. Vui lòng liên hệ quản trị viên.");
+            }
+            if (!useOpenAI && !apiKey) {
+                throw new Error("Không nhận được Google API Key từ server. Vui lòng liên hệ quản trị viên.");
             }
 
-            // === PHASE 2: Browser calls Gemini directly (NO timeout!) ===
+            // === PHASE 2: Browser calls AI directly (NO timeout!) ===
             setProgressPercent(25);
             setProgressMessage("Đang gửi nội dung tới AI...");
 
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({
-                model: selectedModel,
-                generationConfig: {
-                    responseMimeType: "application/json",
+            let fullText = "";
+
+            if (useOpenAI) {
+                // === OpenAI Path ===
+                const openaiClient = new OpenAI({
+                    apiKey: openaiApiKey,
+                    dangerouslyAllowBrowser: true,
+                });
+
+                let userContent = "";
+                if (fileType === "pdf") {
+                    // OpenAI doesn't support PDF inline — send extracted text if available, or error
+                    userContent = prompt + `\n\n**INPUT CONTENT (PDF extracted):**\n"""\n[PDF file uploaded — content extracted via OCR]\n"""`;
+                } else {
+                    userContent = prompt + `\n\n**INPUT CONTENT:**\n"""\n${extractedText}\n"""`;
+                }
+
+                setProgressPercent(35);
+                setProgressMessage("AI đang đọc và phân tích đề thi...");
+
+                const completion = await openaiClient.chat.completions.create({
+                    model: selectedModel,
+                    messages: [
+                        { role: "system", content: "You are an expert AI for digitizing English exams. Always respond with valid JSON only." },
+                        { role: "user", content: userContent }
+                    ],
                     temperature: 0.2,
-                },
-            });
+                    response_format: { type: "json_object" },
+                });
 
-            // Build prompt parts based on file type
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let promptParts: any[] = [];
-
-            if (fileType === "pdf") {
-                promptParts = [
-                    { text: prompt },
-                    { inlineData: { mimeType: "application/pdf", data: base64Data } },
-                ];
+                fullText = completion.choices[0]?.message?.content || "";
             } else {
-                // DOCX or TXT — text already extracted by server
-                promptParts = [
-                    { text: prompt + `\n\n**INPUT CONTENT:**\n"""\n${extractedText}\n"""` },
-                ];
+                // === Gemini Path (existing) ===
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({
+                    model: selectedModel,
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        temperature: 0.2,
+                    },
+                });
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                let promptParts: any[] = [];
+
+                if (fileType === "pdf") {
+                    promptParts = [
+                        { text: prompt },
+                        { inlineData: { mimeType: "application/pdf", data: base64Data } },
+                    ];
+                } else {
+                    promptParts = [
+                        { text: prompt + `\n\n**INPUT CONTENT:**\n"""\n${extractedText}\n"""` },
+                    ];
+                }
+
+                setProgressPercent(35);
+                setProgressMessage("AI đang đọc và phân tích đề thi...");
+
+                const result = await model.generateContent(promptParts);
+                const response = result.response;
+                fullText = response.text();
             }
-
-            setProgressPercent(35);
-            setProgressMessage("AI đang đọc và phân tích đề thi...");
-
-            // Call Gemini from the browser — unlimited time!
-            const result = await model.generateContent(promptParts);
-            const response = result.response;
-            const fullText = response.text();
 
             // === PHASE 3: Parse and repair JSON ===
             setProgressPercent(90);
@@ -454,9 +492,16 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                             onChange={(e) => setSelectedModel(e.target.value)}
                                             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
                                         >
-                                            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (Mới nhất, Thông minh nhất)</option>
-                                            <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Nhanh)</option>
-                                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                            <optgroup label="🟢 Google Gemini">
+                                                {GEMINI_MODELS.map(m => (
+                                                    <option key={m.id} value={m.id}>{m.label}</option>
+                                                ))}
+                                            </optgroup>
+                                            <optgroup label="🔵 OpenAI ChatGPT">
+                                                {OPENAI_MODELS.map(m => (
+                                                    <option key={m.id} value={m.id}>{m.label}</option>
+                                                ))}
+                                            </optgroup>
                                         </select>
                                         <p className="text-xs text-slate-500 mt-2 text-amber-600 flex items-center gap-1">
                                             <AlertCircle className="w-3 h-3" /> Nếu model báo lỗi quá tải (503), hãy thử chọn model khác.
