@@ -1505,6 +1505,7 @@ const McqQuestionSimple = ({
             {displayData.text && (
                 <div className="font-medium text-slate-900 [&>p]:inline [&>strong]:font-bold [&>em]:italic">
                     <ReactMarkdown
+                        rehypePlugins={[rehypeRaw]}
                         components={{
                             p: ({ children }) => <div className="inline">{children}</div>
                         }}
@@ -1547,12 +1548,28 @@ const McqQuestionSimple = ({
                         let isCorrectAnswer = false;
 
                         if (result) {
-                            // Check correct answer based on whether optionValue is in the correct answer string (for multi) or exact match (for single)
-                            const correctAnswersList = result.correctAnswer ? result.correctAnswer.split(",") : [];
+                            // Resolve correct answers: support both letter-based ("A") and text-based correctAnswer
+                            const correctAnswerRaw = result.correctAnswer || "";
+                            const correctAnswersList = correctAnswerRaw.split(",").map((s: string) => s.trim());
                             const optionLetter = String.fromCharCode(65 + index);
 
-                            // Check if this option is ONE OF the correct answers
-                            isCorrectAnswer = correctAnswersList.includes(optionValue) || correctAnswersList.includes(optionLetter);
+                            // Check if this option is correct:
+                            // 1. Direct match: optionValue matches a correct answer string
+                            // 2. Letter match: option's letter (A,B,C...) matches a correct answer letter
+                            // 3. Index match: correct answer is a letter and this option is at that index
+                            const isLetterBased = correctAnswersList.every((a: string) => /^[A-E]$/.test(a));
+                            if (isLetterBased) {
+                                // correctAnswer is letter-based like "A" or "A,C"
+                                isCorrectAnswer = correctAnswersList.includes(optionLetter);
+                            } else {
+                                // correctAnswer is text-based
+                                const stripHtml = (s: string) => (s || "").replace(/<[^>]*>/g, "").trim().toLowerCase();
+                                isCorrectAnswer = correctAnswersList.some((ca: string) =>
+                                    ca === optionValue ||
+                                    ca === optionLetter ||
+                                    stripHtml(ca) === stripHtml(optionValue)
+                                );
+                            }
 
                             if (isCorrectAnswer) {
                                 // Correct Answer

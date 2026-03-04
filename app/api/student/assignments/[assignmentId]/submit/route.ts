@@ -137,36 +137,57 @@ export async function POST(
 
                 // Robust checking for MCQ
                 // 1. Direct match (Letter == Letter)
-                if (effectiveUserAnswer === q.correctAnswer) {
+                let isCorrect = false;
+                const correctAnswerRaw = q.correctAnswer || "";
+                const correctAnswersList = correctAnswerRaw.split(",").map(s => s.trim());
+
+                // Helper to strip HTML and normalize
+                const normalizeText = (s: string) => (s || "").replace(/<[^>]*>/g, "").trim().toLowerCase();
+                const normalizedUserAnswer = normalizeText(effectiveUserAnswer);
+
+                // Is the correct answer stored entirely as letters (e.g. "A" or "A,C")?
+                const isLetterBased = correctAnswersList.every((a: string) => /^[A-E]$/.test(a));
+
+                if (isLetterBased && correctAnswersList.includes(effectiveUserAnswer)) {
                     isCorrect = true;
-                }
-                // 2. Check if correctAnswer is a Letter Key (A, B, C...) and userAnswer is the corresponding text
-                else if (parsedContent.options && Array.isArray(parsedContent.options)) {
-                    const correctIndex = q.correctAnswer.charCodeAt(0) - 65;
-                    if (correctIndex >= 0 && correctIndex < parsedContent.options.length) {
-                        const correctOptionText = parsedContent.options[correctIndex];
-                        if (effectiveUserAnswer === correctOptionText) {
-                            isCorrect = true;
-                        }
-                        else if (effectiveUserAnswer?.trim() === correctOptionText?.trim()) {
-                            isCorrect = true;
-                        }
-                        else {
-                            const stripHtml = (s: string) => (s || "").replace(/<[^>]*>/g, "").trim();
-                            if (stripHtml(effectiveUserAnswer) === stripHtml(correctOptionText)) {
-                                isCorrect = true;
+                } else if (!isLetterBased && correctAnswersList.some(ca => normalizeText(ca) === normalizedUserAnswer)) {
+                    // Correct answer is stored as text (e.g. "litter"), and user selected "litter"
+                    isCorrect = true;
+                } else if (parsedContent.options && Array.isArray(parsedContent.options)) {
+                    // Fallback to options array indexing
+                    // Case A: Correct answer is "A", user selected "litter". We check if options[0] is "litter"
+                    if (isLetterBased) {
+                        const matchingLetters = correctAnswersList.filter(letter => {
+                            const correctIndex = letter.charCodeAt(0) - 65;
+                            if (correctIndex >= 0 && correctIndex < parsedContent.options.length) {
+                                const correctOptionText = parsedContent.options[correctIndex];
+                                return normalizeText(correctOptionText) === normalizedUserAnswer;
+                            }
+                            return false;
+                        });
+                        if (matchingLetters.length > 0) isCorrect = true;
+                    }
+                    // Case B: Correct answer is "litter", user selected "A". We check if options[0] is "litter"
+                    else {
+                        if (/^[A-E]$/.test(effectiveUserAnswer)) {
+                            const userIndex = effectiveUserAnswer.charCodeAt(0) - 65;
+                            if (userIndex >= 0 && userIndex < parsedContent.options.length) {
+                                const userOptionText = parsedContent.options[userIndex];
+                                if (correctAnswersList.some(ca => normalizeText(ca) === normalizeText(userOptionText))) {
+                                    isCorrect = true;
+                                }
                             }
                         }
                     }
-                    // 3. Fallback: index-based matching
+
+                    // Fallback: finding the index of the selected option
                     if (!isCorrect) {
                         const selectedIndex = parsedContent.options.findIndex((opt: string) =>
-                            opt === effectiveUserAnswer ||
-                            opt?.trim() === effectiveUserAnswer?.trim()
+                            normalizeText(opt) === normalizedUserAnswer
                         );
                         if (selectedIndex >= 0) {
                             const selectedLetter = String.fromCharCode(65 + selectedIndex);
-                            if (selectedLetter === q.correctAnswer) {
+                            if (correctAnswersList.includes(selectedLetter)) {
                                 isCorrect = true;
                             }
                         }
