@@ -189,6 +189,12 @@ export async function POST(
                             const selectedLetter = String.fromCharCode(65 + selectedIndex);
                             if (correctAnswersList.includes(selectedLetter)) {
                                 isCorrect = true;
+                            } else {
+                                // AI Numeric output fallback (e.g. AI returned "4" and user selected option D, which is index 3)
+                                const numericAnswers = correctAnswersList.filter(ca => !isNaN(parseInt(ca)));
+                                if (numericAnswers.includes((selectedIndex + 1).toString())) {
+                                    isCorrect = true;
+                                }
                             }
                         }
                     }
@@ -213,7 +219,11 @@ export async function POST(
 
                     correctParts.forEach((correct, i) => {
                         const userGap = (userAnswer[i] || "").trim().toLowerCase();
-                        const gapCorrect = userGap === correct;
+
+                        // Split the acceptable correct answers by "/"
+                        const acceptableAnswers = correct.split("/").map(s => s.trim());
+                        const gapCorrect = acceptableAnswers.includes(userGap);
+
                         if (gapCorrect) correctCount++;
                         perGapResults.push({
                             isCorrect: gapCorrect,
@@ -234,10 +244,10 @@ export async function POST(
                         score: gapScore
                     } as any;
                 } else {
-                    // Single gap — backward compatible
+                    // Single gap
                     const userTyped = typeof userAnswer === 'string' ? userAnswer.trim().toLowerCase() : '';
-                    const correctTyped = correctParts[0];
-                    if (userTyped === correctTyped) {
+                    const acceptableAnswers = correctParts[0].split("/").map(s => s.trim());
+                    if (acceptableAnswers.includes(userTyped)) {
                         isCorrect = true;
                     }
                     results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };

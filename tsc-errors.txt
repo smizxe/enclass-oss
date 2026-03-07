@@ -1,0 +1,2 @@
+app/(dashboard)/teacher/classes/[id]/_components/import-exam-modal.tsx(6,20): error TS2307: Cannot find module 'openai' or its corresponding type declarations.
+lib/ai-grading.ts(3,20): error TS2307: Cannot find module 'openai' or its corresponding type declarations.

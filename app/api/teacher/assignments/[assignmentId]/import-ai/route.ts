@@ -42,7 +42,7 @@ FORMATTING:
 
 QUESTION TYPES:
 - MCQ: options MUST include all choices. correctAnswer = letter (A/B/C/D)
-- GAP_FILL: correctAnswer = exact fill text. In passage, mark blank position with {N} where N is questionNumber.
+- GAP_FILL: correctAnswer = exact fill text. If there are multiple acceptable answers, separate them with a forward slash (/). e.g., "bond/bonds". In passage, mark blank position with {N} where N is questionNumber.
 - ORDERING: items=["a. ..."], options=["A. a-b-c", ...]
 - TRUE/FALSE/NOT GIVEN: type="MCQ", options=["TRUE","FALSE","NOT GIVEN"], correctAnswer="TRUE"/"FALSE"/"NOT GIVEN"
 
