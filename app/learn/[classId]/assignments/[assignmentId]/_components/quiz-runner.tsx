@@ -878,53 +878,8 @@ export const QuizRunner = ({
         };
     }, [isAppearanceOpen]);
 
-    // ====== TIMER WARNING POPUP ======
-    if (showTimerWarning && hasTimeLimit && !isSubmitted && !initialSubmission) {
-        const hours = Math.floor(timeLimitMinutes / 60);
-        const mins = timeLimitMinutes % 60;
-        return (
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 fade-in duration-300">
-                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white text-center">
-                        <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <Clock className="w-8 h-8" />
-                        </div>
-                        <h2 className="text-xl font-bold">⏱️ Bài tập có giới hạn thời gian</h2>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
-                            <p className="text-2xl font-bold text-amber-700">
-                                {hours > 0 ? `${hours} giờ ` : ""}{mins > 0 ? `${mins} phút` : ""}
-                            </p>
-                            <p className="text-sm text-amber-600 mt-1">để hoàn thành bài tập</p>
-                        </div>
-                        <div className="text-sm text-slate-600 space-y-2">
-                            <p>⚠️ Thời gian sẽ bắt đầu tính ngay khi bạn bấm <strong>"Bắt đầu"</strong>.</p>
-                            <p>⚠️ Nếu hết giờ, bài sẽ <strong>tự động nộp</strong>.</p>
-                            <p>⚠️ Không thể tạm dừng hoặc bắt đầu lại đồng hồ.</p>
-                            {deadlineDate && (
-                                <p className="text-red-600">📅 Hạn nộp: {deadlineDate.toLocaleString("vi-VN", { dateStyle: "long", timeStyle: "short" })}</p>
-                            )}
-                        </div>
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                onClick={() => window.history.back()}
-                                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition"
-                            >
-                                ← Quay lại
-                            </button>
-                            <button
-                                onClick={handleStartTimer}
-                                className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold hover:from-emerald-700 hover:to-emerald-600 transition shadow-lg shadow-emerald-200"
-                            >
-                                🚀 Bắt đầu làm bài
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    // ====== TIMER WARNING STATE ======
+    const isTimerWarningActive = showTimerWarning && hasTimeLimit && !isSubmitted && !initialSubmission;
 
     if (assignment.questions.length === 0) {
         return (
@@ -1384,7 +1339,7 @@ export const QuizRunner = ({
                             {!isSubmitted ? (
                                 <button
                                     onClick={onSubmit}
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || isTimerWarningActive}
                                     className="hidden md:flex bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition items-center gap-2 disabled:opacity-50"
                                 >
                                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -1404,72 +1359,124 @@ export const QuizRunner = ({
                 </div>
             </div>
 
-            {/* Desktop Split View */}
-            <div className="flex-1 hidden lg:block overflow-hidden relative">
-                <ResizableSplitPane
-                    // Passage Pane (Left)
-                    left={
-                        <div id="split-left" className="h-full overflow-y-auto p-6 pb-20 scroll-smooth">
-                            <PassageViewer
-                                sectionTitle={activeGroup.sectionTitle}
-                                passage={activeGroup.passage}
-                                passageTranslation={activeGroup.passageTranslation}
-                                sectionImages={activeGroup.sectionImages}
-                                sectionVideo={activeGroup.sectionVideo}
-                                fontSize={passageFontSize}
+            {/* Content Area */}
+            {isTimerWarningActive ? (
+                <div className="flex-1 flex justify-center p-6 lg:p-12 overflow-y-auto w-full">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl h-fit overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-200">
+                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-8 text-white text-center">
+                            <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                <Clock className="w-10 h-10" />
+                            </div>
+                            <h2 className="text-2xl font-bold">Bài tập có giới hạn thời gian</h2>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+                                <p className="text-3xl font-bold text-amber-700">
+                                    {Math.floor(timeLimitMinutes / 60) > 0 ? `${Math.floor(timeLimitMinutes / 60)} giờ ` : ""}{timeLimitMinutes % 60 > 0 ? `${timeLimitMinutes % 60} phút` : ""}
+                                </p>
+                                <p className="font-medium text-amber-600 mt-2">để hoàn thành bài tập</p>
+                            </div>
+                            <div className="text-slate-600 space-y-3 bg-slate-50 p-6 rounded-xl border border-slate-100 shadow-sm">
+                                <p className="flex items-start gap-3">
+                                    <span className="shrink-0 mt-0.5 text-lg">⚠️</span>
+                                    <span className="leading-relaxed">Thời gian sẽ <strong>bắt đầu đếm ngược</strong> ngay khi bạn bấm Bắt đầu.</span>
+                                </p>
+                                <p className="flex items-start gap-3">
+                                    <span className="shrink-0 mt-0.5 text-lg">⚠️</span>
+                                    <span className="leading-relaxed">Nếu hết giờ, bài làm sẽ được <strong>tự động nộp</strong>.</span>
+                                </p>
+                                <p className="flex items-start gap-3">
+                                    <span className="shrink-0 mt-0.5 text-lg">⚠️</span>
+                                    <span className="leading-relaxed">Bạn không thể tạm dừng hoặc làm lại từ đầu.</span>
+                                </p>
+                                {deadlineDate && (
+                                    <p className="flex items-start gap-3 text-red-600 font-medium">
+                                        <span className="shrink-0 mt-0.5 text-lg">📅</span>
+                                        <span className="leading-relaxed">Hạn nộp: {deadlineDate.toLocaleString("vi-VN", { dateStyle: "long", timeStyle: "short" })}</span>
+                                    </p>
+                                )}
+                            </div>
+                            <div className="pt-2">
+                                <button
+                                    onClick={handleStartTimer}
+                                    className="w-full px-4 py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-lg hover:from-emerald-700 hover:to-emerald-600 transition shadow-lg shadow-emerald-200 hover:-translate-y-0.5"
+                                >
+                                    🚀 Bắt đầu làm bài
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {/* Desktop Split View */}
+                    <div className="flex-1 hidden lg:block overflow-hidden relative">
+                        <ResizableSplitPane
+                            // Passage Pane (Left)
+                            left={
+                                <div id="split-left" className="h-full overflow-y-auto p-6 pb-20 scroll-smooth">
+                                    <PassageViewer
+                                        sectionTitle={activeGroup.sectionTitle}
+                                        passage={activeGroup.passage}
+                                        passageTranslation={activeGroup.passageTranslation}
+                                        sectionImages={activeGroup.sectionImages}
+                                        sectionVideo={activeGroup.sectionVideo}
+                                        fontSize={passageFontSize}
+                                    />
+                                </div>
+                            }
+                            // Questions Pane (Right)
+                            right={
+                                <div id="split-right" className="h-full overflow-y-auto w-full p-6 flex flex-col scroll-smooth">
+                                    <div className="flex-1 animate-in slide-in-from-right-4 duration-300">
+                                        <SectionContent
+                                            group={activeGroup}
+                                            answers={answers}
+                                            onAnswerChange={onAnswerChange}
+                                            showPassage={false} // Don't show passage on right side in Split View
+                                            startIndex={currentSectionStartIndex}
+                                            submissionResult={submissionResult}
+                                            passageFontSize={passageFontSize}
+                                            questionFontSize={questionFontSize}
+                                            showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
+                                        />
+                                    </div>
+
+                                    {/* Navigation Footer */}
+                                    <NavigationControls />
+                                </div>
+                            }
+                        />
+                    </div>
+
+                    {/* Mobile Stacked View */}
+                    <div id="mobile-container" className="flex-1 lg:hidden overflow-y-auto bg-slate-50 p-4 scroll-smooth">
+                        <div className="animate-in slide-in-from-right-4 duration-300">
+                            <SectionContent
+                                group={activeGroup}
+                                answers={answers}
+                                onAnswerChange={onAnswerChange}
+                                showPassage={true}
+                                startIndex={currentSectionStartIndex}
+                                submissionResult={submissionResult}
+                                passageFontSize={passageFontSize}
+                                questionFontSize={questionFontSize}
+                                showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
                             />
                         </div>
-                    }
-                    // Questions Pane (Right)
-                    right={
-                        <div id="split-right" className="h-full overflow-y-auto w-full p-6 flex flex-col scroll-smooth">
-                            <div className="flex-1 animate-in slide-in-from-right-4 duration-300">
-                                <SectionContent
-                                    group={activeGroup}
-                                    answers={answers}
-                                    onAnswerChange={onAnswerChange}
-                                    showPassage={false} // Don't show passage on right side in Split View
-                                    startIndex={currentSectionStartIndex}
-                                    submissionResult={submissionResult}
-                                    passageFontSize={passageFontSize}
-                                    questionFontSize={questionFontSize}
-                                    showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
-                                />
-                            </div>
 
-                            {/* Navigation Footer */}
+                        <div className="mt-6 pb-20">
                             <NavigationControls />
                         </div>
-                    }
-                />
-            </div>
-
-            {/* Mobile Stacked View */}
-            <div id="mobile-container" className="flex-1 lg:hidden overflow-y-auto bg-slate-50 p-4 scroll-smooth">
-                <div className="animate-in slide-in-from-right-4 duration-300">
-                    <SectionContent
-                        group={activeGroup}
-                        answers={answers}
-                        onAnswerChange={onAnswerChange}
-                        showPassage={true}
-                        startIndex={currentSectionStartIndex}
-                        submissionResult={submissionResult}
-                        passageFontSize={passageFontSize}
-                        questionFontSize={questionFontSize}
-                        showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
-                    />
-                </div>
-
-                <div className="mt-6 pb-20">
-                    <NavigationControls />
-                </div>
-            </div>
-            {/* Sticky Audio Player */}
-            {(activeGroup.sectionAudio || assignment.settings?.audioUrl) && (
-                <StickyAudioPlayer
-                    src={activeGroup.sectionAudio || assignment.settings?.audioUrl}
-                    key={activeGroup.sectionAudio || assignment.settings?.audioUrl} // Force remount on source change to be safe
-                />
+                    </div>
+                    {/* Sticky Audio Player */}
+                    {(activeGroup.sectionAudio || assignment.settings?.audioUrl) && (
+                        <StickyAudioPlayer
+                            src={activeGroup.sectionAudio || assignment.settings?.audioUrl}
+                            key={activeGroup.sectionAudio || assignment.settings?.audioUrl} // Force remount on source change to be safe
+                        />
+                    )}
+                </>
             )}
         </div>
     );
