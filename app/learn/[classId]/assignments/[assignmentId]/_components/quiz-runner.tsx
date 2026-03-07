@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History, ClipboardList, FileText, Clock } from "lucide-react";
+import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History, ClipboardList, FileText, Clock, Maximize, Minimize } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -422,6 +422,28 @@ export const QuizRunner = ({
     const [questionFontSize, setQuestionFontSize] = useState(16);
     const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
     const appearanceRef = useRef<HTMLDivElement>(null);
+    const quizContainerRef = useRef<HTMLDivElement>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            quizContainerRef.current?.requestFullscreen().catch((err) => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    };
 
     // Option mappings for Test Mode (questionId -> original indices array)
     const [optionMappings, setOptionMappings] = useState<Record<string, number[]>>({});
@@ -1258,50 +1280,52 @@ export const QuizRunner = ({
     const isQuiz = assignment.type !== "LECTURE"; // Should be true for QuizRunner usually, but good to check
 
     return (
-        <div className="flex flex-col h-full bg-slate-50">
+        <div ref={quizContainerRef} className="flex flex-col h-full bg-slate-50">
             {/* Title Card (Moved from page.tsx) */}
-            <div className="bg-white border-b border-slate-200 px-6 py-4 shrink-0 z-20">
-                <div className="max-w-[1800px] mx-auto w-full">
-                    <div className="flex items-start gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isQuiz ? "bg-orange-50" : "bg-indigo-50"
-                            }`}>
-                            {isQuiz ? <ClipboardList className="w-6 h-6 text-orange-600" /> : <FileText className="w-6 h-6 text-indigo-600" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isQuiz
-                                    ? "bg-orange-50 text-orange-700"
-                                    : "bg-indigo-50 text-indigo-700"
-                                    }`}>
-                                    {isQuiz ? "Bài tập" : "Bài giảng"}
-                                </span>
-                                {isQuiz && (
-                                    <span className="flex items-center gap-1 text-xs text-slate-500">
-                                        <Clock className="w-3 h-3" />
-                                        {assignment.questions.length} câu hỏi
-                                    </span>
-                                )}
-                                {/* Max Attempts Badge */}
-                                {isQuiz && maxAttempts > 1 && (
-                                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                                        <RefreshCw className="w-3 h-3" />
-                                        Được làm {maxAttempts} lần
-                                    </span>
-                                )}
-                                {/* Current Attempt Info */}
-                                {isQuiz && currentAttemptCount > 0 && (
-                                    <span className="text-xs text-slate-500">
-                                        • Đã làm {currentAttemptCount}/{maxAttempts} lần
-                                    </span>
-                                )}
+            {!isFullscreen && (
+                <div className="bg-white border-b border-slate-200 px-6 py-4 shrink-0 z-20">
+                    <div className="max-w-[1800px] mx-auto w-full">
+                        <div className="flex items-start gap-4">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isQuiz ? "bg-orange-50" : "bg-indigo-50"
+                                }`}>
+                                {isQuiz ? <ClipboardList className="w-6 h-6 text-orange-600" /> : <FileText className="w-6 h-6 text-indigo-600" />}
                             </div>
-                            <h1 className="text-xl font-bold text-slate-900 break-words">
-                                {assignment.title}
-                            </h1>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isQuiz
+                                        ? "bg-orange-50 text-orange-700"
+                                        : "bg-indigo-50 text-indigo-700"
+                                        }`}>
+                                        {isQuiz ? "Bài tập" : "Bài giảng"}
+                                    </span>
+                                    {isQuiz && (
+                                        <span className="flex items-center gap-1 text-xs text-slate-500">
+                                            <Clock className="w-3 h-3" />
+                                            {assignment.questions.length} câu hỏi
+                                        </span>
+                                    )}
+                                    {/* Max Attempts Badge */}
+                                    {isQuiz && maxAttempts > 1 && (
+                                        <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                            <RefreshCw className="w-3 h-3" />
+                                            Được làm {maxAttempts} lần
+                                        </span>
+                                    )}
+                                    {/* Current Attempt Info */}
+                                    {isQuiz && currentAttemptCount > 0 && (
+                                        <span className="text-xs text-slate-500">
+                                            • Đã làm {currentAttemptCount}/{maxAttempts} lần
+                                        </span>
+                                    )}
+                                </div>
+                                <h1 className="text-xl font-bold text-slate-900 break-words">
+                                    {assignment.title}
+                                </h1>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Header / Progress Bar */}
             <div className="bg-white border-b border-slate-200 px-6 py-3 shrink-0 z-20 shadow-sm relative">
@@ -1346,6 +1370,15 @@ export const QuizRunner = ({
                                 </div>
                             )}
                             {AppearanceControl}
+
+                            {/* Fullscreen Toggle */}
+                            <button
+                                onClick={toggleFullscreen}
+                                title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+                                className={`flex items-center justify-center px-2 py-1.5 rounded-lg border transition text-sm font-medium ${isFullscreen ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                            >
+                                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                            </button>
 
                             {/* Submit Button (Header - always visible on desktop) */}
                             {!isSubmitted ? (
