@@ -15,7 +15,8 @@ import {
     ChevronDown,
     ChevronRight,
     Folder,
-    Copy
+    Copy,
+    Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -266,8 +267,13 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                             <div className="flex items-center gap-2">
                                 {assignment.type === "LECTURE" && <FileText className="w-4 h-4 text-blue-500 shrink-0" />}
                                 {assignment.type === "QUIZ" && <ClipboardList className="w-4 h-4 text-orange-500 shrink-0" />}
-                                <span className="font-medium text-slate-900 group-hover:text-indigo-600 transition truncate">
+                                <span className="font-medium text-slate-900 group-hover:text-indigo-600 transition truncate flex items-center gap-2">
                                     {assignment.title}
+                                    {assignment.settings?.timeLimitMinutes > 0 && (
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 font-semibold tracking-wider shrink-0 flex items-center gap-1">
+                                            <Clock className="w-3 h-3" /> {assignment.settings.timeLimitMinutes} phút
+                                        </span>
+                                    )}
                                 </span>
                             </div>
 
