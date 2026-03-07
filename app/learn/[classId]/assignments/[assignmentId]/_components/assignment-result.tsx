@@ -18,10 +18,11 @@ interface AssignmentResultProps {
         }>;
     };
     questions: any[];
-    streamingFeedback?: Record<string, { text: string; isStreaming: boolean; score?: number }>;
+    streamingFeedback?: Record<string, { text: string; isStreaming: boolean; score?: number; isError?: boolean; errorMessage?: string }>;
+    onRetryAiGrading?: () => void;
 }
 
-export function AssignmentResult({ submissionResult, questions, streamingFeedback = {} }: AssignmentResultProps) {
+export function AssignmentResult({ submissionResult, questions, streamingFeedback = {}, onRetryAiGrading }: AssignmentResultProps) {
     const { score, totalScore, rawEarnedScore, rawTotalScore, results } = submissionResult;
     const percentage = Math.round((score / totalScore) * 100);
 
@@ -78,24 +79,31 @@ export function AssignmentResult({ submissionResult, questions, streamingFeedbac
                     const displayScore = streamState?.score !== undefined ? streamState.score : result.score;
                     const isPending = result.isPendingAi && !streamState?.text;
                     const isStreaming = streamState?.isStreaming;
+                    const isError = streamState?.isError;
 
                     return (
-                        <div key={q.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <div className="bg-slate-50 border-b border-slate-100 p-4 flex items-start justify-between">
+                        <div key={q.id} className={`bg-white rounded-xl border ${isError ? "border-red-200" : "border-slate-200"} overflow-hidden shadow-sm`}>
+                            <div className={`${isError ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100"} border-b p-4 flex items-start justify-between`}>
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${displayScore ? "bg-indigo-100 border-indigo-200 text-indigo-600" : "bg-slate-100 text-slate-500"
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${isError ? "bg-red-100 border-red-200 text-red-600" :
+                                            displayScore ? "bg-indigo-100 border-indigo-200 text-indigo-600" :
+                                                "bg-slate-100 text-slate-500"
                                         }`}>
                                         {isSpeaking ? <Mic className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                                     </div>
                                     <div>
-                                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                                        <div className={`text-xs font-bold ${isError ? "text-red-500" : "text-slate-500"} uppercase tracking-wider mb-1`}>
                                             {isSpeaking ? "Speaking" : "Writing"} Task
                                         </div>
                                         <div className="text-sm font-medium text-slate-900 line-clamp-1">{contentText}</div>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    {isPending || isStreaming ? (
+                                    {isError ? (
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-xs text-red-500 font-medium font-bold mt-1">⚠️ Lỗi máy chủ</span>
+                                        </div>
+                                    ) : isPending || isStreaming ? (
                                         <div className="flex flex-col items-end">
                                             <div className="w-12 h-6 bg-slate-200 animate-pulse rounded"></div>
                                             <span className="text-xs text-indigo-500 font-medium mt-1 animate-pulse">AI đang chấm...</span>
@@ -113,16 +121,38 @@ export function AssignmentResult({ submissionResult, questions, streamingFeedbac
                             </div>
 
                             <div className="p-6">
-                                <h4 className="text-sm font-bold text-slate-700 mb-3">
-                                    🤖 Nhận xét từ AI:
-                                    {(isPending || isStreaming) && <span className="ml-2 inline-block w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin align-middle"></span>}
-                                </h4>
-                                <div className="bg-indigo-50/50 rounded-xl p-4 border border-indigo-100 text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none prose-indigo">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h4 className="text-sm font-bold text-slate-700">
+                                        🤖 Nhận xét từ AI:
+                                        {(isPending || isStreaming) && !isError && <span className="ml-2 inline-block w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin align-middle"></span>}
+                                        {isError && <span className="ml-2 text-red-500">❌ Kết nối thất bại</span>}
+                                    </h4>
+
+                                    {isError && onRetryAiGrading && (
+                                        <button
+                                            onClick={onRetryAiGrading}
+                                            className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 font-semibold rounded-md text-xs transition duration-200 flex items-center gap-1.5 shadow-sm border border-red-200"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                            Thử chấm lại
+                                        </button>
+                                    )}
+                                </div>
+                                <div className={`${isError ? "bg-red-50 border-red-100" : "bg-indigo-50/50 border-indigo-100"} rounded-xl p-4 border text-sm text-slate-700 leading-relaxed prose prose-sm max-w-none prose-indigo`}>
                                     {isPending ? (
-                                        <div className="space-y-2">
-                                            <div className="w-3/4 h-4 bg-slate-200 animate-pulse rounded"></div>
-                                            <div className="w-1/2 h-4 bg-slate-200 animate-pulse rounded"></div>
-                                        </div>
+                                        isError ? (
+                                            <div className="text-red-600 space-y-1">
+                                                <p className="font-medium">Hệ thống AI hiện thời đang quá tải hoặc gặp lỗi. Vui lòng nhấn nút thử lại.</p>
+                                                <p className="text-xs text-red-500/80">{streamState?.errorMessage || "Chi tiết kết nối thất bại"}</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <div className="w-3/4 h-4 bg-slate-200 animate-pulse rounded"></div>
+                                                <div className="w-1/2 h-4 bg-slate-200 animate-pulse rounded"></div>
+                                            </div>
+                                        )
                                     ) : (
                                         <div>
                                             <ReactMarkdown>{streamState?.text || result.feedback || "Không có nhận xét."}</ReactMarkdown>

@@ -10,8 +10,9 @@ import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
+import Anthropic from "@anthropic-ai/sdk";
 import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
-import { GEMINI_MODELS, OPENAI_MODELS, isOpenAIModel } from "@/lib/ai-models";
+import { GEMINI_MODELS, OPENAI_MODELS, ANTHROPIC_MODELS, isOpenAIModel, isAnthropicModel } from "@/lib/ai-models";
 
 /** Strip duplicate (N) markers next to {N} and normalize [N] to {N} — legacy data cleanup */
 function cleanPassageMarkers(text: string): string {
@@ -246,14 +247,18 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
             }
 
             const extractData = await extractResponse.json();
-            const { prompt, fileType, extractedText, base64Data, apiKey, openaiApiKey } = extractData;
+            const { prompt, fileType, extractedText, base64Data, apiKey, openaiApiKey, anthropicApiKey } = extractData;
 
             const useOpenAI = isOpenAIModel(selectedModel);
+            const useAnthropic = isAnthropicModel(selectedModel);
 
             if (useOpenAI && !openaiApiKey) {
                 throw new Error("Không nhận được OpenAI API Key từ server. Vui lòng liên hệ quản trị viên.");
             }
-            if (!useOpenAI && !apiKey) {
+            if (useAnthropic && !anthropicApiKey) {
+                throw new Error("Không nhận được Claude API Key từ server. Vui lòng liên hệ quản trị viên.");
+            }
+            if (!useOpenAI && !useAnthropic && !apiKey) {
                 throw new Error("Không nhận được Google API Key từ server. Vui lòng liên hệ quản trị viên.");
             }
 
@@ -292,6 +297,34 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                 });
 
                 fullText = completion.choices[0]?.message?.content || "";
+            } else if (useAnthropic) {
+                // === Anthropic Path ===
+                const anthropicClient = new Anthropic({
+                    apiKey: anthropicApiKey,
+                    dangerouslyAllowBrowser: true,
+                });
+
+                let userContent = "";
+                if (fileType === "pdf") {
+                    userContent = prompt + `\n\n**INPUT CONTENT (PDF extracted):**\n"""\n[PDF file uploaded — content extracted via OCR]\n"""`;
+                } else {
+                    userContent = prompt + `\n\n**INPUT CONTENT:**\n"""\n${extractedText}\n"""`;
+                }
+
+                setProgressPercent(35);
+                setProgressMessage("AI đang đọc và phân tích đề thi...");
+
+                const completion = await anthropicClient.messages.create({
+                    model: selectedModel,
+                    system: "You are an expert AI for digitizing English exams. Always respond with valid JSON only.",
+                    messages: [
+                        { role: "user", content: userContent }
+                    ],
+                    max_tokens: 8192,
+                    temperature: 0.2,
+                });
+
+                fullText = (completion.content[0] as { type: "text", text: string }).text || "";
             } else {
                 // === Gemini Path (existing) ===
                 const genAI = new GoogleGenerativeAI(apiKey);
@@ -500,6 +533,11 @@ export const ImportExamModal = ({ classId, importType = "MCQ", onClose, onSucces
                                         >
                                             <optgroup label="🟢 Google Gemini">
                                                 {GEMINI_MODELS.map(m => (
+                                                    <option key={m.id} value={m.id}>{m.label}</option>
+                                                ))}
+                                            </optgroup>
+                                            <optgroup label="🟣 Anthropic Claude">
+                                                {ANTHROPIC_MODELS.map(m => (
                                                     <option key={m.id} value={m.id}>{m.label}</option>
                                                 ))}
                                             </optgroup>

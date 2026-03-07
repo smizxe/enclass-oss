@@ -1,12 +1,16 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
-import { isOpenAIModel } from "./ai-models";
+import Anthropic from "@anthropic-ai/sdk";
+import { isAnthropicModel, isOpenAIModel } from "./ai-models";
 
 const googleApiKey = process.env.GOOGLE_API_KEY;
 const openaiApiKey = process.env.OPENAI_API_KEY;
+const anthropicApiKey = process.env.CLAUDE_API_KEY;
+
 const genAI = new GoogleGenerativeAI(googleApiKey || "");
 const openai = new OpenAI({ apiKey: openaiApiKey || "" });
+const anthropic = new Anthropic({ apiKey: anthropicApiKey || "" });
 
 /**
  * Grade a student submission using AI (Google Gemini or OpenAI)
@@ -24,11 +28,15 @@ export async function gradeSubmission(
 ): Promise<{ score: number; feedback: string }> {
     const effectiveModel = modelId || "gemini-3.1-pro-preview";
     const useOpenAI = isOpenAIModel(effectiveModel);
+    const useAnthropic = isAnthropicModel(effectiveModel);
 
     if (useOpenAI && !openaiApiKey) {
         return { score: 0, feedback: "Chưa cấu hình OPENAI_API_KEY." };
     }
-    if (!useOpenAI && !googleApiKey) {
+    if (useAnthropic && !anthropicApiKey) {
+        return { score: 0, feedback: "Chưa cấu hình CLAUDE_API_KEY." };
+    }
+    if (!useOpenAI && !useAnthropic && !googleApiKey) {
         return { score: 0, feedback: "Chưa cấu hình GOOGLE_API_KEY." };
     }
 
@@ -44,6 +52,8 @@ export async function gradeSubmission(
     try {
         if (useOpenAI) {
             return await gradeWithOpenAI(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
+        } else if (useAnthropic) {
+            return await gradeWithAnthropic(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
         } else {
             return await gradeWithGemini(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
         }
@@ -68,12 +78,17 @@ export async function* gradeSubmissionStream(
 ) {
     const effectiveModel = modelId || "gemini-3.1-pro-preview";
     const useOpenAI = isOpenAIModel(effectiveModel);
+    const useAnthropic = isAnthropicModel(effectiveModel);
 
     if (useOpenAI && !openaiApiKey) {
         yield "Lỗi: Chưa cấu hình OPENAI_API_KEY.";
         return;
     }
-    if (!useOpenAI && !googleApiKey) {
+    if (useAnthropic && !anthropicApiKey) {
+        yield "Lỗi: Chưa cấu hình CLAUDE_API_KEY.";
+        return;
+    }
+    if (!useOpenAI && !useAnthropic && !googleApiKey) {
         yield "Lỗi: Chưa cấu hình GOOGLE_API_KEY.";
         return;
     }
@@ -91,6 +106,8 @@ export async function* gradeSubmissionStream(
     try {
         if (useOpenAI) {
             yield* streamWithOpenAI(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
+        } else if (useAnthropic) {
+            yield* streamWithAnthropic(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
         } else {
             yield* streamWithGemini(effectiveModel, systemPrompt, questionType, userAnswer, isSpeaking, isWriting, maxPoints);
         }
@@ -364,6 +381,77 @@ async function* streamWithOpenAI(
     for await (const chunk of stream) {
         const text = chunk.choices[0]?.delta?.content;
         if (text) yield text;
+    }
+}
+
+// ============= ANTHROPIC IMPLEMENTATION =============
+
+async function gradeWithAnthropic(
+    modelId: string,
+    systemPrompt: string,
+    questionType: string,
+    userAnswer: string,
+    isSpeaking: boolean,
+    isWriting: boolean,
+    maxPoints: number
+): Promise<{ score: number; feedback: string }> {
+    let studentInput = "";
+
+    if (isSpeaking) {
+        const transcript = await transcribeAudioWithWhisper(userAnswer);
+        studentInput = `**BÀI NÓI CỦA HỌC VIÊN (Phiên âm tự động):**\n"${transcript}"`;
+    } else {
+        studentInput = `**BÀI LÀM CỦA HỌC VIÊN:**\n"${userAnswer}"`;
+    }
+
+    const completion = await anthropic.messages.create({
+        model: modelId,
+        system: systemPrompt,
+        messages: [
+            { role: "user", content: studentInput }
+        ],
+        max_tokens: 2000,
+        temperature: 0.3,
+    });
+
+    const responseText = (completion.content[0] as { type: "text", text: string }).text || "";
+    return parseScoreFeedbackFormat(responseText, maxPoints);
+}
+
+async function* streamWithAnthropic(
+    modelId: string,
+    systemPrompt: string,
+    questionType: string,
+    userAnswer: string,
+    isSpeaking: boolean,
+    isWriting: boolean,
+    maxPoints: number
+) {
+    let studentInput = "";
+
+    if (isSpeaking) {
+        const transcript = await transcribeAudioWithWhisper(userAnswer);
+        studentInput = `**BÀI NÓI CỦA HỌC VIÊN (Phiên âm tự động):**\n"${transcript}"`;
+    } else {
+        studentInput = `**BÀI LÀM CỦA HỌC VIÊN:**\n"${userAnswer}"`;
+    }
+
+    const stream = await anthropic.messages.create({
+        model: modelId,
+        system: systemPrompt,
+        messages: [
+            { role: "user", content: studentInput }
+        ],
+        max_tokens: 2000,
+        temperature: 0.3,
+        stream: true,
+    });
+
+    for await (const chunk of stream) {
+        if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
+            const text = chunk.delta.text;
+            if (text) yield text;
+        }
     }
 }
 

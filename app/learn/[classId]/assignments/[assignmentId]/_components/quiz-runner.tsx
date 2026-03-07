@@ -415,7 +415,7 @@ export const QuizRunner = ({
     const [activeSectionIndex, setActiveSectionIndex] = useState(0);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [submissionResult, setSubmissionResult] = useState<any>(null);
-    const [streamingFeedback, setStreamingFeedback] = useState<Record<string, { text: string; isStreaming: boolean; score?: number }>>({});
+    const [streamingFeedback, setStreamingFeedback] = useState<Record<string, { text: string; isStreaming: boolean; score?: number; isError?: boolean; errorMessage?: string }>>({});
     const [viewingAttempt, setViewingAttempt] = useState<number | null>(null); // null = latest/current
     const [isStartingNewAttempt, setIsStartingNewAttempt] = useState(false);
     const [passageFontSize, setPassageFontSize] = useState(16);
@@ -521,6 +521,31 @@ export const QuizRunner = ({
                     eventSource.close();
                 } else if (data.type === "error") {
                     console.error("AI Stream error:", data.message);
+                    setStreamingFeedback(prev => {
+                        const newState = { ...prev };
+                        // If we have a specific question ID, mark just that one
+                        if (data.questionId) {
+                            newState[data.questionId] = {
+                                ...newState[data.questionId],
+                                isStreaming: false,
+                                isError: true,
+                                errorMessage: data.message
+                            };
+                        } else {
+                            // Otherwise, mark all currently streaming items as errored
+                            Object.keys(newState).forEach(qId => {
+                                if (newState[qId].isStreaming) {
+                                    newState[qId] = {
+                                        ...newState[qId],
+                                        isStreaming: false,
+                                        isError: true,
+                                        errorMessage: data.message
+                                    };
+                                }
+                            });
+                        }
+                        return newState;
+                    });
                     eventSource.close();
                 }
             } catch (e) {
@@ -530,9 +555,43 @@ export const QuizRunner = ({
 
         eventSource.onerror = (error) => {
             console.error("EventSource failed:", error);
+            setStreamingFeedback(prev => {
+                const newState = { ...prev };
+                Object.keys(newState).forEach(qId => {
+                    if (newState[qId].isStreaming) {
+                        newState[qId] = {
+                            ...newState[qId],
+                            isStreaming: false,
+                            isError: true,
+                            errorMessage: "Lỗi kết nối máy chủ"
+                        };
+                    }
+                });
+                return newState;
+            });
             eventSource.close();
         };
     }, [assignment.questions]);
+
+    const retryAiGrading = useCallback(() => {
+        if (submissionResult?.submissionId) {
+            // Revert all errored items back to streaming state to show loader
+            setStreamingFeedback(prev => {
+                const newState = { ...prev };
+                Object.keys(newState).forEach(qId => {
+                    if (newState[qId].isError) {
+                        newState[qId] = {
+                            ...newState[qId],
+                            isError: false,
+                            errorMessage: undefined
+                        };
+                    }
+                });
+                return newState;
+            });
+            startAiStream(submissionResult.submissionId, assignment.id);
+        }
+    }, [submissionResult, assignment.id, startAiStream]);
 
     // Auto-submit when timer expires
     const handleAutoSubmit = useCallback(async () => {
@@ -1429,17 +1488,26 @@ export const QuizRunner = ({
                             right={
                                 <div id="split-right" className="h-full overflow-y-auto w-full p-6 flex flex-col scroll-smooth">
                                     <div className="flex-1 animate-in slide-in-from-right-4 duration-300">
-                                        <SectionContent
-                                            group={activeGroup}
-                                            answers={answers}
-                                            onAnswerChange={onAnswerChange}
-                                            showPassage={false} // Don't show passage on right side in Split View
-                                            startIndex={currentSectionStartIndex}
-                                            submissionResult={submissionResult}
-                                            passageFontSize={passageFontSize}
-                                            questionFontSize={questionFontSize}
-                                            showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
-                                        />
+                                        {submissionResult ? (
+                                            <AssignmentResult
+                                                submissionResult={submissionResult}
+                                                questions={assignment.questions}
+                                                streamingFeedback={streamingFeedback}
+                                                onRetryAiGrading={retryAiGrading}
+                                            />
+                                        ) : (
+                                            <SectionContent
+                                                group={activeGroup}
+                                                answers={answers}
+                                                onAnswerChange={onAnswerChange}
+                                                showPassage={false} // Don't show passage on right side in Split View
+                                                startIndex={currentSectionStartIndex}
+                                                submissionResult={submissionResult}
+                                                passageFontSize={passageFontSize}
+                                                questionFontSize={questionFontSize}
+                                                showAnswersAfterSubmit={assignment.settings?.showAnswersAfterSubmit !== false}
+                                            />
+                                        )}
                                     </div>
 
                                     {/* Navigation Footer */}
