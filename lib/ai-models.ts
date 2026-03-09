@@ -30,8 +30,8 @@ export const AI_MODELS: AIModel[] = [
     // === Anthropic Claude ===
     { id: "claude-opus-4-6", label: "Claude Opus 4.6 (Mạnh nhất)", provider: "anthropic", tier: "pro" },
     { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "anthropic", tier: "pro" },
-    { id: "claude-sonnet-4-5", label: "Claude Sonnet 4.5", provider: "anthropic", tier: "stable" },
-    { id: "claude-opus-4-5", label: "Claude Opus 4.5", provider: "anthropic", tier: "stable" },
+    { id: "claude-sonnet-4-5-20250929", label: "Claude Sonnet 4.5", provider: "anthropic", tier: "stable" },
+    { id: "claude-opus-4-5-20251101", label: "Claude Opus 4.5", provider: "anthropic", tier: "stable" },
     { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 (Nhanh, Rẻ)", provider: "anthropic", tier: "fast" },
     { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet", provider: "anthropic", tier: "stable" },
     { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet", provider: "anthropic", tier: "stable" },

@@ -222,35 +222,51 @@ export async function POST(
                     isCorrect = true;
                 }
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
-            } else if (q.type === "GAP_FILL") {
-                // Multi-gap partial credit support
-                const correctParts = q.correctAnswer.split("|").map(s => s.trim().toLowerCase());
+            } else if ([
+                "GAP_FILL",
+                "LISTENING_NOTE_COMPLETION", "READING_NOTE_COMPLETION",
+                "LISTENING_SUMMARY_COMPLETION", "READING_SUMMARY_COMPLETION",
+                "LISTENING_TABLE_COMPLETION", "READING_TABLE_COMPLETION",
+                "LISTENING_SENTENCE_COMPLETION", "READING_SENTENCE_COMPLETION",
+                "LISTENING_DIAGRAM_COMPLETION", "READING_DIAGRAM_COMPLETION",
+                "LISTENING_FLOWCHART_COMPLETION", "READING_FLOWCHART_COMPLETION",
+                "LISTENING_SHORT_ANSWER", "READING_SHORT_ANSWER",
+                "SENTENCE_COMPLETION" // Merged here for unified robustness
+            ].includes(q.type)) {
+                // Robust normalizer for gap fill text
+                const normalizeGap = (s: any) => {
+                    if (typeof s !== 'string') return "";
+                    return s
+                        .replace(/<[^>]*>/g, "") // Strip HTML if accidentally saved with it
+                        .replace(/[\u200B-\u200D\uFEFF]/g, "") // Remove zero-width spaces
+                        .trim()
+                        .toLowerCase();
+                };
 
-                if (typeof userAnswer === 'object' && correctParts.length > 1) {
-                    // Multi-gap: compare each gap individually
+                // Multi-gap partial credit support
+                const rawCorrectParts = q.correctAnswer.split("|");
+
+                if (typeof userAnswer === 'object' && !Array.isArray(userAnswer) && rawCorrectParts.length > 1) {
+                    // Multi-gap (one question ID mapping to multiple sub-gaps)
                     let correctCount = 0;
                     const perGapResults: { isCorrect: boolean; correctAnswer: string }[] = [];
-                    const correctPartsOriginal = q.correctAnswer.split("|").map(s => s.trim());
 
-                    correctParts.forEach((correct, i) => {
-                        const userGap = (userAnswer[i] || "").trim().toLowerCase();
-
-                        // Split the acceptable correct answers by "/"
-                        const acceptableAnswers = correct.split("/").map(s => s.trim());
+                    rawCorrectParts.forEach((correctRaw, i) => {
+                        const userGap = normalizeGap(userAnswer[i]);
+                        const acceptableAnswers = correctRaw.split("/").map(normalizeGap);
                         const gapCorrect = acceptableAnswers.includes(userGap);
 
                         if (gapCorrect) correctCount++;
                         perGapResults.push({
                             isCorrect: gapCorrect,
-                            correctAnswer: correctPartsOriginal[i]
+                            correctAnswer: correctRaw.trim()
                         });
                     });
 
-                    // Proportional scoring — handled here, skip generic addition
-                    const gapScore = Math.round((correctCount / correctParts.length) * q.points);
+                    const gapScore = Math.round((correctCount / rawCorrectParts.length) * q.points);
                     earnedScore += gapScore;
-                    isCorrect = correctCount === correctParts.length;
-                    scoredManually = true; // Prevent double-counting below
+                    isCorrect = correctCount === rawCorrectParts.length;
+                    scoredManually = true;
 
                     results[q.id] = {
                         isCorrect,
@@ -260,8 +276,14 @@ export async function POST(
                     } as any;
                 } else {
                     // Single gap
-                    const userTyped = typeof userAnswer === 'string' ? userAnswer.trim().toLowerCase() : '';
-                    const acceptableAnswers = correctParts[0].split("/").map(s => s.trim());
+                    const userTyped = normalizeGap(userAnswer);
+
+                    // Allow splitting by "/" for alternate answers. 
+                    // We only look at `rawCorrectParts[0]` if it was accidentally saved with a `|`, 
+                    // but typically for standard single gaps it's just the whole string.
+                    const textToMatch = rawCorrectParts.length > 0 ? rawCorrectParts[0] : q.correctAnswer;
+                    const acceptableAnswers = textToMatch.split("/").map(normalizeGap);
+
                     if (acceptableAnswers.includes(userTyped)) {
                         isCorrect = true;
                     }
@@ -271,8 +293,7 @@ export async function POST(
                 q.type === "TRUE_FALSE_NOT_GIVEN" ||
                 q.type === "YES_NO_NOT_GIVEN" ||
                 q.type === "MATCHING_INFORMATION" ||
-                q.type === "MATCHING_NAMES" ||
-                q.type === "SENTENCE_COMPLETION"
+                q.type === "MATCHING_NAMES"
             ) {
                 // IELTS-style types: simple case-insensitive string comparison
                 let userStr = typeof userAnswer === 'string' ? userAnswer.trim().toUpperCase() : '';
@@ -289,9 +310,10 @@ export async function POST(
             } else if (q.type === "SPEAKING" || q.type === "WRITING" || q.type === "ESSAY") {
                 // AI Grading - handled in Part 2 below via Promise.all
             } else {
-                // Unknown type fallback - try simple string comparison
-                const userStr = typeof userAnswer === 'string' ? userAnswer.trim().toUpperCase() : '';
-                const correctStr = q.correctAnswer ? q.correctAnswer.trim().toUpperCase() : '';
+                // Unknown type fallback - try simple string comparison with robust normalizer
+                const normalizeFallback = (s: any) => typeof s === 'string' ? s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().toUpperCase() : '';
+                const userStr = normalizeFallback(userAnswer);
+                const correctStr = normalizeFallback(q.correctAnswer);
                 if (userStr && correctStr && userStr === correctStr) {
                     isCorrect = true;
                 }

@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History, ClipboardList, FileText, Clock, Maximize, Minimize } from "lucide-react";
+import { CheckCircle, Send, Loader2, BookOpen, ChevronRight, ChevronLeft, RefreshCw, History, ClipboardList, FileText, Clock, Maximize, Minimize, ShieldAlert } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -426,26 +426,10 @@ export const QuizRunner = ({
     const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
     const appearanceRef = useRef<HTMLDivElement>(null);
     const quizContainerRef = useRef<HTMLDivElement>(null);
-    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isFocusMode, setIsFocusMode] = useState(false);
 
-    useEffect(() => {
-        const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
-        };
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
-
-    const toggleFullscreen = () => {
-        if (!document.fullscreenElement) {
-            quizContainerRef.current?.requestFullscreen().catch((err) => {
-                console.error(`Error attempting to enable fullscreen: ${err.message}`);
-            });
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
-        }
+    const toggleFocusMode = () => {
+        setIsFocusMode(!isFocusMode);
     };
 
     // Option mappings for Test Mode (questionId -> original indices array)
@@ -454,7 +438,8 @@ export const QuizRunner = ({
     // ====== TIMER & DEADLINE STATE ======
     const timerKey = `timer_${assignment.id}_${userId}`;
     const hasTimeLimit = timeLimitMinutes > 0;
-    const [showTimerWarning, setShowTimerWarning] = useState(false); // Popup cảnh báo
+    const requireStartScreen = hasTimeLimit || isTestMode;
+    const [showStartScreen, setShowStartScreen] = useState(false); // Popup cảnh báo
     const [timerStarted, setTimerStarted] = useState(false);
     const [timeRemaining, setTimeRemaining] = useState(timeLimitMinutes * 60); // seconds
     const autoSubmitRef = useRef(false); // Prevent double auto-submit
@@ -633,24 +618,26 @@ export const QuizRunner = ({
 
     // Initialize timer from localStorage on mount
     useEffect(() => {
-        if (!hasTimeLimit || isSubmitted || initialSubmission) return;
+        if (!requireStartScreen || isSubmitted || initialSubmission) return;
 
         const savedStartTime = localStorage.getItem(timerKey);
         if (savedStartTime) {
             // Timer was already started — resume
-            const elapsed = Math.floor((Date.now() - parseInt(savedStartTime)) / 1000);
-            const remaining = Math.max(0, timeLimitMinutes * 60 - elapsed);
-            setTimeRemaining(remaining);
-            setTimerStarted(true);
-            if (remaining <= 0) {
-                handleAutoSubmit();
+            if (hasTimeLimit) {
+                const elapsed = Math.floor((Date.now() - parseInt(savedStartTime)) / 1000);
+                const remaining = Math.max(0, timeLimitMinutes * 60 - elapsed);
+                setTimeRemaining(remaining);
+                if (remaining <= 0) {
+                    handleAutoSubmit();
+                }
             }
+            setTimerStarted(true);
         } else {
             // Show warning popup for first-time visit
-            setShowTimerWarning(true);
+            setShowStartScreen(true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hasTimeLimit, isSubmitted, initialSubmission]);
+    }, [requireStartScreen, hasTimeLimit, isSubmitted, initialSubmission]);
 
     // Countdown interval
     useEffect(() => {
@@ -674,8 +661,10 @@ export const QuizRunner = ({
     const handleStartTimer = () => {
         localStorage.setItem(timerKey, Date.now().toString());
         setTimerStarted(true);
-        setShowTimerWarning(false);
-        setTimeRemaining(timeLimitMinutes * 60);
+        setShowStartScreen(false);
+        if (hasTimeLimit) {
+            setTimeRemaining(timeLimitMinutes * 60);
+        }
     };
 
     const canRetry = currentAttemptCount < maxAttempts;
@@ -941,8 +930,8 @@ export const QuizRunner = ({
         };
     }, [isAppearanceOpen]);
 
-    // ====== TIMER WARNING STATE ======
-    const isTimerWarningActive = showTimerWarning && hasTimeLimit && !isSubmitted && !initialSubmission;
+    // ====== START SCREEN STATE ======
+    const isStartScreenActive = showStartScreen && requireStartScreen && !isSubmitted && !initialSubmission;
 
     if (assignment.questions.length === 0) {
         return (
@@ -974,7 +963,7 @@ export const QuizRunner = ({
         return (
             <button
                 onClick={onSubmit}
-                disabled={isSubmitting || (hasTimeLimit && showTimerWarning)}
+                disabled={isSubmitting || isStartScreenActive}
                 className={`bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-indigo-200 ${className}`}
             >
                 {isSubmitting ? (
@@ -1298,9 +1287,9 @@ export const QuizRunner = ({
     const isQuiz = assignment.type !== "LECTURE"; // Should be true for QuizRunner usually, but good to check
 
     return (
-        <div ref={quizContainerRef} className="flex flex-col h-full bg-slate-50">
+        <div ref={quizContainerRef} className="flex flex-col h-full bg-slate-50 transition-all duration-300">
             {/* Title Card (Moved from page.tsx) */}
-            {!isFullscreen && (
+            {!isFocusMode && (
                 <div className="bg-white border-b border-slate-200 px-6 py-4 shrink-0 z-20">
                     <div className="max-w-[1800px] mx-auto w-full">
                         <div className="flex items-start gap-4">
@@ -1389,20 +1378,20 @@ export const QuizRunner = ({
                             )}
                             {AppearanceControl}
 
-                            {/* Fullscreen Toggle */}
+                            {/* Focus Mode Toggle */}
                             <button
-                                onClick={toggleFullscreen}
-                                title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
-                                className={`flex items-center justify-center px-2 py-1.5 rounded-lg border transition text-sm font-medium ${isFullscreen ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                                onClick={toggleFocusMode}
+                                title={isFocusMode ? "Mở rộng tiêu đề" : "Chế độ tập trung (ẩn tiêu đề)"}
+                                className={`flex items-center justify-center px-2 py-1.5 rounded-lg border transition text-sm font-medium ${isFocusMode ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
                             >
-                                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                                {isFocusMode ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                             </button>
 
                             {/* Submit Button (Header - always visible on desktop) */}
                             {!isSubmitted ? (
                                 <button
                                     onClick={onSubmit}
-                                    disabled={isSubmitting || isTimerWarningActive}
+                                    disabled={isSubmitting || isStartScreenActive}
                                     className="hidden md:flex bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition items-center gap-2 disabled:opacity-50"
                                 >
                                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -1423,31 +1412,43 @@ export const QuizRunner = ({
             </div>
 
             {/* Content Area */}
-            {isTimerWarningActive ? (
+            {isStartScreenActive ? (
                 <div className="flex-1 flex justify-center p-6 lg:p-12 overflow-y-auto w-full">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl h-fit overflow-hidden animate-in zoom-in-95 fade-in duration-300 border border-slate-200">
                         <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-8 text-white text-center">
                             <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-                                <Clock className="w-10 h-10" />
+                                {hasTimeLimit ? <Clock className="w-10 h-10" /> : <ShieldAlert className="w-10 h-10" />}
                             </div>
-                            <h2 className="text-2xl font-bold">Bài tập có giới hạn thời gian</h2>
+                            <h2 className="text-2xl font-bold">{hasTimeLimit ? "Bài tập có giới hạn thời gian" : "Bài kiểm tra (Chế độ thi)"}</h2>
                         </div>
                         <div className="p-8 space-y-6">
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-                                <p className="text-3xl font-bold text-amber-700">
-                                    {Math.floor(timeLimitMinutes / 60) > 0 ? `${Math.floor(timeLimitMinutes / 60)} giờ ` : ""}{timeLimitMinutes % 60 > 0 ? `${timeLimitMinutes % 60} phút` : ""}
-                                </p>
-                                <p className="font-medium text-amber-600 mt-2">để hoàn thành bài tập</p>
-                            </div>
+                            {hasTimeLimit && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+                                    <p className="text-3xl font-bold text-amber-700">
+                                        {Math.floor(timeLimitMinutes / 60) > 0 ? `${Math.floor(timeLimitMinutes / 60)} giờ ` : ""}{timeLimitMinutes % 60 > 0 ? `${timeLimitMinutes % 60} phút` : ""}
+                                    </p>
+                                    <p className="font-medium text-amber-600 mt-2">để hoàn thành bài tập</p>
+                                </div>
+                            )}
                             <div className="text-slate-600 space-y-3 bg-slate-50 p-6 rounded-xl border border-slate-100 shadow-sm">
-                                <p className="flex items-start gap-3">
-                                    <span className="shrink-0 mt-0.5 text-lg">⚠️</span>
-                                    <span className="leading-relaxed">Thời gian sẽ <strong>bắt đầu đếm ngược</strong> ngay khi bạn bấm Bắt đầu.</span>
-                                </p>
-                                <p className="flex items-start gap-3">
-                                    <span className="shrink-0 mt-0.5 text-lg">⚠️</span>
-                                    <span className="leading-relaxed">Nếu hết giờ, bài làm sẽ được <strong>tự động nộp</strong>.</span>
-                                </p>
+                                {hasTimeLimit && (
+                                    <p className="flex items-start gap-3">
+                                        <span className="shrink-0 mt-0.5 text-lg">⚠️</span>
+                                        <span className="leading-relaxed">Thời gian sẽ <strong>bắt đầu đếm ngược</strong> ngay khi bạn bấm Bắt đầu.</span>
+                                    </p>
+                                )}
+                                {hasTimeLimit && (
+                                    <p className="flex items-start gap-3">
+                                        <span className="shrink-0 mt-0.5 text-lg">⚠️</span>
+                                        <span className="leading-relaxed">Nếu hết giờ, bài làm sẽ được <strong>tự động nộp</strong>.</span>
+                                    </p>
+                                )}
+                                {isTestMode && (
+                                    <p className="flex items-start gap-3">
+                                        <span className="shrink-0 mt-0.5 text-lg">⚠️</span>
+                                        <span className="leading-relaxed">Đây là bài kiểm tra thực tế. Mọi kết quả sẽ được ghi chép lại nghiêm túc.</span>
+                                    </p>
+                                )}
                                 <p className="flex items-start gap-3">
                                     <span className="shrink-0 mt-0.5 text-lg">⚠️</span>
                                     <span className="leading-relaxed">Bạn không thể tạm dừng hoặc làm lại từ đầu.</span>
