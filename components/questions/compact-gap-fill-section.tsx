@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { useMemo } from "react";
+import { useMemo, createContext, useContext } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -33,6 +33,87 @@ interface CompactGapFillSectionProps {
     showAnswersAfterSubmit?: boolean;
     mode?: "student" | "teacher_preview";
 }
+
+export type GapFillContextType = {
+    questionMap: Map<number, CompactQuestion>;
+    mode: "student" | "teacher_preview";
+    results?: Record<string, { isCorrect: boolean; correctAnswer: string }>;
+    answers: Record<string, string>;
+    onAnswerChange: (questionId: string, value: string) => void;
+    disabled?: boolean;
+};
+
+// 1. Create a Context to store all dynamic state for the gap marker
+const GapFillContext = createContext<GapFillContextType | null>(null);
+
+// 2. Define GapMarkerSpan as a STANDALONE component OUTSIDE the parent
+// This ensures React does not unmount/remount it when parent re-renders.
+// eslint-disable-next-line react/display-name
+const GapMarkerSpan = ({ node, ...props }: any) => {
+    const context = useContext(GapFillContext);
+    const gapNum = props['data-gap-marker'];
+
+    if (gapNum === undefined || gapNum === null) {
+        // Regular span, render normally
+        return <span {...props} />;
+    }
+
+    if (!context) {
+        return <span className="text-slate-400">[{gapNum}]</span>;
+    }
+
+    const { questionMap, mode, results, answers, onAnswerChange, disabled } = context;
+    const num = parseInt(gapNum);
+    const question = questionMap.get(num);
+
+    if (!question) {
+        return <span className="text-slate-400">[{num}]</span>;
+    }
+
+    if (mode === "teacher_preview") {
+        return (
+            <span className="inline-flex items-center gap-1 mx-1 align-middle">
+                <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 text-xs font-medium rounded select-none">
+                    {num}
+                </span>
+                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200 select-none">
+                    {question.correctAnswer || "?"}
+                </span>
+            </span>
+        );
+    }
+
+    const result = results?.[question.id];
+    const currentValue = answers[question.id] || "";
+
+    return (
+        <span className="inline-flex items-center gap-1 mx-1 align-middle">
+            <span className="text-xs font-bold text-indigo-500 select-none">
+                {num}
+            </span>
+            <Input
+                className={`w-32 sm:w-36 h-8 inline-flex text-sm ${result
+                    ? (result.isCorrect
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-medium"
+                        : "border-red-400 bg-red-50 text-red-700")
+                    : "border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
+                    }`}
+                disabled={disabled || !!result}
+                value={currentValue}
+                onChange={(e) => onAnswerChange(question.id, e.target.value)}
+                placeholder="............"
+            />
+            {result && !result.isCorrect && (
+                <span className="text-xs text-red-600 font-medium whitespace-nowrap">
+                    → {result.correctAnswer}
+                </span>
+            )}
+            {result?.isCorrect && (
+                <span className="text-xs text-emerald-600">✓</span>
+            )}
+        </span>
+    );
+};
 
 /**
  * Compact Gap Fill Section
@@ -90,12 +171,18 @@ export const CompactGapFillSection = ({
             // to avoid false positives with numbers appearing in normal text.
             // No 'g' flag: each question number should appear once, and avoids .test()/.replace() lastIndex bug
             const patterns = [
-                new RegExp(`(?:^|\\n|\\s)(${num})\\s*[\\.…]{4,}`, 'm'),
-                new RegExp(`(?:^|\\n|\\s)(${num})\\s*_{4,}`, 'm'),
+                new RegExp(`(?:^|\\n|\\s|>|<br\\/?>)(${num})\\s*[\\.…]{4,}`, 'm'),
+                new RegExp(`(?:^|\\n|\\s|>|<br\\/?>)(${num})\\s*_{4,}`, 'm'),
+                // Support convention: N [answer] or N (answer) or 1. [answer]
+                new RegExp(`(?:^|\\n|\\s|>|<br\\/?>)(${num})\\.?\\s*\\[[^\\]]+\\]`, 'm'),
+                new RegExp(`(?:^|\\n|\\s|>|<br\\/?>)(${num})\\.?\\s*\\([^)]+\\)`, 'm'),
             ];
             for (const pattern of patterns) {
                 const replaced = processed.replace(pattern, (match, numStr) => {
-                    return match.replace(`${numStr}`, '').replace(/[\.…_\s]+/g, '') + ` {${num}}`;
+                    // Be careful not to replace the leading tag like > or <br/>
+                    const prefixMatch = match.match(/^(?:^|\n|\s|>|<br\/?>)/);
+                    const prefix = prefixMatch ? prefixMatch[0] : '';
+                    return prefix + `{${num}}`;
                 });
                 if (replaced !== processed) {
                     processed = replaced;
@@ -292,68 +379,15 @@ export const CompactGapFillSection = ({
         return normalized;
     }, [finalPassage]);
 
-    // Custom component to render our gap marker spans as input fields
-    const GapMarkerSpan = useMemo(() => {
-        // eslint-disable-next-line react/display-name
-        return ({ node, ...props }: any) => {
-            const gapNum = props['data-gap-marker'];
-            if (gapNum === undefined || gapNum === null) {
-                // Regular span, render normally
-                return <span {...props} />;
-            }
-
-            const num = parseInt(gapNum);
-            const question = questionMap.get(num);
-
-            if (!question) {
-                return <span className="text-slate-400">[{num}]</span>;
-            }
-
-            if (mode === "teacher_preview") {
-                return (
-                    <span className="inline-flex items-center gap-1 mx-1 align-middle">
-                        <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 text-xs font-medium rounded select-none">
-                            {num}
-                        </span>
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200 select-none">
-                            {question.correctAnswer || "?"}
-                        </span>
-                    </span>
-                );
-            }
-
-            const result = results?.[question.id];
-            const currentValue = answers[question.id] || "";
-
-            return (
-                <span className="inline-flex items-center gap-1 mx-1 align-middle">
-                    <span className="text-xs font-bold text-indigo-500 select-none">
-                        {num}
-                    </span>
-                    <Input
-                        className={`w-32 sm:w-36 h-8 inline-flex text-sm ${result
-                            ? (result.isCorrect
-                                ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-medium"
-                                : "border-red-400 bg-red-50 text-red-700")
-                            : "border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
-                            }`}
-                        disabled={disabled || !!result}
-                        value={currentValue}
-                        onChange={(e) => onAnswerChange(question.id, e.target.value)}
-                        placeholder="............"
-                    />
-                    {result && !result.isCorrect && (
-                        <span className="text-xs text-red-600 font-medium whitespace-nowrap">
-                            → {result.correctAnswer}
-                        </span>
-                    )}
-                    {result?.isCorrect && (
-                        <span className="text-xs text-emerald-600">✓</span>
-                    )}
-                </span>
-            );
-        };
-    }, [questionMap, mode, results, answers, onAnswerChange, disabled]);
+    // Provide the dynamic context values to GapMarkerSpan
+    const contextValue = useMemo(() => ({
+        questionMap,
+        mode,
+        results,
+        answers,
+        onAnswerChange,
+        disabled
+    }), [questionMap, mode, results, answers, onAnswerChange, disabled]);
 
     return (
         <div
@@ -364,15 +398,17 @@ export const CompactGapFillSection = ({
                 ? 'border border-slate-300 rounded-xl p-6 bg-slate-50/50'
                 : 'prose prose-sm max-w-none prose-headings:mb-2 prose-headings:mt-4 prose-p:mb-3 prose-ul:my-1 prose-li:my-0 [&_strong]:font-bold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-slate-300 [&_th]:border [&_th]:border-slate-300 [&_th]:bg-slate-50 [&_th]:p-2 [&_th]:text-left [&_td]:border [&_td]:border-slate-300 [&_td]:p-2'
                 }`}>
-                <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkBreaks]}
-                    rehypePlugins={[rehypeRaw]}
-                    components={{
-                        span: GapMarkerSpan,
-                    }}
-                >
-                    {passageWithPlaceholders}
-                </ReactMarkdown>
+                <GapFillContext.Provider value={contextValue}>
+                    <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkBreaks]}
+                        rehypePlugins={[rehypeRaw]}
+                        components={{
+                            span: GapMarkerSpan,
+                        }}
+                    >
+                        {passageWithPlaceholders}
+                    </ReactMarkdown>
+                </GapFillContext.Provider>
             </div>
         </div>
     );

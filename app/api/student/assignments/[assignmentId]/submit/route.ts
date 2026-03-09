@@ -201,9 +201,24 @@ export async function POST(
                 }
 
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
-            } else if (q.type === "ORDERING") {
-                // For ordering, exact string match
-                if (userAnswer === q.correctAnswer) {
+            } else if (q.type === "ORDERING" || q.type === "SORTABLE") {
+                // For ordering/sortable, handle both string and array formats
+                let formattedUserAnswer = '';
+                if (Array.isArray(userAnswer)) {
+                    formattedUserAnswer = userAnswer.join(',');
+                } else if (typeof userAnswer === 'string') {
+                    formattedUserAnswer = userAnswer;
+                }
+
+                let formattedCorrectAnswer = q.correctAnswer;
+                if (formattedCorrectAnswer.startsWith('[') && formattedCorrectAnswer.endsWith(']')) {
+                    try {
+                        const parsed = JSON.parse(formattedCorrectAnswer);
+                        if (Array.isArray(parsed)) formattedCorrectAnswer = parsed.join(',');
+                    } catch { }
+                }
+
+                if (formattedUserAnswer === formattedCorrectAnswer) {
                     isCorrect = true;
                 }
                 results[q.id] = { isCorrect, correctAnswer: q.correctAnswer };
@@ -260,8 +275,13 @@ export async function POST(
                 q.type === "SENTENCE_COMPLETION"
             ) {
                 // IELTS-style types: simple case-insensitive string comparison
-                const userStr = typeof userAnswer === 'string' ? userAnswer.trim().toUpperCase() : '';
-                const correctStr = q.correctAnswer.trim().toUpperCase();
+                let userStr = typeof userAnswer === 'string' ? userAnswer.trim().toUpperCase() : '';
+                let correctStr = q.correctAnswer.trim().toUpperCase();
+
+                // Normalise CSV spaces to prevent multi-select mismatch (e.g., "A, C" vs "A,C")
+                userStr = userStr.replace(/\s*,\s*/g, ',');
+                correctStr = correctStr.replace(/\s*,\s*/g, ',');
+
                 if (userStr === correctStr) {
                     isCorrect = true;
                 }

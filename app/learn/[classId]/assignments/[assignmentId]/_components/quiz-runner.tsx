@@ -76,6 +76,7 @@ interface QuestionGroup {
     passage?: string;
     notePassage?: string;
     passageTranslation?: string;
+    passageTable?: string;
     sectionAudio?: string;
     sectionVideo?: string;
     sectionImages?: string[];
@@ -186,6 +187,7 @@ const SectionContent = ({
                                             {(cleanPassageMarkers(group.passage || "")).replace(/\\n/g, '\n')}
                                         </ReactMarkdown>
                                     </div>
+
                                     {group.passageTranslation && (
                                         <div className="mt-4 pt-4 border-t border-slate-200">
                                             <div className="text-xs font-medium text-slate-500 mb-2">📖 Tạm dịch:</div>
@@ -207,23 +209,24 @@ const SectionContent = ({
                                 const runStart = runCounter;
                                 runCounter += run.questions.length;
 
-                                if (run.mode === "gap_fill" && group.passage) {
-                                    // For GAP_FILL: use notePassage (note structure with {N}) if available,
+                                if (run.mode === "gap_fill" && (group.passage || group.passageTable)) {
+                                    // For GAP_FILL: use passageTable if available, then notePassage (note structure with {N}),
                                     // otherwise fall back to passage (backward compat for old imports)
-                                    const gapFillPassage = group.notePassage || group.passage;
+                                    const gapFillPassage = group.passageTable || group.notePassage || group.passage || "";
                                     return (
-                                        <CompactGapFillSection
-                                            key={`run-${runIdx}`}
-                                            passage={gapFillPassage}
-                                            questions={run.questions}
-                                            answers={answers}
-                                            onAnswerChange={onAnswerChange}
-                                            disabled={!!submissionResult}
-                                            results={submissionResult?.results}
-                                            startIndex={runStart}
-                                            fontSize={questionFontSize}
-                                            showAnswersAfterSubmit={showAnswersAfterSubmit}
-                                        />
+                                        <div key={`run-${runIdx}`}>
+                                            <CompactGapFillSection
+                                                passage={gapFillPassage}
+                                                questions={run.questions}
+                                                answers={answers}
+                                                onAnswerChange={onAnswerChange}
+                                                disabled={!!submissionResult}
+                                                results={submissionResult?.results}
+                                                startIndex={runStart}
+                                                fontSize={questionFontSize}
+                                                showAnswersAfterSubmit={showAnswersAfterSubmit}
+                                            />
+                                        </div>
                                     );
                                 }
 
@@ -788,6 +791,7 @@ export const QuizRunner = ({
                     passage: parsed.passage,
                     notePassage: parsed.notePassage,
                     passageTranslation: parsed.passageTranslation,
+                    passageTable: parsed.passageTable, // Support for HTML table data
                     sectionAudio: parsed.sectionAudio,
                     sectionVideo: parsed.sectionVideo,
                     sectionImages: parsed.sectionImages || [],
