@@ -235,8 +235,14 @@ export async function POST(
             ].includes(q.type)) {
                 // Robust normalizer for gap fill text
                 const normalizeGap = (s: any) => {
-                    if (typeof s !== 'string') return "";
-                    return s
+                    let textToProcess = s;
+                    if (typeof textToProcess === 'object' && textToProcess !== null && !Array.isArray(textToProcess)) {
+                        // Extract first value from dictionary if frontend sends it as `{ "0": "answer" }`
+                        const values = Object.values(textToProcess);
+                        textToProcess = values.length > 0 ? String(values[0]) : "";
+                    }
+                    if (typeof textToProcess !== 'string') return "";
+                    return textToProcess
                         .replace(/<[^>]*>/g, "") // Strip HTML if accidentally saved with it
                         .replace(/[\u200B-\u200D\uFEFF]/g, "") // Remove zero-width spaces
                         .trim()

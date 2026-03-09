@@ -210,9 +210,9 @@ const SectionContent = ({
                                 runCounter += run.questions.length;
 
                                 if (run.mode === "gap_fill" && (group.passage || group.passageTable)) {
-                                    // For GAP_FILL: use passageTable if available, then notePassage (note structure with {N}),
-                                    // otherwise fall back to passage (backward compat for old imports)
-                                    const gapFillPassage = group.passageTable || group.notePassage || group.passage || "";
+                                    // For GAP_FILL: use notePassage (note structure with {N}) first,
+                                    // otherwise fall back to passage
+                                    const gapFillPassage = group.notePassage || group.passage || "";
                                     return (
                                         <div key={`run-${runIdx}`}>
                                             <CompactGapFillSection
