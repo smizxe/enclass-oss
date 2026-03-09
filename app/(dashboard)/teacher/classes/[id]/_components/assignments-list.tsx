@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EditAssignmentModal } from "./edit-assignment-modal";
 import { CreateGroupModal } from "./create-group-modal";
+import { RenameGroupModal } from "./rename-group-modal";
 import { CopyAssignmentModal } from "./copy-assignment-modal";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -51,6 +52,10 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
         settings?: any;
     } | null>(null);
     const [copyingAssignment, setCopyingAssignment] = useState<{
+        id: string;
+        title: string;
+    } | null>(null);
+    const [renamingGroup, setRenamingGroup] = useState<{
         id: string;
         title: string;
     } | null>(null);
@@ -370,7 +375,7 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => {/* Rename */ }}>
+                                        <DropdownMenuItem onClick={() => setRenamingGroup({ id: group.id, title: group.title })}>
                                             <Pencil className="mr-2 h-4 w-4" /> Đổi tên
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleDeleteGroup(group.id)} className="text-red-600">
@@ -452,6 +457,18 @@ export const AssignmentsList = ({ classId, initialAssignments, initialGroups }: 
                     onClose={() => setCopyingAssignment(null)}
                 />
             )}
+
+            {/* Rename Group Modal */}
+            <RenameGroupModal
+                groupId={renamingGroup?.id || ""}
+                initialTitle={renamingGroup?.title || ""}
+                isOpen={!!renamingGroup}
+                onClose={() => setRenamingGroup(null)}
+                onSuccess={(groupId, newTitle) => {
+                    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, title: newTitle } : g));
+                    router.refresh();
+                }}
+            />
         </div>
     );
 };

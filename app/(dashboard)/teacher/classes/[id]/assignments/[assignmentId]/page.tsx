@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { CompactGapFillSection } from "@/components/questions/compact-gap-fill-section";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { AudioManager } from "@/components/audio-manager";
 import { TipTapEditor } from "@/components/editor/tiptap-editor";
 import { supabase } from "@/lib/supabase";
@@ -82,6 +83,11 @@ export default function AssignmentEditorPage() {
     const [assignment, setAssignment] = useState<Assignment | null>(null);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Title Inline Edit State
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [editTitleValue, setEditTitleValue] = useState("");
+    const [isSavingTitle, setIsSavingTitle] = useState(false);
 
     // Edit Question Modal State
     const [isAddingQuestion, setIsAddingQuestion] = useState(false);
@@ -179,6 +185,7 @@ export default function AssignmentEditorPage() {
             try {
                 const res = await axios.get(`/api/teacher/assignments/${assignmentId}`);
                 setAssignment(res.data);
+                setEditTitleValue(res.data.title);
                 // Sync local maxAttempts state
                 setLocalMaxAttempts(res.data.settings?.maxAttempts || 1);
                 // Sync time limit
@@ -305,6 +312,29 @@ export default function AssignmentEditorPage() {
 
 
     // Handlers
+    const handleSaveTitle = async () => {
+        if (!editTitleValue.trim() || editTitleValue === assignment?.title) {
+            setIsEditingTitle(false);
+            setEditTitleValue(assignment?.title || "");
+            return;
+        }
+
+        setIsSavingTitle(true);
+        try {
+            await axios.patch(`/api/teacher/assignments/${assignmentId}`, {
+                title: editTitleValue.trim()
+            });
+            setAssignment(prev => prev ? { ...prev, title: editTitleValue.trim() } : null);
+            toast.success("Đã đổi tên bài tập");
+            setIsEditingTitle(false);
+        } catch {
+            toast.error("Lỗi khi đổi tên");
+            setEditTitleValue(assignment?.title || "");
+        } finally {
+            setIsSavingTitle(false);
+        }
+    };
+
     const handleDeleteQuestion = async (qId: string) => {
         if (!confirm("Bạn có chắc chắn muốn xóa câu hỏi này?")) return;
         try {
@@ -541,9 +571,36 @@ export default function AssignmentEditorPage() {
                         <ArrowLeft className="w-4 h-4" />
                         Quay lại lớp học
                     </Link>
-                    <h1 className="text-2xl font-bold text-slate-900">
-                        {assignment?.title || "Biên tập bài tập"}
-                    </h1>
+
+                    {isEditingTitle ? (
+                        <div className="flex items-center gap-2 mt-1">
+                            <Input
+                                value={editTitleValue}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditTitleValue(e.target.value)}
+                                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                    if (e.key === "Enter") handleSaveTitle();
+                                    if (e.key === "Escape") {
+                                        setIsEditingTitle(false);
+                                        setEditTitleValue(assignment?.title || "");
+                                    }
+                                }}
+                                disabled={isSavingTitle}
+                                className="text-2xl font-bold h-10 w-[300px] md:w-[450px]"
+                                autoFocus
+                                onBlur={handleSaveTitle}
+                            />
+                            {isSavingTitle && <span className="inline-block w-4 h-4 rounded-full border-2 border-slate-400 border-t-transparent animate-spin ml-2"></span>}
+                        </div>
+                    ) : (
+                        <h1
+                            className="text-2xl font-bold text-slate-900 flex items-center gap-2 group cursor-pointer hover:text-indigo-600 transition-colors w-fit"
+                            onClick={() => setIsEditingTitle(true)}
+                            title="Nhấp để đổi tên bài tập"
+                        >
+                            {assignment?.title || "Biên tập bài tập"}
+                            <Pencil className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-opacity opacity-0 group-hover:opacity-100" />
+                        </h1>
+                    )}
                 </div>
             </div>
 
