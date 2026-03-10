@@ -209,7 +209,7 @@ const SectionContent = ({
                                 const runStart = runCounter;
                                 runCounter += run.questions.length;
 
-                                if (run.mode === "gap_fill" && (group.passage || group.passageTable)) {
+                                if (run.mode === "gap_fill" && (group.notePassage || group.passage || group.passageTable)) {
                                     // For GAP_FILL: use notePassage (note structure with {N}) first,
                                     // otherwise fall back to passage
                                     const gapFillPassage = group.notePassage || group.passage || "";

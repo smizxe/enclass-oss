@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"replace.*\\\\\\\\\\\\\\\\n\\\\|\\\\\\\\n\\\\|cleanPassageMarkers\" \"d:\\\\Project Code Kiem Tien\\\\Online Study Platform tieng anh\\\\app\\\\learn\\\\[classId]\\\\assignments\\\\[assignmentId]\\\\_components\\\\quiz-runner.tsx\")"
+    ]
+  }
+}
